@@ -96,30 +96,47 @@ const server=http.createServer(async(req,res)=>{
       stage='restricting';
       writeAttempted=true;
       await setProfile(3);
-      stage='verifying_indoor_only';
-      const restricted=await dashboard();
       const profiles=data=>(Array.isArray(data.pets)?data.pets:[]).map(p=>{
         const ms=(Array.isArray(data.devices)?data.devices:[]).filter(d=>[6,13].includes(Number(d.product_id))).flatMap(d=>(Array.isArray(d.tags)?d.tags:[]).filter(t=>String(t.id)===String(p.tag_id)));
         return {name:String(p.name||''),profile:ms.length===1?Number(ms[0].profile):null};
       });
       readProfiles=profiles;
       beforeProfiles=profiles(initial);
-      const during=profiles(restricted);
-      const j=during.filter(p=>p.name.toLowerCase()==='jessie');
-      const unchanged=beforeProfiles.filter(p=>p.name.toLowerCase()!=='jessie').every(p=>during.some(q=>q.name===p.name&&q.profile===p.profile));
-      const restrictedConfirmed=j.length===1&&j[0].profile===3;
+      const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+      const getJessie=rows=>rows.filter(p=>p.name.trim().toLowerCase()==='jessie');
+      // The Sure Petcare dashboard can report an old value immediately after a write.
+      // Require two consecutive fresh confirmations, separated by several seconds.
+      stage='verifying_indoor_only';
+      let during=[],restrictedConfirmed=false,unchanged=false,restrictedStreak=0;
+      for(let attempt=0;attempt<6;attempt++){
+        await sleep(3000);
+        during=profiles(await dashboard());
+        unchanged=beforeProfiles.filter(p=>p.name.toLowerCase()!=='jessie').every(p=>during.some(q=>q.name===p.name&&q.profile===p.profile));
+        const js=getJessie(during);
+        restrictedStreak=js.length===1&&js[0].profile===3?restrictedStreak+1:0;
+        if(restrictedStreak>=2){restrictedConfirmed=true;break;}
+      }
       stage='restoring';
       await restore();
       stage='verifying_restored';
-      let after=[];let restored=false;
-      for(let attempt=0;attempt<4;attempt++){
-        if(attempt)await new Promise(resolve=>setTimeout(resolve,1200));
-        after=profiles(await dashboard());
-        restored=after.some(p=>p.name.toLowerCase()==='jessie'&&p.profile===2);
-        if(restored)break;
+      let after=[],restored=false,freeStreak=0,restoreRetries=0;
+      // Never accept an immediate cached Free Access result as successful restoration.
+      // Continue checking for delayed application of the earlier Indoor Only command.
+      for(let attempt=0;attempt<10;attempt++){
+        await sleep(4000);
+        try{
+          after=profiles(await dashboard());
+          const js=getJessie(after);
+          if(js.length!==1)throw Error('Jessie missing from verification');
+          if(js[0].profile===3&&(attempt===3||attempt===6)){
+            stage='retrying_restore';restoreRetries++;await restore();stage='verifying_restored';freeStreak=0;continue;
+          }
+          freeStreak=js[0].profile===2?freeStreak+1:0;
+          if(freeStreak>=2&&attempt>=5){restored=true;break;}
+        }catch(err){if(attempt===9)throw err;freeStreak=0;}
       }
       if(restored)restore=null;
-      return reply(200,{status:restrictedConfirmed&&unchanged&&restored?'passed':'needs_review',restrictedConfirmed,otherCatsUnchanged:unchanged,restored,initial:beforeProfiles,during,after,message:restored?'Jessie restored to Free Access according to Sure Petcare.':'Restoration could not be confirmed. Check Sure Petcare immediately.'});
+      return reply(200,{status:restrictedConfirmed&&unchanged&&restored?'passed':'needs_review',restrictedConfirmed,otherCatsUnchanged:unchanged,restored,restoreRetries,initial:beforeProfiles,during,after,message:restored?(restrictedConfirmed&&unchanged?'Full electronic test passed; Jessie returned to Free Access after delayed checks.':'Jessie returned to Free Access after delayed checks, but the restriction or other-cat checks were inconclusive.'):'Jessie restoration is NOT confirmed. Check Sure Petcare immediately.'});
     }catch(e){
       let restoreAccepted=false,restoredConfirmed=false,restoreError=null;
       if(restore){

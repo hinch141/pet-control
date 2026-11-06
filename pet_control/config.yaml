@@ -1,5 +1,5 @@
 name: Pet Control
-version: "2.7.5"
+version: "2.8.0"
 slug: pet_control
 description: Pet Control interface with live Sure Petcare presence
 arch:
@@ -13,3 +13,9 @@ ingress_port: 80
 homeassistant_api: true
 panel_icon: mdi:paw
 panel_title: Pet Control
+options:
+  sure_email: ""
+  sure_password: ""
+schema:
+  sure_email: str?
+  sure_password: password?

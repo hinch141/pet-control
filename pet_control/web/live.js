@@ -7,32 +7,43 @@ const flapSection=document.createElement('section');
 flapSection.className='card';
 flapSection.style.cssText='margin-top:14px;background:#fff;color:#19312d;width:100%;';
 flapSection.innerHTML='<strong>Cat flap — live lock status</strong><div id="flap-live-status" style="margin-top:8px">Checking Home Assistant…</div><p class="small" style="margin-bottom:0">Controls use the exit restriction only. Entry remains permitted.</p>';
-let flapPending=false,flapCommandPending=false,flapConfirmed=null,flapMessage='',flapDesired=null;
+let flapPending=false,flapCommandPending=false,flapConfirmed=null,flapMessage='',flapDesired=null,flapLastSuccess=0,flapRetryTimer=null;
 const flapWait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function syncFlapUI(){
  const target=document.getElementById('flap-live-status'),checkbox=document.getElementById('houseIndoorToggle'),label=document.getElementById('houseIndoorStatus');
  const known=flapConfirmed==='indoor_only'||flapConfirmed==='normal';
- const status=flapConfirmed==='indoor_only'?'Indoor only — exits restricted, entry allowed':flapConfirmed==='normal'?'Free Access — entry and exit allowed':'Flap status unavailable';
+ const fresh=known&&Date.now()-flapLastSuccess<30000;
+ const status=flapConfirmed==='indoor_only'?'Indoor only — exits restricted, entry allowed':flapConfirmed==='normal'?'Free Access — entry and exit allowed':'Checking flap status…';
  if(target)target.textContent=flapMessage||status;
- if(checkbox){checkbox.disabled=flapCommandPending||!known;checkbox.checked=flapCommandPending&&flapDesired?flapDesired==='indoor_only':flapConfirmed==='indoor_only';}
- if(label)label.textContent=flapMessage||(known?'Confirmed by Home Assistant':'Unable to confirm flap status — controls disabled');
+ if(checkbox){checkbox.disabled=flapCommandPending||!fresh;checkbox.checked=flapCommandPending&&flapDesired?flapDesired==='indoor_only':flapConfirmed==='indoor_only';}
+ if(label)label.textContent=flapCommandPending?'Waiting for Home Assistant to confirm…':flapMessage||(fresh?'Confirmed by Home Assistant':'Checking connection — controls temporarily unavailable');
 }
 window.syncLiveFlapUI=syncFlapUI;
 async function readFlap(){
- const response=await fetch('./live/flap',{cache:'no-store',signal:AbortSignal.timeout(7000)});
- if(!response.ok)throw Error('Flap status unavailable');
+ const response=await fetch('./live/flap',{cache:'no-store',signal:AbortSignal.timeout(9000)});
+ if(!response.ok)throw Error('Status request delayed');
  const data=await response.json();
- return data.status==='normal'||data.status==='indoor_only'?data.status:null;
+ if(data.status!=='normal'&&data.status!=='indoor_only')throw Error('Status not yet available');
+ return data.status;
+}
+function scheduleFlapRetry(){
+ if(flapRetryTimer||flapCommandPending)return;
+ flapRetryTimer=setTimeout(()=>{flapRetryTimer=null;refreshFlap();},3000);
 }
 async function refreshFlap(){
  if(flapPending||flapCommandPending||document.hidden)return;
  flapPending=true;
- try{flapConfirmed=await readFlap();flapMessage='';}
- catch{flapConfirmed=null;flapMessage='Unable to check flap status — try again shortly';}
- finally{flapPending=false;syncFlapUI();}
+ try{
+  const actual=await readFlap();
+  flapConfirmed=actual;flapLastSuccess=Date.now();flapMessage='';
+ }catch{
+  // Preserve the last verified position, but do not permit commands on stale data.
+  flapMessage='Checking flap connection… Last confirmed: '+(flapConfirmed==='indoor_only'?'Indoor only':flapConfirmed==='normal'?'Free Access':'not available');
+  scheduleFlapRetry();
+ }finally{flapPending=false;syncFlapUI();}
 }
 window.setLiveFlapMode=async function(enabled){
- if(flapCommandPending||!flapConfirmed){syncFlapUI();return;}
+ if(flapCommandPending||!flapConfirmed||Date.now()-flapLastSuccess>=30000){syncFlapUI();return;}
  const desired=enabled?'indoor_only':'normal';
  if(desired===flapConfirmed){syncFlapUI();return;}
  flapCommandPending=true;flapDesired=desired;
@@ -43,28 +54,27 @@ window.setLiveFlapMode=async function(enabled){
   const result=await response.json();
   if(!response.ok)throw Error(result.error||'Unable to send command');
   if(result.status==='confirmed'){
-   flapConfirmed=desired;flapMessage='Change confirmed by Home Assistant';
+   flapConfirmed=desired;flapLastSuccess=Date.now();flapMessage='Change confirmed by Home Assistant';
   }else{
    flapMessage='Command sent — waiting for the flap to respond…';
    syncFlapUI();
-  }
-  if(result.status!=='confirmed'){
    let matched=false;
-   for(let i=0;i<8;i++){
+   for(let i=0;i<10;i++){
     await flapWait(1500);
-    let actual=null;
-    try{actual=await readFlap();}catch{}
-    if(actual===desired){flapConfirmed=actual;matched=true;break;}
+    try{
+     const actual=await readFlap();
+     flapConfirmed=actual;flapLastSuccess=Date.now();
+     if(actual===desired){matched=true;break;}
+    }catch{}
    }
-   if(!matched)throw Error('Flap has not confirmed the change. Check Home Assistant.');
+   if(!matched)throw Error('Still waiting for confirmation — check Home Assistant');
    flapMessage='Change confirmed by Home Assistant';
   }
  }catch(error){
-  flapMessage=error.message||'Unable to confirm the change';
-  try{flapConfirmed=await readFlap();}catch{flapConfirmed=null;}
+  flapMessage=error.message||'Change not yet confirmed';
+  try{flapConfirmed=await readFlap();flapLastSuccess=Date.now();}catch{}
  }finally{
   flapCommandPending=false;flapDesired=null;syncFlapUI();
-  // The next normal refresh clears the temporary confirmation or error message.
   setTimeout(()=>{if(!flapCommandPending){flapMessage='';refreshFlap();}},4500);
  }
 };

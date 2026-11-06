@@ -83,10 +83,18 @@ window.renderSureTimeline=function(){
 };
 
 let graphCache=null,graphActivityRef=null,graphArchiveRef=null;
+let rangeArchive=[],rangeLoading=false,rangeError='',rangeToken=0;
+const archiveCache=new Map();
+const graphToday=()=>ukDay(new Date());
+const shiftDay=(day,n)=>{const d=new Date(day+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
+let graphEnd=graphToday(),graphStart=shiftDay(graphEnd,-6);
+function rangeDays(){const days=[];for(let d=graphStart;d<=graphEnd&&days.length<366;d=shiftDay(d,1))days.push(d);return days;}
+async function loadGraphRange(){const token=++rangeToken;rangeLoading=true;rangeError='';renderGraphs();const dates=rangeDays();const results=[];let failures=0;let cursor=0;async function worker(){while(cursor<dates.length&&token===rangeToken){const date=dates[cursor++];if(archiveCache.has(date)){results.push(...archiveCache.get(date));continue;}try{const resp=await fetch('./sure/archive?date='+encodeURIComponent(date),{cache:'no-store'});if(!resp.ok)throw Error('archive unavailable');const data=await resp.json();if(!Array.isArray(data.events))throw Error('invalid archive');archiveCache.set(date,data.events);results.push(...data.events);}catch{failures++;}}}await Promise.all(Array.from({length:Math.min(4,dates.length)},worker));if(token!==rangeToken)return;rangeArchive=results;rangeLoading=false;rangeError=failures?failures+' day(s) could not be loaded. Totals may be incomplete.':'';graphCache=null;renderGraphs();}
+window.petGraphDates=function(){const a=document.getElementById('graph-from')?.value,b=document.getElementById('graph-to')?.value;if(!a||!b||a>b||b>graphToday()){alert('Please select a valid date range, ending no later than today.');return;}const count=Math.round((Date.parse(b+'T12:00:00Z')-Date.parse(a+'T12:00:00Z'))/86400000)+1;if(count>366){alert('Please choose a range of up to 366 days.');return;}graphStart=a;graphEnd=b;graphRange=0;loadGraphRange();};
 function graphRecords(){
  if(graphCache&&graphActivityRef===activity&&graphArchiveRef===archiveEvents)return graphCache;
  graphActivityRef=activity;graphArchiveRef=archiveEvents;
- graphCache=records().filter(e=>e.direction==='In'||e.direction==='Out').map(e=>({pet:e.pet,direction:e.direction,at:new Date(e.at).getTime(),day:ukDay(new Date(e.at))})).filter(e=>Number.isFinite(e.at));
+ graphCache=[...activity,...rangeArchive,...archiveEvents].filter((e,i,arr)=>arr.findIndex(x=>x.id===e.id)===i).filter(e=>e.type===0).flatMap(e=>(e.pets||[]).filter(p=>names.some(n=>n.toLowerCase()===p)).map(p=>({...e,pet:p,direction:direction(e)}))).filter(e=>e.direction==='In'||e.direction==='Out').map(e=>({pet:e.pet,direction:e.direction,at:new Date(e.at).getTime(),day:ukDay(new Date(e.at))})).filter(e=>Number.isFinite(e.at));
  return graphCache;
 }
 function graphTrips(){
@@ -110,7 +118,7 @@ function graphDayTrips(day,pet){
 function graphDuration(ms){const mins=Math.round(ms/60000);return Math.floor(mins/60)+'h '+String(mins%60).padStart(2,'0')+'m';}
 let graphRange=7,graphPet='all',graphSelected='',graphMetric='move';
 window.petGraphMetric=function(v){graphMetric=v==='time'?'time':'move';renderGraphs();};
-window.petGraphRange=function(n){graphRange=n===28?28:7;renderGraphs();};
+window.petGraphRange=function(n){graphRange=n===28?28:7;graphEnd=graphToday();graphStart=shiftDay(graphEnd,1-graphRange);loadGraphRange();};
 window.petGraphPet=function(v){graphPet=v;renderGraphs();};
 let graphSelectedDirection='all';
 window.petGraphDay=function(v,direction='all'){graphSelected=v;graphSelectedDirection=direction;showGraphPopup(v);};
@@ -141,13 +149,13 @@ function showGraphPopup(day){
 window.closePetGraphPopup=function(){const el=document.getElementById('pet-graph-popup');if(el)el.style.display='none';};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('pet-graph-popup')?.style.display==='flex')window.closePetGraphPopup();});
 function renderGraphs(){
- const timeline=document.getElementById('timelineEvents');
- if(!timeline||!timeline.closest('.page.active'))return;
+ const page=document.getElementById('timeline');
+ if(!page?.classList.contains('active'))return;
  let root=document.getElementById('pet-graphs');
- if(!root){root=document.createElement('div');root.id='pet-graphs';timeline.closest('.page').insertBefore(root,timeline.closest('.page').firstChild);}root.classList.add('card');root.style.margin='0 0 12px';
+ if(!root){root=document.createElement('div');root.id='pet-graphs';page.querySelector('.sectionhead')?.after(root);}root.classList.add('card');root.style.margin='0 0 12px';
  const events=graphRecords().filter(e=>graphPet==='all'||e.pet===graphPet);
- const today=ukDay(new Date()),days=[];
- for(let i=graphRange-1;i>=0;i--){const d=new Date();d.setUTCDate(d.getUTCDate()-i);days.push({day:ukDay(d),ins:0,outs:0,minutes:0});}
+ const today=graphToday(),days=[];
+ for(const day of rangeDays())days.push({day,ins:0,outs:0,minutes:0});
  const byDay=new Map(days.map(d=>[d.day,d]));
  for(const e of events){const b=byDay.get(e.day);if(b){if(e.direction==='In')b.ins++;else b.outs++;}}
  const trips=graphTrips().filter(t=>graphPet==='all'||t.pet===graphPet);
@@ -159,13 +167,13 @@ function renderGraphs(){
  const ukLabel=day=>new Date(day+'T12:00:00Z').toLocaleDateString('en-GB',{timeZone:'Europe/London',day:'2-digit',month:'short'});
  const ukLong=day=>new Date(day+'T12:00:00Z').toLocaleDateString('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric',month:'long',year:'numeric'});
  const monthHeading=day=>new Date(day+'T12:00:00Z').toLocaleDateString('en-GB',{timeZone:'Europe/London',month:'long',year:'numeric'});
- const rangeHeading=monthHeading(days[0].day)===monthHeading(days[days.length-1].day)?monthHeading(today):monthHeading(days[0].day)+' – '+monthHeading(today);
+ const rangeHeading=monthHeading(days[0].day)===monthHeading(days[days.length-1].day)?monthHeading(days[days.length-1].day):monthHeading(days[0].day)+' – '+monthHeading(days[days.length-1].day);
  const bar=(value,max,color,day,title,direction)=>'<button type="button" onclick="petGraphDay(&#39;'+day+'&#39;,&#39;'+direction+'&#39;)" title="'+escapeHtml(title)+'" style="display:block;width:100%;height:'+Math.max(3,Math.round(value/max*94))+'px;background:'+color+';border:0;border-radius:3px 3px 0 0;padding:0;cursor:pointer" aria-label="'+escapeHtml(title)+'"></button>';
- const bars=kind=>'<div style="overflow-x:auto;touch-action:pan-x;padding-bottom:6px"><div style="display:flex;gap:5px;align-items:flex-end;min-width:max-content;border-bottom:1px solid #cbd9d4">'+days.map(d=>'<div style="width:'+(graphRange===28?'47':'55')+'px;flex:none;text-align:center"><div style="display:flex;align-items:flex-end;gap:2px;height:112px">'+(kind==='move'?'<div style="flex:1">'+bar(d.ins,maxMove,'#178f99',d.day,ukLong(d.day)+': '+d.ins+' entries','In')+'</div><div style="flex:1">'+bar(d.outs,maxMove,'#e49a46',d.day,ukLong(d.day)+': '+d.outs+' exits','Out')+'</div>':bar(d.minutes,maxTime,'#5d7ec3',d.day,ukLong(d.day)+': '+Math.round(d.minutes)+' minutes outside','all'))+'</div><div style="font-size:11px;white-space:nowrap;padding:5px 0;font-weight:'+(d.day===today?'700':'400')+'">'+escapeHtml(ukLabel(d.day))+'</div></div>').join('')+'</div></div>';
+ const bars=kind=>'<div style="overflow-x:auto;touch-action:pan-x;padding-bottom:6px"><div style="display:flex;gap:5px;align-items:flex-end;min-width:max-content;border-bottom:1px solid #cbd9d4">'+days.map(d=>'<div style="width:'+(days.length>14?'47':'55')+'px;flex:none;text-align:center"><div style="display:flex;align-items:flex-end;gap:2px;height:112px">'+(kind==='move'?'<div style="flex:1">'+bar(d.ins,maxMove,'#178f99',d.day,ukLong(d.day)+': '+d.ins+' entries','In')+'</div><div style="flex:1">'+bar(d.outs,maxMove,'#e49a46',d.day,ukLong(d.day)+': '+d.outs+' exits','Out')+'</div>':bar(d.minutes,maxTime,'#5d7ec3',d.day,ukLong(d.day)+': '+Math.round(d.minutes)+' minutes outside','all'))+'</div><div style="font-size:11px;white-space:nowrap;padding:5px 0;font-weight:'+(d.day===today?'700':'400')+'">'+escapeHtml(ukLabel(d.day))+'</div></div>').join('')+'</div></div>';
 
  const selected=byDay.get(graphSelected)||days[days.length-1];
  const opts=['all',...names.map(n=>n.toLowerCase())].map(n=>'<option value="'+escapeHtml(n)+'"'+(graphPet===n?' selected':'')+'>'+(n==='all'?'All cats':escapeHtml(n.charAt(0).toUpperCase()+n.slice(1)))+'</option>').join('');
- root.innerHTML='<h3 style="margin-top:0">Cat activity</h3><div class="row" style="gap:8px;flex-wrap:wrap"><label>View <select aria-label="Graph metric" onchange="petGraphMetric(this.value)"><option value="move"'+(graphMetric==='move'?' selected':'')+'>Entries and exits</option><option value="time"'+(graphMetric==='time'?' selected':'')+'>Time outside</option></select></label><label>Cat <select onchange="petGraphPet(this.value)">'+opts+'</select></label><button class="button secondary" onclick="petGraphRange(7)" '+(graphRange===7?'aria-pressed="true"':'')+'>7 days</button><button class="button secondary" onclick="petGraphRange(28)" '+(graphRange===28?'aria-pressed="true"':'')+'>28 days</button></div><h4>'+(graphMetric==='move'?'Entries and exits':'Time spent outside')+'</h4><p class="small" style="font-weight:700">'+escapeHtml(rangeHeading)+'</p>'+bars(graphMetric)+'<p class="small">'+(graphMetric==='move'?'Blue: entries · Orange: exits':'Blue: minutes outside between confirmed exit and return')+'</p><p class="small">Daily average outside: '+graphDuration(avgMinutes*60000)+' · Average completed trips/day: '+avgTrips.toFixed(1)+' · Longest trip: '+graphDuration(longestTrip)+'</p><div class="small">'+escapeHtml(ukLong(days[0].day))+' to '+escapeHtml(ukLong(today))+'</div><p class="small">Tap a bar for '+(graphMetric==='move'?'movement times':'individual trip durations')+'. Only retrieved confirmed events are included; incomplete history may affect totals.</p>';
+ root.innerHTML='<h3 style="margin-top:0">Cat activity</h3><div class="row" style="gap:8px;flex-wrap:wrap"><label>View <select aria-label="Graph metric" onchange="petGraphMetric(this.value)"><option value="move"'+(graphMetric==='move'?' selected':'')+'>Entries and exits</option><option value="time"'+(graphMetric==='time'?' selected':'')+'>Time outside</option></select></label><label>Cat <select onchange="petGraphPet(this.value)">'+opts+'</select></label><button class="button secondary" onclick="petGraphRange(7)" '+(graphRange===7?'aria-pressed="true"':'')+'>7 days</button><button class="button secondary" onclick="petGraphRange(28)" '+(graphRange===28?'aria-pressed="true"':'')+'>28 days</button></div><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px"><label>From <input id="graph-from" type="date" value="'+graphStart+'" max="'+today+'"></label><label>To <input id="graph-to" type="date" value="'+graphEnd+'" max="'+today+'"></label><button class="button secondary" onclick="petGraphDates()">Show dates</button></div><p class="small">Select dates using the calendar (day/month/year). Showing '+days.length+' days.</p>'+(graphMetric==='move'?'Entries and exits':'Time spent outside')+'</h4><p class="small" style="font-weight:700">'+escapeHtml(rangeHeading)+'</p>'+bars(graphMetric)+'<p class="small">'+(graphMetric==='move'?'Blue: entries · Orange: exits':'Blue: minutes outside between confirmed exit and return')+'</p><p class="small">Daily average outside: '+graphDuration(avgMinutes*60000)+' · Average completed trips/day: '+avgTrips.toFixed(1)+' · Longest trip: '+graphDuration(longestTrip)+'</p><div class="small">'+escapeHtml(ukLong(days[0].day))+' to '+escapeHtml(ukLong(graphEnd))+'</div><p class="small">Tap a bar for '+(graphMetric==='move'?'movement times':'individual trip durations')+'. '+(rangeLoading?'Loading selected dates…':rangeError?escapeHtml(rangeError):'Showing retrieved confirmed movements for the selected dates.')+'</p>';
 }
 
 async function refreshCloud(force=false){

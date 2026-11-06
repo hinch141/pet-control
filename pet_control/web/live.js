@@ -4,7 +4,7 @@ const section=document.createElement('section');
 section.className='card';section.style.cssText='margin-top:14px;background:#fff;color:#19312d;width:100%;';
 section.innerHTML='<strong>Live Sure Petcare status</strong><div id="pet-live-list" style="margin-top:8px">Connecting to Home Assistant…</div><small id="pet-live-time"></small>';
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const ukDay=d=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+const ukDay=d=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).map(p=>[p.type,p.value]));return parts.year+'-'+parts.month+'-'+parts.day;};
 const dayKey=offset=>{const d=new Date();d.setUTCDate(d.getUTCDate()+offset);return ukDay(d);};
 let activity=[];let loaded=false;let pending=null;let lastFetched=0;
 try{const saved=JSON.parse(sessionStorage.getItem('pet-sure-activity')||'null');if(saved&&Array.isArray(saved.events)){activity=saved.events;loaded=true;}}catch{}
@@ -24,6 +24,7 @@ function rowFor(e,fullDate=false){
  return '<div class="listrow"><div class="row"><div class="eventicon" aria-label="'+labelFor(e)+'">'+iconFor(e)+'</div><div><strong>'+escapeHtml(name)+'</strong><div class="small">'+labelFor(e)+'</div></div></div><span class="small">'+time+'</span></div>';
 }
 function paint(){
+ window.petLiveHistoryLoaded=true;
  const box=document.getElementById('homeEvents'),count=document.getElementById('countEvents');
  if(box&&count){
   const today=ukDay(new Date()),todayEvents=records().filter(e=>ukDay(new Date(e.at))===today);

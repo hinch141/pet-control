@@ -3,6 +3,26 @@ const names=['Jessie','Henry','Rosie','Violet'];
 const section=document.createElement('section');
 section.className='card';section.style.cssText='margin-top:14px;background:#fff;color:#19312d;width:100%;';
 section.innerHTML='<strong>Live Sure Petcare status</strong><div id="pet-live-list" style="margin-top:8px">Connecting to Home Assistant…</div><small id="pet-live-time"></small>';
+const flapSection=document.createElement('section');
+flapSection.className='card';
+flapSection.style.cssText='margin-top:14px;background:#fff;color:#19312d;width:100%;';
+flapSection.innerHTML='<strong>Cat flap — live lock status</strong><div id="flap-live-status" style="margin-top:8px">Checking Home Assistant…</div><p class="small" style="margin-bottom:0">Status only. Pet Control is not changing the flap.</p>';
+let flapPending=false;
+async function refreshFlap(){
+ if(flapPending||document.hidden)return;
+ flapPending=true;
+ try{
+  const response=await fetch('./live/flap',{cache:'no-store',signal:AbortSignal.timeout(7000)});
+  if(!response.ok)throw Error('Unavailable');
+  const data=await response.json();
+  const label=data.status==='indoor_only'?'Indoor only — exits restricted, entry allowed':data.status==='normal'?'Normal — exits allowed':'State unknown — check Home Assistant';
+  const target=document.getElementById('flap-live-status');
+  if(target)target.textContent=label;
+ }catch{
+  const target=document.getElementById('flap-live-status');
+  if(target)target.textContent='Flap status unavailable — check Home Assistant';
+ }finally{flapPending=false;}
+}
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ukDay=d=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).map(p=>[p.type,p.value]));return parts.year+'-'+parts.month+'-'+parts.day;};
 const dayKey=offset=>{const d=new Date();d.setUTCDate(d.getUTCDate()+offset);return ukDay(d);};
@@ -229,7 +249,7 @@ async function refreshCloud(force=false){
  })();
  return pending;
 }
-const mount=()=>{const home=document.getElementById('home');const stats=home?.querySelector('.stats');if(stats){stats.insertAdjacentElement('afterend',section);}else if(home){home.prepend(section);}else{document.body.prepend(section);}};
+const mount=()=>{const home=document.getElementById('home');const stats=home?.querySelector('.stats');if(stats){stats.insertAdjacentElement('afterend',section);section.insertAdjacentElement('afterend',flapSection);}else if(home){home.prepend(section);section.insertAdjacentElement('afterend',flapSection);}else{document.body.prepend(section);section.insertAdjacentElement('afterend',flapSection);}};
 let statusPending=false;
 async function refresh(){
 if(statusPending||document.hidden)return;
@@ -243,7 +263,7 @@ document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.q
 }catch(e){if(!window.sureLiveStates)document.getElementById('pet-live-list').textContent='Live status unavailable. Check Home Assistant app logs.';}
 finally{statusPending=false;}
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshCloud();});else{mount();refresh();refreshCloud();}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshCloud();}});
-setInterval(refresh,5000);setInterval(refreshCloud,60000);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshFlap();refreshCloud();});else{mount();refresh();refreshFlap();refreshCloud();}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();}});
+setInterval(refresh,5000);setInterval(refreshFlap,15000);setInterval(refreshCloud,60000);
 })();

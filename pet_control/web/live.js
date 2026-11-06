@@ -12,7 +12,7 @@ async function refreshHistory(){
    if(!response.ok)throw Error('History unavailable');
    const data=await response.json();
    if(!Array.isArray(data.events))throw Error('Invalid history');
-   window.petLiveHistoryLoaded=true;document.getElementById('countEvents').textContent=String(data.events.length);
+   window.petLiveHistoryLoaded=true;document.getElementById('countEvents').textContent=String(Number.isInteger(data.total)?data.total:data.events.length);
    box.innerHTML=data.events.length?data.events.map(e=>{
      const label=e.state==='on'?'Came inside':'Went outside';
      const date=new Date(e.at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});

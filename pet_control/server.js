@@ -46,7 +46,14 @@ const server=http.createServer(async(req,res)=>{
       if(!entries)return output('unknown_timeline_format','Timeline response received but its structure needs adapting.');
       const types={};
       for(const e of entries){const type=String(e.type??e.data?.type??'unknown');types[type]=(types[type]||0)+1;}
-      return output('timeline_connected',{received:entries.length,eventTypes:types,source:'Sure Petcare cloud; no event contents or credentials returned'});
+      const sample=Object.create(null);
+      for(const e of entries){
+        const type=String(e.type??e.data?.type??'unknown');
+        if(sample[type])continue;
+        const data=e&&typeof e==='object'?e:{};
+        sample[type]={fields:Object.keys(data).slice(0,30),dataFields:data.data&&typeof data.data==='object'?Object.keys(data.data).slice(0,30):[],timestampField:['created_at','timestamp','date','time','created','event_time'].find(k=>k in data)||null};
+      }
+      return output('timeline_connected',{received:entries.length,eventTypes:types,eventStructure:sample,source:'Sure Petcare cloud; field names only, no event contents or credentials returned'});
     }catch(e){return output('connection_error','Unable to reach Sure Petcare or parse its response.');}
   }
   if(url.pathname==='/live/status'){

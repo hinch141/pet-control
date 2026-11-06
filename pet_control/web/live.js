@@ -7,6 +7,18 @@ const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 const ukDay=d=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).map(p=>[p.type,p.value]));return parts.year+'-'+parts.month+'-'+parts.day;};
 const dayKey=offset=>{const d=new Date();d.setUTCDate(d.getUTCDate()+offset);return ukDay(d);};
 let activity=[];let loaded=false;let pending=null;let lastFetched=0;
+let trendDays=7;let historyInfo=null;
+window.setTrendDays=function(n){trendDays=n===28?28:7;if(typeof window.renderSureTimeline==='function')window.renderSureTimeline();};
+function renderTrend(date,filter){
+ const root=document.getElementById('timelineTrend');if(!root)return;
+ const all=records().filter(e=>e.direction==='In'||e.direction==='Out').filter(e=>filter==='all'||e.pet===String((state.pets||[]).find(p=>p.id===filter)?.name||'').toLowerCase());
+ const days=[];let total=0;
+ for(let i=trendDays-1;i>=0;i--){const d=new Date(date);d.setDate(d.getDate()-i);const key=ukDay(d);const daily=all.filter(e=>ukDay(new Date(e.at))===key);const entries=daily.filter(e=>e.direction==='In').length;total+=entries;days.push({key,entries,label:d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric'})});}
+ const max=Math.max(1,...days.map(d=>d.entries));
+ document.getElementById('trend7')?.classList.toggle('active',trendDays===7);document.getElementById('trend28')?.classList.toggle('active',trendDays===28);
+ root.innerHTML='<div class="small" style="margin-bottom:12px"><strong>'+total+'</strong> recorded entries · '+trendDays+' days · average '+(total/trendDays).toFixed(1)+' per day</div><div style="display:flex;align-items:flex-end;gap:3px;height:95px;border-bottom:1px solid #cadbd7">'+days.map(d=>'<div title="'+escapeHtml(d.label+': '+d.entries+' entries')+'" style="flex:1;min-width:2px;height:'+Math.max(3,Math.round(d.entries/max*90))+'px;background:#21b7bd;border-radius:3px 3px 0 0"></div>').join('')+'</div><div class="small" style="display:flex;justify-content:space-between;margin-top:6px"><span>'+escapeHtml(days[0].label)+'</span><span>'+escapeHtml(days.at(-1).label)+'</span></div><p class="small">Based on retrieved movement records only. Missing history can make totals incomplete.</p>';
+}
+
 try{const saved=JSON.parse(sessionStorage.getItem('pet-sure-activity-v211')||'null');if(saved&&Array.isArray(saved.events)){activity=saved.events;loaded=true;}}catch{}
 function direction(e){
  if(e.type!==0)return 'Unknown';
@@ -59,10 +71,12 @@ window.renderSureTimeline=function(){
  const list=records().filter(e=>ukDay(new Date(e.at))===key&&(filter==='all'||e.pet===String((state.pets||[]).find(p=>p.id===filter)?.name||'').toLowerCase())&&(type==='all'||e.direction===type));
  document.getElementById('selectedDayLabel').textContent=offset===0?'Today':offset===-1?'Yesterday':date.toLocaleDateString('en-GB',{timeZone:'Europe/London',weekday:'long'});
  document.getElementById('selectedDayDate').textContent=date.toLocaleDateString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'long',year:'numeric'});
+ renderTrend(date,filter);
+ const hs=document.getElementById('timelineHistoryStatus');if(hs&&historyInfo){hs.textContent='History: '+historyInfo.total+' events · '+historyInfo.pagesFetched+' pages · oldest '+(historyInfo.oldestEvent?new Date(historyInfo.oldestEvent).toLocaleDateString('en-GB'):'unknown')+' · '+historyInfo.stopReason;}
  const picker=document.getElementById('timelineDatePicker');if(picker){picker.value=key;picker.max=ukDay(new Date());}document.getElementById('prevDay').disabled=false;document.getElementById('nextDay').disabled=offset>=0;document.getElementById('todayButton').style.display=offset===0?'none':'block';
  count.textContent=loaded?list.filter(e=>e.direction!=='Unknown').length+' confirmed movements · '+list.filter(e=>e.direction==='In').length+' in · '+list.filter(e=>e.direction==='Out').length+' out · '+list.filter(e=>e.direction==='Unknown').length+' needing verification':'Loading activity…';
  target.style.maxHeight='65vh';target.style.overflowY='auto';
- if(!document.getElementById('movement-check-button')){const btn=document.createElement('button');btn.id='movement-check-button';btn.className='button secondary';btn.textContent='Check movement data';btn.style.margin='8px 0';btn.onclick=()=>{let panel=document.getElementById('movement-check-results');if(!panel){panel=document.createElement('div');panel.id='movement-check-results';panel.className='card';btn.after(panel);}const sample=activity.slice(0,25).map(e=>({time:new Date(e.at).toLocaleString('en-GB'),type:e.type,pets:e.pets,details:e.details,interpreted:direction(e)}));panel.innerHTML='<strong>Sure Petcare movement check (latest 25)</strong><p class="small">These are event types and movement fields returned by Sure Petcare, with no account credentials or identifiers. Please share a screenshot to verify the mapping.</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px">'+escapeHtml(JSON.stringify(sample,null,2))+'</pre>';};target.before(btn);}
+ if(!document.getElementById('movement-check-button')){const btn=document.createElement('button');btn.id='movement-check-button';btn.className='button secondary';btn.textContent='Check movement data';btn.style.margin='8px 0';btn.onclick=()=>{let panel=document.getElementById('movement-check-results');if(!panel){panel=document.createElement('div');panel.id='movement-check-results';panel.className='card';btn.after(panel);}const sample=activity.slice(0,25).map(e=>({time:new Date(e.at).toLocaleString('en-GB'),type:e.type,pets:e.pets,details:e.details,interpreted:direction(e)}));panel.innerHTML='<strong>Sure Petcare movement check (latest 25)</strong><p class="small">These are event types and movement fields returned by Sure Petcare, with no account credentials or identifiers. Please share a screenshot to verify the mapping.</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px">'+escapeHtml(JSON.stringify({history:historyInfo,latestEvents:sample},null,2))+'</pre>';};target.before(btn);}
  target.innerHTML=!loaded?'<div class="empty">Loading live Sure Petcare activity…</div>':list.length?list.map(e=>rowFor(e,true)).join(''):'<div class="empty">No matching activity recorded for this day.</div>';
 };
 async function refreshCloud(force=false){
@@ -72,7 +86,7 @@ async function refreshCloud(force=false){
   try{
    const r=await fetch('./sure/activity',{cache:'no-store'});if(!r.ok)throw Error('unavailable');
    const data=await r.json();if(!String(data.status).startsWith('connected'))throw Error(data.status);
-   activity=data.events||[];loaded=true;lastFetched=Date.now();
+   activity=data.events||[];historyInfo={total:data.total,pagesFetched:data.pagesFetched,oldestEvent:data.oldestEvent,stopReason:data.stopReason};loaded=true;lastFetched=Date.now();
    try{sessionStorage.setItem('pet-sure-activity-v211',JSON.stringify({events:activity}));}catch{}
   }catch{if(!loaded){const box=document.getElementById('homeEvents');if(box)box.innerHTML='<div class="empty">Sure Petcare activity unavailable.</div>';}}
   finally{pending=null;paint();}

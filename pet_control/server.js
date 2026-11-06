@@ -81,8 +81,14 @@ const server=http.createServer(async(req,res)=>{
         id:String(e.id??''),type:Number(e.type),at:e.created_at,
         pets:Array.isArray(e.pets)?e.pets.map(p=>String(p.name||'').toLowerCase()).filter(p=>pets.includes(p)):[],
         dataKind:typeof e.data,
-        // Only a strict whitelist of non-sensitive primitive fields is returned.
-        details:e.data&&typeof e.data==='object'?Object.fromEntries(Object.entries(e.data).filter(([k,v])=>['direction','position','where','movement','event_type','type','state'].includes(k)&&['string','number','boolean'].includes(typeof v))):{}
+        details:(()=>{
+          const m=Array.isArray(e.movements)?e.movements[0]:e.movements;
+          const candidates=[m,e.movement,e.data?.movement,e.data,e];
+          const source=candidates.find(x=>x&&typeof x==='object'&&(x.where!==undefined||x.direction!==undefined||x.position!==undefined||x.side!==undefined))||{};
+          const safe={};
+          for(const k of ['where','direction','position','side','type','movement_type'])if(['string','number','boolean'].includes(typeof source[k]))safe[k]=source[k];
+          return safe;
+        })()
       })).filter(e=>Number.isFinite(new Date(e.at).getTime()));
       events.sort((a,b)=>new Date(b.at)-new Date(a.at));
       try{

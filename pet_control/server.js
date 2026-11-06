@@ -2,6 +2,7 @@
 const http=require('node:http');
 const fs=require('node:fs');
 const path=require('node:path');
+const {randomUUID}=require('node:crypto');
 const base='/usr/share/pet-control';
 const pets=['jessie','henry','rosie','violet'];
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8'};
@@ -20,15 +21,24 @@ const server=http.createServer(async(req,res)=>{
     const output=(status,detail)=>{res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({status,detail}));};
     if(!email||!password)return output('not_configured','Add Sure Petcare email and password in the Pet Control app Configuration tab.');
     try{
+      const deviceId=randomUUID();
+      const baseHeaders={'Content-Type':'application/json','Accept':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
       const login=await fetch('https://app.api.surehub.io/api/auth/login',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({email,password}),signal:AbortSignal.timeout(12000)});
+        method:'POST',headers:baseHeaders,
+        body:JSON.stringify({email_address:email,password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
       if(!login.ok)return output('login_failed','Sure Petcare authentication returned HTTP '+login.status+'. No credentials were logged.');
       const auth=await login.json();
       const access=auth.token||auth.access_token||auth.data?.token||auth.data?.access_token;
       if(typeof access!=='string'||!access)return output('unknown_login_format','Authentication returned an unexpected token format.');
-      const headers={Authorization:'Bearer '+access};
-      const endpoint='https://app.api.surehub.io/api/timeline';
+      const headers={...baseHeaders,Authorization:'Bearer '+access};
+      const start=await fetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});
+      if(!start.ok)return output('household_failed','Authenticated, but household lookup returned HTTP '+start.status+'.');
+      const household=await start.json();
+      const households=household.data?.households||household.data?.household||household.households||[];
+      const first=Array.isArray(households)?households[0]:households;
+      const householdId=first?.id||household.data?.household_id||household.data?.household?.id;
+      if(!householdId)return output('login_connected','Authentication works. Household response structure needs adapting for timeline.');
+      const endpoint='https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(householdId)+'?page=0';
       const timeline=await fetch(endpoint,{headers,signal:AbortSignal.timeout(12000)});
       if(!timeline.ok)return output('timeline_failed','Sure Petcare timeline returned HTTP '+timeline.status+'.');
       const payload=await timeline.json();

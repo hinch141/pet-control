@@ -80,7 +80,7 @@ const server=http.createServer(async(req,res)=>{
       // Cap requests and stop at the first older page to avoid excessive cloud traffic.
       const items=[];
       const cutoff=Date.now()-183*86400000;
-      let historyComplete=false,historyError=false;let pagesFetched=0,stopReason='page_limit';
+      let historyComplete=false,historyError=false;let pagesFetched=0,stopReason='page_limit';let firstPageOldest=null,lastPageOldest=null;
       const seenIds=new Set();
       for(let page=0;page<240;page++){
         let response;
@@ -91,7 +91,7 @@ const server=http.createServer(async(req,res)=>{
         try{body=await response.json();}catch{historyError=true;break;}
         const batch=Array.isArray(body)?body:Array.isArray(body.data)?body.data:Array.isArray(body.data?.entries)?body.data.entries:null;
         if(!batch){historyError=true;stopReason='unexpected_response';break;}
-        pagesFetched++;if(!batch.length){historyComplete=true;stopReason='empty_page';break;}
+        pagesFetched++;if(page===0&&batch.length)firstPageOldest=batch.at(-1)?.created_at||null;if(batch.length)lastPageOldest=batch.at(-1)?.created_at||null;if(!batch.length){historyComplete=true;stopReason='empty_page';break;}
         let fresh=0;
         for(const e of batch){
           const id=String(e.id??'');
@@ -131,7 +131,7 @@ const server=http.createServer(async(req,res)=>{
         const map=new Map(saved.map(e=>[e.id,e]));for(const e of events)if(e.id)map.set(e.id,e);
         const merged=[...map.values()].filter(e=>Number.isFinite(Date.parse(e.at))).sort((a,b)=>new Date(b.at)-new Date(a.at));
         fs.writeFileSync(file,JSON.stringify(merged),{mode:0o600});
-        const detail={events:merged,total:merged.length,historyComplete,historyError,pagesFetched,stopReason,oldestEvent:merged.at(-1)?.at||null,source:'Sure Petcare timeline; six-month backfill with long-term local retention'};
+        const detail={events:merged,total:merged.length,historyComplete,historyError,pagesFetched,stopReason,firstPageOldest,lastPageOldest,oldestEvent:merged.at(-1)?.at||null,source:'Sure Petcare timeline; six-month backfill with long-term local retention'};
         activitySnapshot={at:Date.now(),status:'connected',detail};
         return send('connected',detail);
       }catch{return send('connected_no_cache',{events,total:events.length,historyComplete,historyError,pagesFetched,stopReason});}

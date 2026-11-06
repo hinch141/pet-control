@@ -33,7 +33,19 @@ function paint(){
   if(loaded)box.innerHTML=todayEvents.length?todayEvents.map(e=>rowFor(e)).join(''):'<div class="empty">No activity recorded today.</div>';
  }
  if(typeof window.renderSureTimeline==='function')window.renderSureTimeline();
+ if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
 }
+window.renderSurePetDetail=function(){
+ const root=document.getElementById('petDetailContent');
+ if(!root||!root.closest('.page.active'))return;
+ const p=typeof selectedPetId!=='undefined'?(state.pets||[]).find(x=>x.id===selectedPetId):null;
+ if(!p)return;
+ const petName=p.name.toLowerCase();
+ const events=records().filter(e=>e.pet===petName);
+ const status=window.sureLiveStates?.[petName]||'Unknown';
+ const summary=events.slice(0,10).map(e=>rowFor(e,true)).join('')||'<div class="empty">No Sure Petcare activity recorded.</div>';
+ root.innerHTML='<div class="card"><h2>'+escapeHtml(p.name)+'</h2><p><strong>Current status: '+escapeHtml(status)+'</strong></p><p class="small">Live presence from Home Assistant</p><div class="row"><button class="button secondary" onclick="showPetTimeline(\''+escapeHtml(p.id)+'\')">View full timeline</button><button class="button secondary" onclick="openPetCurfew(\''+escapeHtml(p.id)+'\')">Curfew settings</button></div></div><div class="card" style="margin-top:12px"><h3>Recent activity</h3>'+summary+'</div>';
+};
 window.renderSureTimeline=function(){
  const target=document.getElementById('timelineEvents'),count=document.getElementById('eventCount');
  if(!target||!count)return;
@@ -66,6 +78,8 @@ async function refreshCloud(force=false){
 const mount=()=>{const home=document.getElementById('home');const stats=home?.querySelector('.stats');if(stats){stats.insertAdjacentElement('afterend',section);}else if(home){home.prepend(section);}else{document.body.prepend(section);}};
 async function refresh(){
 try{const r=await fetch('./live/status',{cache:'no-store'});if(!r.ok)throw Error('unavailable');const d=await r.json();
+window.sureLiveStates=Object.fromEntries(d.pets.map(p=>[p.name,p.state==='on'?'Home':p.state==='off'?'Away':'Unknown']));
+if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
 document.getElementById('pet-live-list').innerHTML=names.map(n=>{const p=d.pets.find(x=>x.name===n.toLowerCase());const status=p?.state==='on'?'Home':p?.state==='off'?'Away':'Unknown';return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+n+'</span><strong>'+status+'</strong></div>'}).join('');
 document.getElementById('pet-live-time').textContent='Updated '+new Date(d.updated).toLocaleTimeString('en-GB');
 document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim();const p=d.pets.find(x=>x.name===name?.toLowerCase());if(!p)return;const pill=card.querySelector('.pill');const detail=card.querySelector('.small');const status=p.state==='on'?'Home':p.state==='off'?'Away':'Unknown';if(pill){pill.textContent=status;pill.classList.toggle('out',status==='Away');}if(detail){detail.innerHTML=detail.innerHTML.replace(/Sample status only|Awaiting live status/g,'Live status from Sure Petcare');}});

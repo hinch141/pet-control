@@ -83,7 +83,7 @@ window.renderSureTimeline=function(){
 };
 
 let graphCache=null,graphActivityRef=null,graphArchiveRef=null;
-let rangeArchive=[],rangeLoading=false,rangeError='',rangeToken=0;
+let rangeArchive=[],rangeLoading=false,rangeError='',rangeToken=0,rangeInitialized=false;
 const archiveCache=new Map();
 const graphToday=()=>ukDay(new Date());
 const shiftDay=(day,n)=>{const d=new Date(day+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
@@ -151,6 +151,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElement
 function renderGraphs(){
  const page=document.getElementById('timeline');
  if(!page?.classList.contains('active'))return;
+ if(!rangeInitialized){rangeInitialized=true;loadGraphRange();return;}
  let root=document.getElementById('pet-graphs');
  if(!root){root=document.createElement('div');root.id='pet-graphs';page.querySelector('.sectionhead')?.after(root);}root.classList.add('card');root.style.margin='0 0 12px';
  const events=graphRecords().filter(e=>graphPet==='all'||e.pet===graphPet);

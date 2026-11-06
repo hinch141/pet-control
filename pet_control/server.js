@@ -76,33 +76,80 @@ const server=http.createServer(async(req,res)=>{
       const home=await homeRes.json();const hs=home.data?.households||home.data?.household||home.households||[];
       const house=Array.isArray(hs)?hs[0]:hs;const houseId=house?.id||home.data?.household_id||home.data?.household?.id;
       if(!houseId)return send('household_error',{events:[],total:0});
-      // Backfill up to six months from Sure Petcare and retain all retrieved history locally.
-      // Cap requests and stop at the first older page to avoid excessive cloud traffic.
-      const items=[];
-      const cutoff=Date.now()-183*86400000;
-      let historyComplete=false,historyError=false;let pagesFetched=0,stopReason='page_limit';let firstPageOldest=null,lastPageOldest=null;
-      const seenIds=new Set();
-      for(let page=0;page<240;page++){
-        let response;
-        try{response=await fetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page='+page,{headers,signal:AbortSignal.timeout(12000)});}
-        catch{historyError=true;break;}
-        if(!response.ok){historyError=true;stopReason='http_'+response.status;break;}
-        let body;
-        try{body=await response.json();}catch{historyError=true;break;}
-        const batch=Array.isArray(body)?body:Array.isArray(body.data)?body.data:Array.isArray(body.data?.entries)?body.data.entries:null;
-        if(!batch){historyError=true;stopReason='unexpected_response';break;}
-        pagesFetched++;if(page===0&&batch.length)firstPageOldest=batch.at(-1)?.created_at||null;if(batch.length)lastPageOldest=batch.at(-1)?.created_at||null;if(!batch.length){historyComplete=true;stopReason='empty_page';break;}
+      // Probe pagination methods without assuming that Sure Petcare honours ?page=.
+      // Keep the working first page, and only continue with a method that yields older unique events.
+      const items=[],cutoff=Date.now()-183*86400000,seenIds=new Set();
+      let historyComplete=false,historyError=false,pagesFetched=0,stopReason='page_limit';
+      let firstPageOldest=null,lastPageOldest=null,paginationMethod='unconfirmed';
+      const paginationTests=[];
+      const base='https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId);
+      const extract=body=>Array.isArray(body)?body:Array.isArray(body?.data)?body.data:Array.isArray(body?.data?.entries)?body.data.entries:null;
+      const getPage=async url=>{
+        try{
+          const response=await fetch(url,{headers,signal:AbortSignal.timeout(12000)});
+          if(!response.ok)return {error:'http_'+response.status};
+          const body=await response.json(),batch=extract(body);
+          if(!batch)return {error:'unexpected_response'};
+          return {batch};
+        }catch{return {error:'request_failed'};}
+      };
+      const ingest=batch=>{
         let fresh=0;
         for(const e of batch){
-          const id=String(e.id??'');
-          if(id&&seenIds.has(id))continue;
-          if(id)seenIds.add(id);
-          items.push(e);fresh++;
+          const id=String(e.id??'')||String(e.created_at||'')+'|'+String(e.type||'')+'|'+JSON.stringify(e.pets||[]);
+          if(seenIds.has(id))continue;
+          seenIds.add(id);items.push(e);fresh++;
         }
-        if(!fresh){historyComplete=true;stopReason='repeated_page';break;}
-        const dates=batch.map(e=>Date.parse(e.created_at)).filter(Number.isFinite);
-        if(dates.length&&Math.max(...dates)<cutoff){historyComplete=true;stopReason='six_month_boundary';break;}
-        // Page sizes vary; an empty page or an older-than-cutoff page ends backfill.
+        return fresh;
+      };
+      const first=await getPage(base+'?page=0');
+      if(first.error){historyError=true;stopReason=first.error;}
+      else{
+        pagesFetched++;
+        ingest(first.batch);
+        firstPageOldest=first.batch.at(-1)?.created_at||null;
+        lastPageOldest=firstPageOldest;
+        if(!first.batch.length){historyComplete=true;stopReason='empty_page';}
+        else{
+          const oldest=first.batch.map(e=>Date.parse(e.created_at)).filter(Number.isFinite).reduce((a,b)=>Math.min(a,b),Infinity);
+          const tests=[
+            {name:'page_1',url:base+'?page=1'},
+            {name:'page_2',url:base+'?page=2'},
+            {name:'offset_33',url:base+'?offset='+first.batch.length+'&limit='+first.batch.length},
+            {name:'before_timestamp',url:base+'?before='+encodeURIComponent(new Date(oldest-1000).toISOString())},
+            {name:'date_before',url:base+'?date='+encodeURIComponent(new Date(oldest-86400000).toISOString().slice(0,10))}
+          ];
+          let chosen=null;
+          for(const test of tests){
+            const result=await getPage(test.url);
+            pagesFetched++;
+            if(result.error){paginationTests.push({method:test.name,result:result.error});continue;}
+            const fresh=result.batch.filter(e=>!seenIds.has(String(e.id??'')||String(e.created_at||'')+'|'+String(e.type||'')+'|'+JSON.stringify(e.pets||[])));
+            const older=fresh.filter(e=>Number.isFinite(Date.parse(e.created_at))&&Date.parse(e.created_at)<oldest);
+            paginationTests.push({method:test.name,result:older.length?'older_events':fresh.length?'new_events':result.batch.length?'repeated_page':'empty_page',count:result.batch.length,older:older.length});
+            if(older.length){chosen=test.name;paginationMethod=chosen;ingest(result.batch);lastPageOldest=result.batch.at(-1)?.created_at||lastPageOldest;break;}
+          }
+          if(!chosen){stopReason='no_working_pagination';historyError=true;}
+          else{
+            // Follow only verified methods. Stop on repeated pages or the six-month boundary.
+            for(let page=chosen==='page_2'?3:2;page<80;page++){
+              const earliest=items.map(e=>Date.parse(e.created_at)).filter(Number.isFinite).reduce((a,b)=>Math.min(a,b),Infinity);
+              if(earliest<cutoff){historyComplete=true;stopReason='six_month_boundary';break;}
+              let url;
+              if(chosen.startsWith('page_'))url=base+'?page='+page;
+              else if(chosen==='offset_33')url=base+'?offset='+(page*first.batch.length)+'&limit='+first.batch.length;
+              else if(chosen==='before_timestamp')url=base+'?before='+encodeURIComponent(new Date(earliest-1000).toISOString());
+              else url=base+'?date='+encodeURIComponent(new Date(earliest-86400000).toISOString().slice(0,10));
+              const result=await getPage(url);pagesFetched++;
+              if(result.error){historyError=true;stopReason=result.error;break;}
+              if(!result.batch.length){historyComplete=true;stopReason='empty_page';break;}
+              const fresh=ingest(result.batch);
+              lastPageOldest=result.batch.at(-1)?.created_at||lastPageOldest;
+              if(!fresh){stopReason='repeated_page';break;}
+              if(page===79)stopReason='request_limit';
+            }
+          }
+        }
       }
       if(!items.length&&historyError)return send('timeline_error',{events:[],total:0});
       const petLookup=new Map();
@@ -131,10 +178,10 @@ const server=http.createServer(async(req,res)=>{
         const map=new Map(saved.map(e=>[e.id,e]));for(const e of events)if(e.id)map.set(e.id,e);
         const merged=[...map.values()].filter(e=>Number.isFinite(Date.parse(e.at))).sort((a,b)=>new Date(b.at)-new Date(a.at));
         fs.writeFileSync(file,JSON.stringify(merged),{mode:0o600});
-        const detail={events:merged,total:merged.length,historyComplete,historyError,pagesFetched,stopReason,firstPageOldest,lastPageOldest,oldestEvent:merged.at(-1)?.at||null,source:'Sure Petcare timeline; six-month backfill with long-term local retention'};
+        const detail={events:merged,total:merged.length,historyComplete,historyError,pagesFetched,stopReason,paginationMethod,paginationTests,firstPageOldest,lastPageOldest,oldestEvent:merged.at(-1)?.at||null,source:'Sure Petcare timeline; six-month backfill with long-term local retention'};
         activitySnapshot={at:Date.now(),status:'connected',detail};
         return send('connected',detail);
-      }catch{return send('connected_no_cache',{events,total:events.length,historyComplete,historyError,pagesFetched,stopReason});}
+      }catch{return send('connected_no_cache',{events,total:events.length,historyComplete,historyError,pagesFetched,stopReason,paginationMethod,paginationTests});}
     }catch{return send('connection_error',{events:[],total:0});}
   }
   if(url.pathname==='/live/status'){

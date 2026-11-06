@@ -48,6 +48,74 @@ const server=http.createServer(async(req,res)=>{
       return reply(202,{status:'pending',message:'Command sent, but the flap state has not yet been confirmed'});
     }catch{return reply(502,{error:'Unable to confirm flap command. Check Home Assistant.'});}
   }
+  if(url.pathname==='/sure/pet-permission-test'&&req.method==='POST'){
+    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(body));};
+    if(!String(req.headers['content-type']||'').startsWith('application/json'))return reply(415,{error:'JSON required'});
+    let raw='';try{for await(const chunk of req){raw+=chunk;if(raw.length>256)return reply(413,{error:'Request too large'});}}catch{return reply(400,{error:'Invalid request'});}
+    let request;try{request=JSON.parse(raw);}catch{return reply(400,{error:'Invalid JSON'});}
+    if(request.pet!=='Jessie'||request.confirm!=='TEST_JESSIE_AND_RESTORE')return reply(400,{error:'Only the explicitly confirmed Jessie test is available'});
+    if(globalThis.petPermissionTestBusy)return reply(409,{error:'A test is already running'});
+    globalThis.petPermissionTestBusy=true;
+    let restore=null,stage='checking',beforeProfiles=null;
+    try{
+      let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
+      const email=String(options.sure_email||'').trim(),password=String(options.sure_password||'');
+      if(!email||!password)return reply(503,{error:'Sure Petcare is not configured'});
+      const deviceId=randomUUID();
+      const headers={'Content-Type':'application/json','Accept':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
+      const login=await fetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:email,password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
+      if(!login.ok)throw Error('Sure Petcare login failed');
+      const auth=await login.json(),access=auth.data?.token||auth.token||auth.access_token||auth.data?.access_token;
+      if(typeof access!=='string'||!access)throw Error('Sure Petcare token unavailable');
+      headers.Authorization='Bearer '+access;
+      const dashboard=async()=>{
+        const response=await fetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});
+        if(!response.ok)throw Error('Unable to verify individual permissions');
+        return (await response.json()).data||{};
+      };
+      const initial=await dashboard();
+      const flaps=(Array.isArray(initial.devices)?initial.devices:[]).filter(d=>[6,13].includes(Number(d.product_id)));
+      const cats=Array.isArray(initial.pets)?initial.pets:[];
+      const jessies=cats.filter(p=>String(p.name||'').trim().toLowerCase()==='jessie');
+      if(jessies.length!==1)throw Error('Jessie cannot be uniquely identified');
+      const matches=flaps.flatMap(d=>(Array.isArray(d.tags)?d.tags:[]).filter(t=>String(t.id)===String(jessies[0].tag_id)).map(t=>({device:d,tag:t})));
+      if(matches.length!==1)throw Error('Jessie does not have one unique flap tag');
+      const chosen=matches[0],original=Number(chosen.tag.profile);
+      if(original!==2)throw Error('Jessie must start with verified Free Access (profile 2)');
+      const device=Number(chosen.device.id),tag=Number(chosen.tag.tag_id);
+      if(!Number.isSafeInteger(device)||!Number.isSafeInteger(tag)||device<=0||tag<=0)throw Error('Invalid flap tag identifiers');
+      const url='https://app.api.surehub.io/api/device/'+device+'/tag/'+tag;
+      const setProfile=async profile=>{
+        const response=await fetch(url,{method:'PUT',headers,body:JSON.stringify({profile}),signal:AbortSignal.timeout(12000)});
+        if(!response.ok)throw Error('Sure Petcare rejected profile update (HTTP '+response.status+')');
+      };
+      // Arm restoration before the first write: even a timed-out PUT may have been applied.
+      restore=()=>setProfile(2);
+      stage='restricting';
+      await setProfile(3);
+      stage='verifying_indoor_only';
+      const restricted=await dashboard();
+      const profiles=data=>(Array.isArray(data.pets)?data.pets:[]).map(p=>{
+        const ms=(Array.isArray(data.devices)?data.devices:[]).filter(d=>[6,13].includes(Number(d.product_id))).flatMap(d=>(Array.isArray(d.tags)?d.tags:[]).filter(t=>String(t.id)===String(p.tag_id)));
+        return {name:String(p.name||''),profile:ms.length===1?Number(ms[0].profile):null};
+      });
+      beforeProfiles=profiles(initial);
+      const during=profiles(restricted);
+      const j=during.filter(p=>p.name.toLowerCase()==='jessie');
+      const unchanged=beforeProfiles.filter(p=>p.name.toLowerCase()!=='jessie').every(p=>during.some(q=>q.name===p.name&&q.profile===p.profile));
+      const restrictedConfirmed=j.length===1&&j[0].profile===3;
+      stage='restoring';
+      await restore();restore=null;
+      stage='verifying_restored';
+      const after=profiles(await dashboard());
+      const restored=after.some(p=>p.name.toLowerCase()==='jessie'&&p.profile===2);
+      return reply(200,{status:restrictedConfirmed&&unchanged&&restored?'passed':'needs_review',restrictedConfirmed,otherCatsUnchanged:unchanged,restored,initial:beforeProfiles,during,after,message:restored?'Jessie restored to Free Access according to Sure Petcare.':'Restoration could not be confirmed. Check Sure Petcare immediately.'});
+    }catch(e){
+      let restored=false;
+      if(restore){try{await restore();restored=true;}catch{}}
+      return reply(200,{status:'error',stage,restoreCommandAccepted:restored,message:restored?'Test interrupted. Free Access restoration command was accepted but needs checking.':'Test interrupted. Check Jessie’s permission in Sure Petcare immediately; restoration is not confirmed.'});
+    }finally{globalThis.petPermissionTestBusy=false;}
+  }
   if(req.method!=='GET'){res.writeHead(405);return res.end();}
   if(url.pathname==='/live/flap'){
     if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({status:'unavailable'}));}

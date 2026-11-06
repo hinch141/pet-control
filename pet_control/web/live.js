@@ -86,7 +86,7 @@ async function refreshCloud(force=false){
   try{
    const r=await fetch('./sure/activity',{cache:'no-store'});if(!r.ok)throw Error('unavailable');
    const data=await r.json();if(!String(data.status).startsWith('connected'))throw Error(data.status);
-   activity=data.events||[];historyInfo={total:data.total,pagesFetched:data.pagesFetched,oldestEvent:data.oldestEvent,stopReason:data.stopReason};loaded=true;lastFetched=Date.now();
+   activity=data.events||[];historyInfo={total:data.total,pagesFetched:data.pagesFetched,oldestEvent:data.oldestEvent,stopReason:data.stopReason,paginationMethod:data.paginationMethod,paginationTests:data.paginationTests};loaded=true;lastFetched=Date.now();
    try{sessionStorage.setItem('pet-sure-activity-v211',JSON.stringify({events:activity}));}catch{}
   }catch{if(!loaded){const box=document.getElementById('homeEvents');if(box)box.innerHTML='<div class="empty">Sure Petcare activity unavailable.</div>';}}
   finally{pending=null;paint();}

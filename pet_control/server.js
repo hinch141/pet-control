@@ -60,7 +60,7 @@ const server=http.createServer(async(req,res)=>{
   if(url.pathname==='/sure/archive'){
     let events=[];try{events=JSON.parse(fs.readFileSync('/data/sure-activity-cache.json','utf8'));if(!Array.isArray(events))events=[];}catch{}
     const date=url.searchParams.get('date');
-    if(date&&/^\\d{4}-\\d{2}-\\d{2}$/.test(date))events=events.filter(e=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(e.at))===date);
+    if(date&&/^\\d{4}-\\d{2}-\\d{2}$/.test(date))events=events.filter(e=>(()=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(e.at)).map(p=>[p.type,p.value]));return parts.year+'-'+parts.month+'-'+parts.day;})()===date);
     if(url.searchParams.get('format')==='csv'){
       const q=x=>'"'+String(x??'').replace(/"/g,'""')+'"';
       const lines=['Time (UTC),Pet,Movement'];

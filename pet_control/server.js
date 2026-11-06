@@ -65,6 +65,35 @@ const server=http.createServer(async(req,res)=>{
       return res.end(JSON.stringify({status:'unavailable'}));
     }
   }
+  // Read-only discovery of per-cat tag profiles. Never changes any flap or tag.
+  if(url.pathname==='/sure/pet-permissions'){
+    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(body));};
+    let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
+    const email=String(options.sure_email||'').trim(),password=String(options.sure_password||'');
+    if(!email||!password)return reply(200,{status:'not_configured',message:'Sure Petcare credentials are not configured.'});
+    try{
+      const deviceId=randomUUID();
+      const headers={'Content-Type':'application/json','Accept':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
+      const login=await fetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:email,password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
+      if(!login.ok)return reply(200,{status:'login_failed',message:'Sure Petcare authentication failed (HTTP '+login.status+').'});
+      const auth=await login.json();
+      const access=auth.data?.token||auth.token||auth.access_token||auth.data?.access_token;
+      if(typeof access!=='string'||!access)return reply(200,{status:'unknown_login_format',message:'Unable to read Sure Petcare authentication response.'});
+      const response=await fetch('https://app.api.surehub.io/api/me/start',{headers:{...headers,Authorization:'Bearer '+access},signal:AbortSignal.timeout(12000)});
+      if(!response.ok)return reply(200,{status:'dashboard_failed',message:'Sure Petcare dashboard returned HTTP '+response.status+'.'});
+      const data=(await response.json()).data||{};
+      const devices=Array.isArray(data.devices)?data.devices:[];
+      const animals=Array.isArray(data.pets)?data.pets:[];
+      const flaps=devices.filter(d=>[3,6,13].includes(Number(d.product_id)));
+      const cats=animals.map(p=>{
+        const matches=flaps.flatMap(d=>(Array.isArray(d.tags)?d.tags:[]).filter(t=>String(t.id)===String(p.tag_id)).map(t=>({device:d,tag:t})));
+        const match=matches.length===1?matches[0]:null;
+        const profile=match?Number(match.tag.profile):null;
+        return {name:String(p.name||'Unnamed cat').slice(0,60),matched:!!match,ambiguous:matches.length>1,profile:profile===2?'free_access':profile===3?'indoor_only':profile===0?'keep_current':'unknown',entry_safe_profile_known:profile===2||profile===3};
+      });
+      return reply(200,{status:'read_only',cats,flap_count:flaps.length,message:'Read-only discovery complete. No flap or pet permissions changed. Physical behaviour and write permissions are not yet verified.'});
+    }catch{return reply(200,{status:'connection_error',message:'Unable to retrieve individual cat permissions from Sure Petcare.'});}
+  }
   if(url.pathname==='/sure/diagnostic'){
     let options={};
     try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}

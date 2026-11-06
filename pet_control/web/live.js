@@ -7,7 +7,7 @@ const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 const ukDay=d=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).map(p=>[p.type,p.value]));return parts.year+'-'+parts.month+'-'+parts.day;};
 const dayKey=offset=>{const d=new Date();d.setUTCDate(d.getUTCDate()+offset);return ukDay(d);};
 let activity=[];let loaded=false;let pending=null;let lastFetched=0;
-let trendDays=7;let historyInfo=null;
+let trendDays=7;let historyInfo=null;let archiveDay='',archiveEvents=[];
 window.setTrendDays=function(n){trendDays=n===28?28:7;if(typeof window.renderSureTimeline==='function')window.renderSureTimeline();};
 function renderTrend(date,filter){
  const root=document.getElementById('timelineTrend');if(!root)return;
@@ -30,7 +30,7 @@ function direction(e){
  if(value===2||value==='2')return 'Out';
  return 'Unknown';
 }
-function records(){return activity.filter(e=>e.type===0).flatMap(e=>(e.pets||[]).filter(p=>names.some(n=>n.toLowerCase()===p)).map(p=>({...e,pet:p,direction:direction(e)}))).sort((a,b)=>new Date(b.at)-new Date(a.at));}
+function records(){return [...activity,...archiveEvents.filter(e=>!activity.some(a=>a.id===e.id))].filter(e=>e.type===0).flatMap(e=>(e.pets||[]).filter(p=>names.some(n=>n.toLowerCase()===p)).map(p=>({...e,pet:p,direction:direction(e)}))).sort((a,b)=>new Date(b.at)-new Date(a.at));}
 function iconFor(e){return e.direction==='In'?'↙':e.direction==='Out'?'↗':'↔';}
 function labelFor(e){return e.direction==='In'?'Entered':e.direction==='Out'?'Left':'Activity recorded';}
 function rowFor(e,fullDate=false){
@@ -68,15 +68,17 @@ window.renderSureTimeline=function(){
  const date=new Date();date.setDate(date.getDate()+offset);
  const key=ukDay(date);
  const filter=document.getElementById('filterPet')?.value||'all',type=document.getElementById('filterType')?.value||'all';
+ if(archiveDay!==key){archiveDay=key;archiveEvents=[];fetch('./sure/archive?date='+encodeURIComponent(key),{cache:'no-store'}).then(r=>r.json()).then(d=>{if(archiveDay===key){archiveEvents=d.events||[];window.renderSureTimeline();}}).catch(()=>{});}
  const list=records().filter(e=>ukDay(new Date(e.at))===key&&(filter==='all'||e.pet===String((state.pets||[]).find(p=>p.id===filter)?.name||'').toLowerCase())&&(type==='all'||e.direction===type));
  document.getElementById('selectedDayLabel').textContent=offset===0?'Today':offset===-1?'Yesterday':date.toLocaleDateString('en-GB',{timeZone:'Europe/London',weekday:'long'});
  document.getElementById('selectedDayDate').textContent=date.toLocaleDateString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'long',year:'numeric'});
  renderTrend(date,filter);
+ const archiveControls=document.getElementById('archive-download-controls');if(!archiveControls){const controls=document.createElement('div');controls.id='archive-download-controls';controls.className='card';controls.style.margin='10px 0';controls.innerHTML='<strong>Saved movement archive</strong><p class="small">Download your stored movements for veterinary records or analysis.</p><a class="button secondary" href="./sure/archive?format=csv" download>Download CSV</a> <a class="button secondary" href="./sure/archive?download=1" download>Download JSON</a>';target.before(controls);}
  const hs=document.getElementById('timelineHistoryStatus');if(hs&&historyInfo){hs.textContent='History: '+historyInfo.total+' events · '+historyInfo.pagesFetched+' pages · oldest '+(historyInfo.oldestEvent?new Date(historyInfo.oldestEvent).toLocaleDateString('en-GB'):'unknown')+' · '+historyInfo.stopReason;}
  const picker=document.getElementById('timelineDatePicker');if(picker){picker.value=key;picker.max=ukDay(new Date());}document.getElementById('prevDay').disabled=false;document.getElementById('nextDay').disabled=offset>=0;document.getElementById('todayButton').style.display=offset===0?'none':'block';
  count.textContent=loaded?list.filter(e=>e.direction!=='Unknown').length+' confirmed movements · '+list.filter(e=>e.direction==='In').length+' in · '+list.filter(e=>e.direction==='Out').length+' out · '+list.filter(e=>e.direction==='Unknown').length+' needing verification':'Loading activity…';
  target.style.maxHeight='65vh';target.style.overflowY='auto';
- if(!document.getElementById('movement-check-button')){const btn=document.createElement('button');btn.id='movement-check-button';btn.className='button secondary';btn.textContent='Check movement data';btn.style.margin='8px 0';btn.onclick=()=>{let panel=document.getElementById('movement-check-results');if(!panel){panel=document.createElement('div');panel.id='movement-check-results';panel.className='card';btn.after(panel);}const sample=activity.slice(0,25).map(e=>({time:new Date(e.at).toLocaleString('en-GB'),type:e.type,pets:e.pets,details:e.details,interpreted:direction(e)}));panel.innerHTML='<strong>Sure Petcare movement check (latest 25)</strong><p class="small">These are event types and movement fields returned by Sure Petcare, with no account credentials or identifiers. Please share a screenshot to verify the mapping.</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px">'+escapeHtml(JSON.stringify({history:historyInfo,latestEvents:sample},null,2))+'</pre>';};target.before(btn);}
+ if(!document.getElementById('movement-check-button')){const btn=document.createElement('button');btn.id='movement-check-button';btn.className='button secondary';btn.textContent='Check movement data';btn.style.margin='8px 0';btn.onclick=()=>{let panel=document.getElementById('movement-check-results');if(!panel){panel=document.createElement('div');panel.id='movement-check-results';panel.className='card';btn.after(panel);}const sample=activity.slice(0,10).map(e=>({time:new Date(e.at).toLocaleString('en-GB'),type:e.type,pets:e.pets,details:e.details,interpreted:direction(e)}));panel.innerHTML='<strong>Sure Petcare movement check (latest 25)</strong><p class="small">These are event types and movement fields returned by Sure Petcare, with no account credentials or identifiers. Please share a screenshot to verify the mapping.</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px">'+escapeHtml(JSON.stringify({history:historyInfo,latestEvents:sample},null,2))+'</pre>';};target.before(btn);}
  target.innerHTML=!loaded?'<div class="empty">Loading live Sure Petcare activity…</div>':list.length?list.map(e=>rowFor(e,true)).join(''):'<div class="empty">No matching activity recorded for this day.</div>';
 };
 async function refreshCloud(force=false){
@@ -86,7 +88,7 @@ async function refreshCloud(force=false){
   try{
    const r=await fetch('./sure/activity',{cache:'no-store'});if(!r.ok)throw Error('unavailable');
    const data=await r.json();if(!String(data.status).startsWith('connected'))throw Error(data.status);
-   activity=data.events||[];historyInfo={total:data.total,pagesFetched:data.pagesFetched,oldestEvent:data.oldestEvent,stopReason:data.stopReason,paginationMethod:data.paginationMethod,paginationTests:data.paginationTests};loaded=true;lastFetched=Date.now();
+   activity=data.events||[];archiveEvents=[];archiveDay='';historyInfo={total:data.total,pagesFetched:data.pagesFetched,oldestEvent:data.oldestEvent,stopReason:data.stopReason,paginationMethod:data.paginationMethod,paginationTests:data.paginationTests};loaded=true;lastFetched=Date.now();
    try{sessionStorage.setItem('pet-sure-activity-v211',JSON.stringify({events:activity}));}catch{}
   }catch{if(!loaded){const box=document.getElementById('homeEvents');if(box)box.innerHTML='<div class="empty">Sure Petcare activity unavailable.</div>';}}
   finally{pending=null;paint();}

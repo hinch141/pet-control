@@ -11,7 +11,7 @@ try{const saved=JSON.parse(sessionStorage.getItem('pet-sure-activity-v211')||'nu
 function direction(e){
  if(e.type!==0)return 'Unknown';
  const raw=e.details||{};
- const value=String(raw.direction??raw.position??raw.where??'').toLowerCase();
+ const value=String(raw.where??raw.direction??raw.position??'').toLowerCase();
  if(['in','inside','home','entered','entry','1'].includes(value))return 'In';
  if(['out','outside','away','left','exit','2'].includes(value))return 'Out';
  return 'Unknown';
@@ -29,7 +29,7 @@ function paint(){
  const box=document.getElementById('homeEvents'),count=document.getElementById('countEvents');
  if(box&&count){
   const today=ukDay(new Date()),todayEvents=records().filter(e=>ukDay(new Date(e.at))===today);
-  count.textContent=loaded?String(todayEvents.length):'–';
+  count.textContent=loaded?String(todayEvents.filter(e=>e.direction!=='Unknown').length):'–';
   box.style.maxHeight='330px';box.style.overflowY='auto';box.style.overscrollBehavior='contain';
   if(loaded)box.innerHTML=todayEvents.length?todayEvents.map(e=>rowFor(e)).join(''):'<div class="empty">No activity recorded today.</div>';
  }
@@ -58,8 +58,9 @@ window.renderSureTimeline=function(){
  document.getElementById('selectedDayLabel').textContent=offset===0?'Today':offset===-1?'Yesterday':date.toLocaleDateString('en-GB',{timeZone:'Europe/London',weekday:'long'});
  document.getElementById('selectedDayDate').textContent=date.toLocaleDateString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'long',year:'numeric'});
  document.getElementById('prevDay').disabled=offset<=-30;document.getElementById('nextDay').disabled=offset>=0;document.getElementById('todayButton').style.display=offset===0?'none':'block';
- count.textContent=loaded?list.length+' activities · '+list.filter(e=>e.direction==='In').length+' in · '+list.filter(e=>e.direction==='Out').length+' out · '+list.filter(e=>e.direction==='Unknown').length+' unclassified':'Loading activity…';
+ count.textContent=loaded?list.filter(e=>e.direction!=='Unknown').length+' confirmed movements · '+list.filter(e=>e.direction==='In').length+' in · '+list.filter(e=>e.direction==='Out').length+' out · '+list.filter(e=>e.direction==='Unknown').length+' needing verification':'Loading activity…';
  target.style.maxHeight='65vh';target.style.overflowY='auto';
+ if(!document.getElementById('movement-check-button')){const btn=document.createElement('button');btn.id='movement-check-button';btn.className='button secondary';btn.textContent='Check movement data';btn.style.margin='8px 0';btn.onclick=()=>{let panel=document.getElementById('movement-check-results');if(!panel){panel=document.createElement('div');panel.id='movement-check-results';panel.className='card';btn.after(panel);}const sample=activity.slice(0,25).map(e=>({time:new Date(e.at).toLocaleString('en-GB'),type:e.type,pets:e.pets,details:e.details,interpreted:direction(e)}));panel.innerHTML='<strong>Sure Petcare movement check (latest 25)</strong><p class="small">These are event types and movement fields returned by Sure Petcare, with no account credentials or identifiers. Please share a screenshot to verify the mapping.</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px">'+escapeHtml(JSON.stringify(sample,null,2))+'</pre>';};target.before(btn);}
  target.innerHTML=!loaded?'<div class="empty">Loading live Sure Petcare activity…</div>':list.length?list.map(e=>rowFor(e,true)).join(''):'<div class="empty">No matching activity recorded for this day.</div>';
 };
 async function refreshCloud(force=false){

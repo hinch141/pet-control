@@ -76,82 +76,14 @@ const server=http.createServer(async(req,res)=>{
       const home=await homeRes.json();const hs=home.data?.households||home.data?.household||home.households||[];
       const house=Array.isArray(hs)?hs[0]:hs;const houseId=house?.id||home.data?.household_id||home.data?.household?.id;
       if(!houseId)return send('household_error',{events:[],total:0});
-      // Probe pagination methods without assuming that Sure Petcare honours ?page=.
-      // Keep the working first page, and only continue with a method that yields older unique events.
-      const items=[],cutoff=Date.now()-183*86400000,seenIds=new Set();
-      let historyComplete=false,historyError=false,pagesFetched=0,stopReason='page_limit';
-      let firstPageOldest=null,lastPageOldest=null,paginationMethod='unconfirmed';
-      const paginationTests=[];
-      const base='https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId);
-      const extract=body=>Array.isArray(body)?body:Array.isArray(body?.data)?body.data:Array.isArray(body?.data?.entries)?body.data.entries:null;
-      const getPage=async url=>{
-        try{
-          const response=await fetch(url,{headers,signal:AbortSignal.timeout(12000)});
-          if(!response.ok)return {error:'http_'+response.status};
-          const body=await response.json(),batch=extract(body);
-          if(!batch)return {error:'unexpected_response'};
-          return {batch};
-        }catch{return {error:'request_failed'};}
-      };
-      const ingest=batch=>{
-        let fresh=0;
-        for(const e of batch){
-          const id=String(e.id??'')||String(e.created_at||'')+'|'+String(e.type||'')+'|'+JSON.stringify(e.pets||[]);
-          if(seenIds.has(id))continue;
-          seenIds.add(id);items.push(e);fresh++;
-        }
-        return fresh;
-      };
-      const first=await getPage(base+'?page=0');
-      if(first.error){historyError=true;stopReason=first.error;}
-      else{
-        pagesFetched++;
-        ingest(first.batch);
-        firstPageOldest=first.batch.at(-1)?.created_at||null;
-        lastPageOldest=firstPageOldest;
-        if(!first.batch.length){historyComplete=true;stopReason='empty_page';}
-        else{
-          const oldest=first.batch.map(e=>Date.parse(e.created_at)).filter(Number.isFinite).reduce((a,b)=>Math.min(a,b),Infinity);
-          const tests=[
-            {name:'page_1',url:base+'?page=1'},
-            {name:'page_2',url:base+'?page=2'},
-            {name:'offset_33',url:base+'?offset='+first.batch.length+'&limit='+first.batch.length},
-            {name:'before_timestamp',url:base+'?before='+encodeURIComponent(new Date(oldest-1000).toISOString())},
-            {name:'date_before',url:base+'?date='+encodeURIComponent(new Date(oldest-86400000).toISOString().slice(0,10))}
-          ];
-          let chosen=null;
-          for(const test of tests){
-            const result=await getPage(test.url);
-            pagesFetched++;
-            if(result.error){paginationTests.push({method:test.name,result:result.error});continue;}
-            const fresh=result.batch.filter(e=>!seenIds.has(String(e.id??'')||String(e.created_at||'')+'|'+String(e.type||'')+'|'+JSON.stringify(e.pets||[])));
-            const older=fresh.filter(e=>Number.isFinite(Date.parse(e.created_at))&&Date.parse(e.created_at)<oldest);
-            paginationTests.push({method:test.name,result:older.length?'older_events':fresh.length?'new_events':result.batch.length?'repeated_page':'empty_page',count:result.batch.length,older:older.length});
-            if(older.length){chosen=test.name;paginationMethod=chosen;ingest(result.batch);lastPageOldest=result.batch.at(-1)?.created_at||lastPageOldest;break;}
-          }
-          if(!chosen){stopReason='no_working_pagination';historyError=true;}
-          else{
-            // Follow only verified methods. Stop on repeated pages or the six-month boundary.
-            for(let page=chosen==='page_2'?3:2;page<80;page++){
-              const earliest=items.map(e=>Date.parse(e.created_at)).filter(Number.isFinite).reduce((a,b)=>Math.min(a,b),Infinity);
-              if(earliest<cutoff){historyComplete=true;stopReason='six_month_boundary';break;}
-              let url;
-              if(chosen.startsWith('page_'))url=base+'?page='+page;
-              else if(chosen==='offset_33')url=base+'?offset='+(page*first.batch.length)+'&limit='+first.batch.length;
-              else if(chosen==='before_timestamp')url=base+'?before='+encodeURIComponent(new Date(earliest-1000).toISOString());
-              else url=base+'?date='+encodeURIComponent(new Date(earliest-86400000).toISOString().slice(0,10));
-              const result=await getPage(url);pagesFetched++;
-              if(result.error){historyError=true;stopReason=result.error;break;}
-              if(!result.batch.length){historyComplete=true;stopReason='empty_page';break;}
-              const fresh=ingest(result.batch);
-              lastPageOldest=result.batch.at(-1)?.created_at||lastPageOldest;
-              if(!fresh){stopReason='repeated_page';break;}
-              if(page===79)stopReason='request_limit';
-            }
-          }
-        }
-      }
-      if(!items.length&&historyError)return send('timeline_error',{events:[],total:0});
+      // Fast live path: fetch only the newest page. Archive retrieval is separate.
+      const response=await fetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page=0',{headers,signal:AbortSignal.timeout(12000)});
+      if(!response.ok)return send('timeline_error',{events:[],total:0});
+      const body=await response.json();
+      const items=Array.isArray(body)?body:Array.isArray(body.data)?body.data:Array.isArray(body.data?.entries)?body.data.entries:null;
+      if(!items)return send('timeline_error',{events:[],total:0});
+      const historyComplete=false,historyError=false,pagesFetched=1,stopReason='live_only',paginationMethod='page_2',paginationTests=[];
+      const firstPageOldest=items.at(-1)?.created_at||null,lastPageOldest=firstPageOldest;
       const petLookup=new Map();
       for(const pet of (Array.isArray(home.data?.pets)?home.data.pets:[]))if(pet.id&&pet.name)petLookup.set(String(pet.id),String(pet.name).toLowerCase());
       for(const e of items)for(const p of (Array.isArray(e.pets)?e.pets:[]))if(p.id&&p.name)petLookup.set(String(p.id),String(p.name).toLowerCase());
@@ -178,7 +110,7 @@ const server=http.createServer(async(req,res)=>{
         const map=new Map(saved.map(e=>[e.id,e]));for(const e of events)if(e.id)map.set(e.id,e);
         const merged=[...map.values()].filter(e=>Number.isFinite(Date.parse(e.at))).sort((a,b)=>new Date(b.at)-new Date(a.at));
         fs.writeFileSync(file,JSON.stringify(merged),{mode:0o600});
-        const detail={events:merged,total:merged.length,historyComplete,historyError,pagesFetched,stopReason,paginationMethod,paginationTests,firstPageOldest,lastPageOldest,oldestEvent:merged.at(-1)?.at||null,source:'Sure Petcare timeline; six-month backfill with long-term local retention'};
+        const detail={events:merged.filter(e=>Date.parse(e.at)>Date.now()-2*86400000).slice(0,250),total:merged.length,historyComplete,historyError,pagesFetched,stopReason,paginationMethod,paginationTests,firstPageOldest,lastPageOldest,oldestEvent:merged.at(-1)?.at||null,source:'Sure Petcare timeline; six-month backfill with long-term local retention'};
         activitySnapshot={at:Date.now(),status:'connected',detail};
         return send('connected',detail);
       }catch{return send('connected_no_cache',{events,total:events.length,historyComplete,historyError,pagesFetched,stopReason,paginationMethod,paginationTests});}

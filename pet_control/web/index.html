@@ -62,7 +62,7 @@ function removeUser(id){let u=state.users.find(x=>x.id===id);if(!u)return;if(u.p
 </script><script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script><script src="./live.js"></script><script>
 async function checkSureTimeline(){
  const out=document.getElementById('sure-diagnostic-result');out.textContent='Testing read-only connection…';
- try{const response=await fetch('./sure/diagnostic',{cache:'no-store'});if(!response.ok)throw Error('HTTP '+response.status);const data=await response.json();out.textContent=data.status+': '+(typeof data.detail==='string'?data.detail:JSON.stringify(data.detail));}
+ try{const response=await fetch('./sure/diagnostic',{cache:'no-store'});if(!response.ok)throw Error('HTTP '+response.status);const data=await response.json();out.textContent=data.status+': '+(typeof data.detail==='string'?data.detail:JSON.stringify(data.detail,null,2));out.style.whiteSpace='pre-wrap';out.style.overflowWrap='anywhere';}
  catch(e){out.textContent='Connection test unavailable: '+e.message;}
 }
 </script></body></html>

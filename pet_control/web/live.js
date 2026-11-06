@@ -144,7 +144,7 @@ function renderGraphs(){
  const timeline=document.getElementById('timelineEvents');
  if(!timeline||!timeline.closest('.page.active'))return;
  let root=document.getElementById('pet-graphs');
- if(!root){root=document.createElement('div');root.id='pet-graphs';root.className='card';root.style.margin='12px 0';timeline.before(root);}
+ if(!root){root=document.createElement('div');root.id='pet-graphs';timeline.closest('.page').insertBefore(root,timeline.closest('.page').firstChild);}root.classList.add('card');root.style.margin='0 0 12px';
  const events=graphRecords().filter(e=>graphPet==='all'||e.pet===graphPet);
  const today=ukDay(new Date()),days=[];
  for(let i=graphRange-1;i>=0;i--){const d=new Date();d.setUTCDate(d.getUTCDate()-i);days.push({day:ukDay(d),ins:0,outs:0,minutes:0});}

@@ -1,7 +1,7 @@
 name: Pet Control
-version: "2.6.2"
+version: "2.7.0"
 slug: pet_control
-description: Pet Control interface hosted privately inside Home Assistant
+description: Pet Control interface with live Sure Petcare presence
 arch:
   - aarch64
   - amd64
@@ -10,5 +10,6 @@ boot: auto
 init: false
 ingress: true
 ingress_port: 80
+homeassistant_api: true
 panel_icon: mdi:paw
 panel_title: Pet Control

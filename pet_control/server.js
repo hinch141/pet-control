@@ -13,6 +13,32 @@ const server=http.createServer(async(req,res)=>{
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='GET'){res.writeHead(405);return res.end();}
+  if(url.pathname==='/sure/diagnostic'){
+    let options={};
+    try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
+    const email=String(options.sure_email||'').trim(),password=String(options.sure_password||'');
+    const output=(status,detail)=>{res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({status,detail}));};
+    if(!email||!password)return output('not_configured','Add Sure Petcare email and password in the Pet Control app Configuration tab.');
+    try{
+      const login=await fetch('https://app.api.surehub.io/api/auth/login',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({email,password}),signal:AbortSignal.timeout(12000)});
+      if(!login.ok)return output('login_failed','Sure Petcare authentication returned HTTP '+login.status+'. No credentials were logged.');
+      const auth=await login.json();
+      const access=auth.token||auth.access_token||auth.data?.token||auth.data?.access_token;
+      if(typeof access!=='string'||!access)return output('unknown_login_format','Authentication returned an unexpected token format.');
+      const headers={Authorization:'Bearer '+access};
+      const endpoint='https://app.api.surehub.io/api/timeline';
+      const timeline=await fetch(endpoint,{headers,signal:AbortSignal.timeout(12000)});
+      if(!timeline.ok)return output('timeline_failed','Sure Petcare timeline returned HTTP '+timeline.status+'.');
+      const payload=await timeline.json();
+      const entries=Array.isArray(payload)?payload:Array.isArray(payload.data)?payload.data:Array.isArray(payload.data?.entries)?payload.data.entries:null;
+      if(!entries)return output('unknown_timeline_format','Timeline response received but its structure needs adapting.');
+      const types={};
+      for(const e of entries){const type=String(e.type??e.data?.type??'unknown');types[type]=(types[type]||0)+1;}
+      return output('timeline_connected',{received:entries.length,eventTypes:types,source:'Sure Petcare cloud; no event contents or credentials returned'});
+    }catch(e){return output('connection_error','Unable to reach Sure Petcare or parse its response.');}
+  }
   if(url.pathname==='/live/status'){
     if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Home Assistant access unavailable'}));}
     try{

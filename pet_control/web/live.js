@@ -6,23 +6,45 @@ section.innerHTML='<strong>Live Sure Petcare status</strong><div id="pet-live-li
 const flapSection=document.createElement('section');
 flapSection.className='card';
 flapSection.style.cssText='margin-top:14px;background:#fff;color:#19312d;width:100%;';
-flapSection.innerHTML='<strong>Cat flap — live lock status</strong><div id="flap-live-status" style="margin-top:8px">Checking Home Assistant…</div><p class="small" style="margin-bottom:0">Status only. Pet Control is not changing the flap.</p>';
-let flapPending=false;
+flapSection.innerHTML='<strong>Cat flap — live lock status</strong><div id="flap-live-status" style="margin-top:8px">Checking Home Assistant…</div><p class="small" style="margin-bottom:0">Controls use the exit restriction only. Entry remains permitted.</p>';
+let flapPending=false,flapCommandPending=false,flapConfirmed=null;
+function showFlapState(status){
+ const target=document.getElementById('flap-live-status'),checkbox=document.getElementById('houseIndoorToggle'),label=document.getElementById('houseIndoorStatus');
+ const known=status==='indoor_only'||status==='normal';
+ flapConfirmed=known?status:null;
+ if(target)target.textContent=status==='indoor_only'?'Indoor only — exits restricted, entry allowed':status==='normal'?'Normal — exits allowed':'Flap status unavailable — check Home Assistant';
+ if(checkbox){checkbox.disabled=flapCommandPending||!known;checkbox.checked=status==='indoor_only';}
+ if(label)label.textContent=flapCommandPending?'Sending command — waiting for confirmation…':status==='indoor_only'?'Indoor only — confirmed by Home Assistant':status==='normal'?'Normal — confirmed by Home Assistant':'Flap status unavailable — controls disabled';
+}
 async function refreshFlap(){
- if(flapPending||document.hidden)return;
+ if(flapPending||flapCommandPending||document.hidden)return;
  flapPending=true;
  try{
   const response=await fetch('./live/flap',{cache:'no-store',signal:AbortSignal.timeout(7000)});
   if(!response.ok)throw Error('Unavailable');
   const data=await response.json();
-  const label=data.status==='indoor_only'?'Indoor only — exits restricted, entry allowed':data.status==='normal'?'Normal — exits allowed':'State unknown — check Home Assistant';
-  const target=document.getElementById('flap-live-status');
-  if(target)target.textContent=label;
- }catch{
-  const target=document.getElementById('flap-live-status');
-  if(target)target.textContent='Flap status unavailable — check Home Assistant';
- }finally{flapPending=false;}
+  showFlapState(data.status);
+ }catch{showFlapState('unavailable');}
+ finally{flapPending=false;}
 }
+window.setLiveFlapMode=async function(enabled){
+ if(flapCommandPending||!flapConfirmed){showFlapState(flapConfirmed||'unavailable');return;}
+ flapCommandPending=true;showFlapState(flapConfirmed);
+ try{
+  const response=await fetch('./live/flap/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:enabled?'indoor_only':'normal'}),signal:AbortSignal.timeout(16000)});
+  const result=await response.json();
+  if(!response.ok)throw Error(result.error||'Command failed');
+  if(result.status!=='confirmed')throw Error('Command sent but not yet confirmed. Check Home Assistant.');
+  showFlapState(result.mode);
+  if(typeof toast==='function')toast(enabled?'Indoor only confirmed — entry remains allowed':'Normal mode confirmed');
+ }catch(error){
+  if(typeof toast==='function')toast(error.message||'Flap change not confirmed');
+ }finally{
+  flapCommandPending=false;
+  await refreshFlap();
+  if(flapConfirmed)showFlapState(flapConfirmed);
+ }
+};
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ukDay=d=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).map(p=>[p.type,p.value]));return parts.year+'-'+parts.month+'-'+parts.day;};
 const dayKey=offset=>{const d=new Date();d.setUTCDate(d.getUTCDate()+offset);return ukDay(d);};

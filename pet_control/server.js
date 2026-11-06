@@ -15,6 +15,22 @@ const server=http.createServer(async(req,res)=>{
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Cache-Control','no-store');
   if(req.method!=='GET'){res.writeHead(405);return res.end();}
+  if(url.pathname==='/live/flap'){
+    if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({status:'unavailable'}));}
+    try{
+      const response=await fetch('http://supervisor/core/api/states/lock.my_flap_locked_out',{
+        headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(6000)});
+      if(!response.ok)throw Error('HA state request failed');
+      const data=await response.json();
+      const state=String(data.state||'unknown');
+      const status=state==='locked'?'indoor_only':state==='unlocked'?'normal':'unknown';
+      res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});
+      return res.end(JSON.stringify({entity_id:'lock.my_flap_locked_out',state,status,updated:data.last_updated||null}));
+    }catch{
+      res.writeHead(502,{'Content-Type':'application/json; charset=utf-8'});
+      return res.end(JSON.stringify({status:'unavailable'}));
+    }
+  }
   if(url.pathname==='/sure/diagnostic'){
     let options={};
     try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}

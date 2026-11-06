@@ -7,6 +7,7 @@ const base='/usr/share/pet-control';
 const pets=['jessie','henry','rosie','violet'];
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8'};
 const token=process.env.SUPERVISOR_TOKEN;
+let activitySnapshot=null,activityPending=null;
 const server=http.createServer(async(req,res)=>{
   const peer=(req.socket.remoteAddress||'').replace(/^::ffff:/,'');
   if(peer!=='172.30.32.2'){res.writeHead(403);return res.end();}
@@ -58,6 +59,7 @@ const server=http.createServer(async(req,res)=>{
   }
   if(url.pathname==='/sure/activity'){
     const send=(status,detail)=>{res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({status,...detail}));};
+    if(activitySnapshot&&Date.now()-activitySnapshot.at<120000)return send(activitySnapshot.status,activitySnapshot.detail);
     let opts={};try{opts=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
     const email=String(opts.sure_email||'').trim(),password=String(opts.sure_password||'');
     if(!email||!password)return send('not_configured',{events:[],total:0});
@@ -129,7 +131,9 @@ const server=http.createServer(async(req,res)=>{
         const map=new Map(saved.map(e=>[e.id,e]));for(const e of events)if(e.id)map.set(e.id,e);
         const merged=[...map.values()].filter(e=>new Date(e.at)>new Date(Date.now()-30*86400000)).sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,3000);
         fs.writeFileSync(file,JSON.stringify(merged),{mode:0o600});
-        return send('connected',{events:merged,total:merged.length,historyComplete,historyError,source:'Sure Petcare timeline; paginated 30-day history'});
+        const detail={events:merged,total:merged.length,historyComplete,historyError,source:'Sure Petcare timeline; paginated 30-day history'};
+        activitySnapshot={at:Date.now(),status:'connected',detail};
+        return send('connected',detail);
       }catch{return send('connected_no_cache',{events,total:events.length,historyComplete,historyError});}
     }catch{return send('connection_error',{events:[],total:0});}
   }

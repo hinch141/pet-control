@@ -42,7 +42,6 @@ window.setLiveFlapMode=async function(enabled){
  }finally{
   flapCommandPending=false;
   await refreshFlap();
-  if(flapConfirmed)showFlapState(flapConfirmed);
  }
 };
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

@@ -77,9 +77,16 @@ const server=http.createServer(async(req,res)=>{
       const timeline=await fetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page=0',{headers,signal:AbortSignal.timeout(12000)});
       if(!timeline.ok)return send('timeline_error',{events:[],total:0});
       const body=await timeline.json();const items=Array.isArray(body)?body:Array.isArray(body.data)?body.data:Array.isArray(body.data?.entries)?body.data.entries:[];
+      const petLookup=new Map();
+      for(const pet of (Array.isArray(home.data?.pets)?home.data.pets:[]))if(pet.id&&pet.name)petLookup.set(String(pet.id),String(pet.name).toLowerCase());
+      for(const e of items)for(const p of (Array.isArray(e.pets)?e.pets:[]))if(p.id&&p.name)petLookup.set(String(p.id),String(p.name).toLowerCase());
       const events=items.map(e=>({
         id:String(e.id??''),type:Number(e.type),at:e.created_at,
-        pets:Array.isArray(e.pets)?e.pets.map(p=>String(p.name||'').toLowerCase()).filter(p=>pets.includes(p)):[],
+        pets:(()=>{
+          const ids=[...(Array.isArray(e.pets)?e.pets:[]),...(Array.isArray(e.movements)?e.movements:e.movements?[e.movements]:[])];
+          const names=ids.map(p=>String(p.name||petLookup.get(String(p.pet_id??p.petId??p.id))||'').toLowerCase()).filter(n=>pets.includes(n));
+          return [...new Set(names)];
+        })(),
         dataKind:typeof e.data,
         details:(()=>{
           const m=Array.isArray(e.movements)?e.movements[0]:e.movements;

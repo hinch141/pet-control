@@ -87,7 +87,7 @@ let rangeArchive=[],rangeLoading=false,rangeError='',rangeToken=0,rangeInitializ
 const archiveCache=new Map();
 const graphToday=()=>ukDay(new Date());
 const shiftDay=(day,n)=>{const d=new Date(day+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
-let graphEnd=graphToday(),graphStart=shiftDay(graphEnd,-6);
+let graphEnd=graphToday(),graphStart=graphEnd.slice(0,7)+'-01';
 function rangeDays(){const days=[];for(let d=graphStart;d<=graphEnd&&days.length<90;d=shiftDay(d,1))days.push(d);return days;}
 function refreshRangeFromCache(dates){
  rangeArchive=dates.flatMap(day=>archiveCache.get(day)||[]);
@@ -97,29 +97,29 @@ function refreshRangeFromCache(dates){
 async function loadGraphRange(){
  const token=++rangeToken,dates=rangeDays();
  rangeLoading=true;rangeError='';
- // Update the selected range immediately using the live feed and any cached days.
+ // Draw once immediately; do not repeatedly rebuild the graph while downloading.
  refreshRangeFromCache(dates);
  const missing=dates.filter(day=>!archiveCache.has(day));
- if(!missing.length){rangeLoading=false;renderGraphs();return;}
- let cursor=0,failures=0,completed=0;
+ let cursor=0,failures=0;
  async function worker(){
   while(cursor<missing.length&&token===rangeToken){
    const day=missing[cursor++];
    try{
-    const resp=await fetch('./sure/archive?date='+encodeURIComponent(day),{cache:'no-store'});
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),8000);
+    let resp;
+    try{resp=await fetch('./sure/archive?date='+encodeURIComponent(day),{cache:'no-store',signal:controller.signal});}
+    finally{clearTimeout(timeout);}
     if(!resp.ok)throw Error('Archive unavailable');
     const data=await resp.json();
     if(!Array.isArray(data.events))throw Error('Invalid archive');
     if(token!==rangeToken)return;
     archiveCache.set(day,data.events);
    }catch{failures++;}
-   if(token!==rangeToken)return;
-   completed++;
-   // Show historical movements progressively rather than waiting for every date.
-   if(completed%6===0||completed===missing.length)refreshRangeFromCache(dates);
   }
  }
- await Promise.all(Array.from({length:Math.min(6,missing.length)},worker));
+ // Two requests at once protects Home Assistant on slower devices.
+ await Promise.all(Array.from({length:Math.min(2,missing.length)},worker));
  if(token!==rangeToken)return;
  rangeLoading=false;
  rangeError=failures?failures+' day(s) could not be loaded. Totals may be incomplete.':'';
@@ -129,7 +129,7 @@ window.petGraphDates=function(){const a=document.getElementById('graph-from')?.v
 function graphRecords(){
  if(graphCache&&graphActivityRef===activity&&graphArchiveRef===archiveEvents)return graphCache;
  graphActivityRef=activity;graphArchiveRef=archiveEvents;
- graphCache=[...activity,...rangeArchive,...archiveEvents].filter((e,i,arr)=>arr.findIndex(x=>x.id===e.id)===i).filter(e=>e.type===0).flatMap(e=>(e.pets||[]).filter(p=>names.some(n=>n.toLowerCase()===p)).map(p=>({...e,pet:p,direction:direction(e)}))).filter(e=>e.direction==='In'||e.direction==='Out').map(e=>({pet:e.pet,direction:e.direction,at:new Date(e.at).getTime(),day:ukDay(new Date(e.at))})).filter(e=>Number.isFinite(e.at));
+ graphCache=[...new Map([...activity,...rangeArchive,...archiveEvents].map(e=>[e.id,e])).values()].filter(e=>e.type===0).flatMap(e=>(e.pets||[]).filter(p=>names.some(n=>n.toLowerCase()===p)).map(p=>({...e,pet:p,direction:direction(e)}))).filter(e=>e.direction==='In'||e.direction==='Out').map(e=>({pet:e.pet,direction:e.direction,at:new Date(e.at).getTime(),day:ukDay(new Date(e.at))})).filter(e=>Number.isFinite(e.at));
  return graphCache;
 }
 function graphTrips(){
@@ -186,7 +186,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElement
 function renderGraphs(){
  const page=document.getElementById('timeline');
  if(!page?.classList.contains('active'))return;
- if(!rangeInitialized){rangeInitialized=true;loadGraphRange();return;}
+ if(!rangeInitialized){rangeInitialized=true;rangeLoading=false;}
  let root=document.getElementById('pet-graphs');
  if(!root){root=document.createElement('div');root.id='pet-graphs';page.querySelector('.sectionhead')?.after(root);}root.classList.add('card');root.style.margin='0 0 12px';
  const events=graphRecords().filter(e=>graphPet==='all'||e.pet===graphPet);
@@ -195,10 +195,13 @@ function renderGraphs(){
  const byDay=new Map(days.map(d=>[d.day,d]));
  for(const e of events){const b=byDay.get(e.day);if(b){if(e.direction==='In')b.ins++;else b.outs++;}}
  const trips=graphTrips().filter(t=>graphPet==='all'||t.pet===graphPet);
- for(const d of days){const [a,b]=graphDayBounds(d.day);for(const t of trips){if(t.start<b&&t.end>a)d.minutes+=Math.max(0,Math.min(t.end,b)-Math.max(t.start,a))/60000;}}
+ const bounds=days.map(d=>graphDayBounds(d.day));
+ for(let i=0;i<days.length;i++){const d=days[i],[a,b]=bounds[i];for(const t of trips){if(t.start<b&&t.end>a)d.minutes+=Math.max(0,Math.min(t.end,b)-Math.max(t.start,a))/60000;}}
  const avgMinutes=days.reduce((n,d)=>n+d.minutes,0)/days.length;
- const avgTrips=trips.filter(t=>days.some(d=>d.day===ukDay(new Date(t.start)))).length/days.length;
- const longestTrip=trips.filter(t=>days.some(d=>d.day===ukDay(new Date(t.start)))).reduce((n,t)=>Math.max(n,t.end-t.start),0);
+ const daySet=new Set(days.map(d=>d.day));
+ const tripsInRange=trips.filter(t=>daySet.has(ukDay(new Date(t.start))));
+ const avgTrips=tripsInRange.length/days.length;
+ const longestTrip=tripsInRange.reduce((n,t)=>Math.max(n,t.end-t.start),0);
  const maxMove=Math.max(1,...days.map(d=>Math.max(d.ins,d.outs))),maxTime=Math.max(1,...days.map(d=>d.minutes));
  const ukLabel=day=>new Date(day+'T12:00:00Z').toLocaleDateString('en-GB',{timeZone:'Europe/London',day:'2-digit',month:'short'});
  const ukLong=day=>new Date(day+'T12:00:00Z').toLocaleDateString('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric',month:'long',year:'numeric'});

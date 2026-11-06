@@ -25,6 +25,37 @@ const server=http.createServer(async(req,res)=>{
       res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({pets:result,updated:new Date().toISOString()}));
     }catch(e){res.writeHead(502,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Unable to read pet status'}));}
   }
+  if(url.pathname==='/live/history'){
+    if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Home Assistant access unavailable'}));}
+    try{
+      const start=new Date(Date.now()-24*60*60*1000).toISOString();
+      const ids=pets.map(p=>'binary_sensor.'+p).join(',');
+      const endpoint='http://supervisor/core/api/history/period/'+encodeURIComponent(start)+'?filter_entity_id='+encodeURIComponent(ids)+'&minimal_response';
+      const response=await fetch(endpoint,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(12000)});
+      if(!response.ok)throw Error('Home Assistant history returned '+response.status);
+      const histories=await response.json();
+      if(!Array.isArray(histories))throw Error('Invalid history');
+      const events=[];
+      for(const records of histories){
+        if(!Array.isArray(records)||!records.length)continue;
+        let previous=null;
+        for(let i=0;i<records.length;i++){
+          const item=records[i],id=item.entity_id||records[0].entity_id;
+          const name=String(id||'').replace('binary_sensor.','');
+          if(!pets.includes(name))continue;
+          const state=item.state;
+          if(state!=='on'&&state!=='off'){previous=state;continue;}
+          const timestamp=item.last_changed||item.last_updated;
+          if(!timestamp)continue;
+          if(i>0&&state!==previous)events.push({name,state,at:timestamp});
+          previous=state;
+        }
+      }
+      events.sort((a,b)=>new Date(b.at)-new Date(a.at));
+      res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});
+      return res.end(JSON.stringify({events:events.slice(0,30),periodHours:24}));
+    }catch(e){res.writeHead(502,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Unable to read movement history'}));}
+  }
   const filename=url.pathname==='/'?'index.html':url.pathname.slice(1);
   if(!['index.html','manifest.webmanifest','sw.js','live.js'].includes(filename)){res.writeHead(404);return res.end();}
   const file=path.join(base,filename);

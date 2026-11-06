@@ -56,7 +56,7 @@ const server=http.createServer(async(req,res)=>{
     if(request.pet!=='Jessie'||request.confirm!=='TEST_JESSIE_AND_RESTORE')return reply(400,{error:'Only the explicitly confirmed Jessie test is available'});
     if(globalThis.petPermissionTestBusy)return reply(409,{error:'A test is already running'});
     globalThis.petPermissionTestBusy=true;
-    let restore=null,stage='checking',beforeProfiles=null;
+    let restore=null,stage='checking',beforeProfiles=null,readProfiles=null,readDashboard=null,writeAttempted=false,writeHttpStatus=null;
     try{
       let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
       const email=String(options.sure_email||'').trim(),password=String(options.sure_password||'');
@@ -73,6 +73,7 @@ const server=http.createServer(async(req,res)=>{
         if(!response.ok)throw Error('Unable to verify individual permissions');
         return (await response.json()).data||{};
       };
+      readDashboard=dashboard;
       const initial=await dashboard();
       const flaps=(Array.isArray(initial.devices)?initial.devices:[]).filter(d=>[6,13].includes(Number(d.product_id)));
       const cats=Array.isArray(initial.pets)?initial.pets:[];
@@ -82,16 +83,18 @@ const server=http.createServer(async(req,res)=>{
       if(matches.length!==1)throw Error('Jessie does not have one unique flap tag');
       const chosen=matches[0],original=Number(chosen.tag.profile);
       if(original!==2)throw Error('Jessie must start with verified Free Access (profile 2)');
-      const device=Number(chosen.device.id),tag=Number(chosen.tag.tag_id);
+      const device=Number(chosen.device.id),tag=Number(chosen.tag.tag_id??chosen.tag.id);
       if(!Number.isSafeInteger(device)||!Number.isSafeInteger(tag)||device<=0||tag<=0)throw Error('Invalid flap tag identifiers');
       const url='https://app.api.surehub.io/api/device/'+device+'/tag/'+tag;
       const setProfile=async profile=>{
         const response=await fetch(url,{method:'PUT',headers,body:JSON.stringify({profile}),signal:AbortSignal.timeout(12000)});
+        writeHttpStatus=response.status;
         if(!response.ok)throw Error('Sure Petcare rejected profile update (HTTP '+response.status+')');
       };
       // Arm restoration before the first write: even a timed-out PUT may have been applied.
       restore=()=>setProfile(2);
       stage='restricting';
+      writeAttempted=true;
       await setProfile(3);
       stage='verifying_indoor_only';
       const restricted=await dashboard();
@@ -99,21 +102,42 @@ const server=http.createServer(async(req,res)=>{
         const ms=(Array.isArray(data.devices)?data.devices:[]).filter(d=>[6,13].includes(Number(d.product_id))).flatMap(d=>(Array.isArray(d.tags)?d.tags:[]).filter(t=>String(t.id)===String(p.tag_id)));
         return {name:String(p.name||''),profile:ms.length===1?Number(ms[0].profile):null};
       });
+      readProfiles=profiles;
       beforeProfiles=profiles(initial);
       const during=profiles(restricted);
       const j=during.filter(p=>p.name.toLowerCase()==='jessie');
       const unchanged=beforeProfiles.filter(p=>p.name.toLowerCase()!=='jessie').every(p=>during.some(q=>q.name===p.name&&q.profile===p.profile));
       const restrictedConfirmed=j.length===1&&j[0].profile===3;
       stage='restoring';
-      await restore();restore=null;
+      await restore();
       stage='verifying_restored';
-      const after=profiles(await dashboard());
-      const restored=after.some(p=>p.name.toLowerCase()==='jessie'&&p.profile===2);
+      let after=[];let restored=false;
+      for(let attempt=0;attempt<4;attempt++){
+        if(attempt)await new Promise(resolve=>setTimeout(resolve,1200));
+        after=profiles(await dashboard());
+        restored=after.some(p=>p.name.toLowerCase()==='jessie'&&p.profile===2);
+        if(restored)break;
+      }
+      if(restored)restore=null;
       return reply(200,{status:restrictedConfirmed&&unchanged&&restored?'passed':'needs_review',restrictedConfirmed,otherCatsUnchanged:unchanged,restored,initial:beforeProfiles,during,after,message:restored?'Jessie restored to Free Access according to Sure Petcare.':'Restoration could not be confirmed. Check Sure Petcare immediately.'});
     }catch(e){
-      let restored=false;
-      if(restore){try{await restore();restored=true;}catch{}}
-      return reply(200,{status:'error',stage,restoreCommandAccepted:restored,message:restored?'Test interrupted. Free Access restoration command was accepted but needs checking.':'Test interrupted. Check Jessie’s permission in Sure Petcare immediately; restoration is not confirmed.'});
+      let restoreAccepted=false,restoredConfirmed=false,restoreError=null;
+      if(restore){
+        try{stage=stage==='restricting'?'restricting_then_restoring':stage;await restore();restoreAccepted=true;}
+        catch(err){restoreError=String(err?.message||'Restore request failed').slice(0,120);}
+        if(readDashboard&&readProfiles){
+          for(let attempt=0;attempt<4;attempt++){
+            try{
+              if(attempt)await new Promise(resolve=>setTimeout(resolve,1200));
+              const profiles=readProfiles(await readDashboard());
+              if(profiles.some(p=>p.name.toLowerCase()==='jessie'&&p.profile===2)){restoredConfirmed=true;break;}
+            }catch{}
+          }
+        }
+      }
+      const cause=String(e?.message||'Unknown error').slice(0,140);
+      const message=restoredConfirmed?'Jessie is confirmed back on Free Access. Test failed at '+stage+'.':restoreAccepted?'Restore command accepted, but confirmation is pending. Check Jessie’s access.':writeAttempted?'Restore is not confirmed. Check Jessie’s permission in Sure Petcare immediately.':'No change command was sent. Test stopped before changing Jessie.';
+      return reply(200,{status:'error',stage,cause,writeAttempted,writeHttpStatus,restoreAccepted,restoredConfirmed,restoreError,message});
     }finally{globalThis.petPermissionTestBusy=false;}
   }
   if(req.method!=='GET'){res.writeHead(405);return res.end();}

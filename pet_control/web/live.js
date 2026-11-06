@@ -7,15 +7,16 @@ const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 const ukDay=d=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d).map(p=>[p.type,p.value]));return parts.year+'-'+parts.month+'-'+parts.day;};
 const dayKey=offset=>{const d=new Date();d.setUTCDate(d.getUTCDate()+offset);return ukDay(d);};
 let activity=[];let loaded=false;let pending=null;let lastFetched=0;
-try{const saved=JSON.parse(sessionStorage.getItem('pet-sure-activity')||'null');if(saved&&Array.isArray(saved.events)){activity=saved.events;loaded=true;}}catch{}
+try{const saved=JSON.parse(sessionStorage.getItem('pet-sure-activity-v211')||'null');if(saved&&Array.isArray(saved.events)){activity=saved.events;loaded=true;}}catch{}
 function direction(e){
+ if(e.type!==0)return 'Unknown';
  const raw=e.details||{};
- const value=String(raw.direction??raw.movement??raw.position??raw.state??raw.where??'').toLowerCase();
+ const value=String(raw.direction??raw.position??raw.where??'').toLowerCase();
  if(['in','inside','home','entered','entry','1'].includes(value))return 'In';
  if(['out','outside','away','left','exit','2'].includes(value))return 'Out';
  return 'Unknown';
 }
-function records(){return activity.flatMap(e=>(e.pets||[]).filter(p=>names.some(n=>n.toLowerCase()===p)).map(p=>({...e,pet:p,direction:direction(e)}))).sort((a,b)=>new Date(b.at)-new Date(a.at));}
+function records(){return activity.filter(e=>e.type===0).flatMap(e=>(e.pets||[]).filter(p=>names.some(n=>n.toLowerCase()===p)).map(p=>({...e,pet:p,direction:direction(e)}))).sort((a,b)=>new Date(b.at)-new Date(a.at));}
 function iconFor(e){return e.direction==='In'?'↙':e.direction==='Out'?'↗':'↔';}
 function labelFor(e){return e.direction==='In'?'Entered':e.direction==='Out'?'Left':'Activity recorded';}
 function rowFor(e,fullDate=false){
@@ -69,7 +70,7 @@ async function refreshCloud(force=false){
    const r=await fetch('./sure/activity',{cache:'no-store'});if(!r.ok)throw Error('unavailable');
    const data=await r.json();if(!String(data.status).startsWith('connected'))throw Error(data.status);
    activity=data.events||[];loaded=true;lastFetched=Date.now();
-   try{sessionStorage.setItem('pet-sure-activity',JSON.stringify({events:activity}));}catch{}
+   try{sessionStorage.setItem('pet-sure-activity-v211',JSON.stringify({events:activity}));}catch{}
   }catch{if(!loaded){const box=document.getElementById('homeEvents');if(box)box.innerHTML='<div class="empty">Sure Petcare activity unavailable.</div>';}}
   finally{pending=null;paint();}
  })();

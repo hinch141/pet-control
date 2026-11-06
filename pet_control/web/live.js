@@ -11,9 +11,11 @@ try{const saved=JSON.parse(sessionStorage.getItem('pet-sure-activity-v211')||'nu
 function direction(e){
  if(e.type!==0)return 'Unknown';
  const raw=e.details||{};
- const value=String(raw.where??raw.direction??raw.position??'').toLowerCase();
- if(['in','inside','home','entered','entry','1'].includes(value))return 'In';
- if(['out','outside','away','left','exit','2'].includes(value))return 'Out';
+ // Sure Petcare movement diagnostics: 1/side 1 = entered, 2/side 0 = left.
+ // Direction 0 is not a confirmed crossing and must not be counted.
+ const value=raw.direction;
+ if(value===1||value==='1')return 'In';
+ if(value===2||value==='2')return 'Out';
  return 'Unknown';
 }
 function records(){return activity.filter(e=>e.type===0).flatMap(e=>(e.pets||[]).filter(p=>names.some(n=>n.toLowerCase()===p)).map(p=>({...e,pet:p,direction:direction(e)}))).sort((a,b)=>new Date(b.at)-new Date(a.at));}

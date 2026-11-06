@@ -57,6 +57,19 @@ const server=http.createServer(async(req,res)=>{
       return output('timeline_connected',{received:entries.length,eventTypes:types,eventStructure:sample,source:'Sure Petcare cloud; field names only, no event contents or credentials returned'});
     }catch(e){return output('connection_error','Unable to reach Sure Petcare or parse its response.');}
   }
+  if(url.pathname==='/sure/archive'){
+    let events=[];try{events=JSON.parse(fs.readFileSync('/data/sure-activity-cache.json','utf8'));if(!Array.isArray(events))events=[];}catch{}
+    const date=url.searchParams.get('date');
+    if(date&&/^\\d{4}-\\d{2}-\\d{2}$/.test(date))events=events.filter(e=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(e.at))===date);
+    if(url.searchParams.get('format')==='csv'){
+      const q=x=>'"'+String(x??'').replace(/"/g,'""')+'"';
+      const lines=['Time (UTC),Pet,Movement'];
+      for(const e of events)for(const pet of e.pets||[])lines.push([e.at,pet,e.type===0&&Number(e.details?.direction)===1?'In':e.type===0&&Number(e.details?.direction)===2?'Out':'Other'].map(q).join(','));
+      res.writeHead(200,{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="pet-control-history.csv"'});return res.end(lines.join('\\r\\n'));
+    }
+    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8',...(url.searchParams.get('download')==='1'?{'Content-Disposition':'attachment; filename="pet-control-history.json"'}:{})});
+    return res.end(JSON.stringify({events,total:events.length}));
+  }
   if(url.pathname==='/sure/activity'){
     const send=(status,detail)=>{res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({status,...detail}));};
     if(activitySnapshot&&Date.now()-activitySnapshot.at<120000)return send(activitySnapshot.status,activitySnapshot.detail);

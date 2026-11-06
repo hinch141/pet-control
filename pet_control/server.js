@@ -132,7 +132,7 @@ const server=http.createServer(async(req,res)=>{
           if(!chosen){stopReason='no_working_pagination';historyError=true;}
           else{
             // Follow only verified methods. Stop on repeated pages or the six-month boundary.
-            for(let page=chosen==='page_2'?3:2;page<80;page++){
+            for(let page=chosen==='page_2'?3:2;page<81;page++){
               const earliest=items.map(e=>Date.parse(e.created_at)).filter(Number.isFinite).reduce((a,b)=>Math.min(a,b),Infinity);
               if(earliest<cutoff){historyComplete=true;stopReason='six_month_boundary';break;}
               let url;
@@ -146,7 +146,7 @@ const server=http.createServer(async(req,res)=>{
               const fresh=ingest(result.batch);
               lastPageOldest=result.batch.at(-1)?.created_at||lastPageOldest;
               if(!fresh){stopReason='repeated_page';break;}
-              if(page===79)stopReason='request_limit';
+              if(page===80)stopReason='request_limit';
             }
           }
         }

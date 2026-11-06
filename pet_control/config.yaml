@@ -1,7 +1,7 @@
 name: Pet Control
-version: "2.6.1"
+version: "2.6.2"
 slug: pet_control
-description: Pet Control mobile interface hosted on Home Assistant Green
+description: Pet Control interface hosted privately inside Home Assistant
 arch:
   - aarch64
   - amd64
@@ -12,8 +12,3 @@ ingress: true
 ingress_port: 80
 panel_icon: mdi:paw
 panel_title: Pet Control
-ports:
-  80/tcp: 8099
-ports_description:
-  80/tcp: Local Pet Control web access
-webui: http://[HOST]:[PORT:80]

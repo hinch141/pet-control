@@ -56,6 +56,44 @@ const server=http.createServer(async(req,res)=>{
       return output('timeline_connected',{received:entries.length,eventTypes:types,eventStructure:sample,source:'Sure Petcare cloud; field names only, no event contents or credentials returned'});
     }catch(e){return output('connection_error','Unable to reach Sure Petcare or parse its response.');}
   }
+  if(url.pathname==='/sure/activity'){
+    const send=(status,detail)=>{res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({status,...detail}));};
+    let opts={};try{opts=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
+    const email=String(opts.sure_email||'').trim(),password=String(opts.sure_password||'');
+    if(!email||!password)return send('not_configured',{events:[],total:0});
+    try{
+      const deviceId=randomUUID();
+      const headers={'Accept':'application/json','Content-Type':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
+      const authRes=await fetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:email,password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
+      if(!authRes.ok)return send('authentication_error',{events:[],total:0});
+      const auth=await authRes.json();const access=auth.data?.token||auth.token;
+      if(!access)return send('authentication_error',{events:[],total:0});
+      headers.Authorization='Bearer '+access;
+      const homeRes=await fetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});
+      if(!homeRes.ok)return send('household_error',{events:[],total:0});
+      const home=await homeRes.json();const hs=home.data?.households||home.data?.household||home.households||[];
+      const house=Array.isArray(hs)?hs[0]:hs;const houseId=house?.id||home.data?.household_id||home.data?.household?.id;
+      if(!houseId)return send('household_error',{events:[],total:0});
+      const timeline=await fetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page=0',{headers,signal:AbortSignal.timeout(12000)});
+      if(!timeline.ok)return send('timeline_error',{events:[],total:0});
+      const body=await timeline.json();const items=Array.isArray(body)?body:Array.isArray(body.data)?body.data:Array.isArray(body.data?.entries)?body.data.entries:[];
+      const events=items.map(e=>({
+        id:String(e.id??''),type:Number(e.type),at:e.created_at,
+        pets:Array.isArray(e.pets)?e.pets.map(p=>String(p.name||'').toLowerCase()).filter(p=>pets.includes(p)):[],
+        dataKind:typeof e.data,
+        // Only a strict whitelist of non-sensitive primitive fields is returned.
+        details:e.data&&typeof e.data==='object'?Object.fromEntries(Object.entries(e.data).filter(([k,v])=>['direction','position','where','movement','event_type','type','state'].includes(k)&&['string','number','boolean'].includes(typeof v))):{}
+      })).filter(e=>Number.isFinite(new Date(e.at).getTime()));
+      events.sort((a,b)=>new Date(b.at)-new Date(a.at));
+      try{
+        const file='/data/sure-activity-cache.json';let saved=[];try{saved=JSON.parse(fs.readFileSync(file,'utf8'));if(!Array.isArray(saved))saved=[];}catch{}
+        const map=new Map(saved.map(e=>[e.id,e]));for(const e of events)if(e.id)map.set(e.id,e);
+        const merged=[...map.values()].filter(e=>new Date(e.at)>new Date(Date.now()-30*86400000)).sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,3000);
+        fs.writeFileSync(file,JSON.stringify(merged),{mode:0o600});
+        return send('connected',{events:merged.slice(0,100),total:merged.length,source:'Sure Petcare timeline; event types not yet interpreted'});
+      }catch{return send('connected_no_cache',{events:events.slice(0,100),total:events.length});}
+    }catch{return send('connection_error',{events:[],total:0});}
+  }
   if(url.pathname==='/live/status'){
     if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Home Assistant access unavailable'}));}
     try{

@@ -74,9 +74,35 @@ const server=http.createServer(async(req,res)=>{
       const home=await homeRes.json();const hs=home.data?.households||home.data?.household||home.households||[];
       const house=Array.isArray(hs)?hs[0]:hs;const houseId=house?.id||home.data?.household_id||home.data?.household?.id;
       if(!houseId)return send('household_error',{events:[],total:0});
-      const timeline=await fetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page=0',{headers,signal:AbortSignal.timeout(12000)});
-      if(!timeline.ok)return send('timeline_error',{events:[],total:0});
-      const body=await timeline.json();const items=Array.isArray(body)?body:Array.isArray(body.data)?body.data:Array.isArray(body.data?.entries)?body.data.entries:[];
+      // Page through the Sure timeline to cover the last 30 days, not just today's first page.
+      // Cap requests and stop at the first older page to avoid excessive cloud traffic.
+      const items=[];
+      const cutoff=Date.now()-30*86400000;
+      let historyComplete=false,historyError=false;
+      const seenIds=new Set();
+      for(let page=0;page<40;page++){
+        let response;
+        try{response=await fetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page='+page,{headers,signal:AbortSignal.timeout(12000)});}
+        catch{historyError=true;break;}
+        if(!response.ok){historyError=true;break;}
+        let body;
+        try{body=await response.json();}catch{historyError=true;break;}
+        const batch=Array.isArray(body)?body:Array.isArray(body.data)?body.data:Array.isArray(body.data?.entries)?body.data.entries:null;
+        if(!batch){historyError=true;break;}
+        if(!batch.length){historyComplete=true;break;}
+        let fresh=0;
+        for(const e of batch){
+          const id=String(e.id??'');
+          if(id&&seenIds.has(id))continue;
+          if(id)seenIds.add(id);
+          items.push(e);fresh++;
+        }
+        if(!fresh){historyComplete=true;break;}
+        const dates=batch.map(e=>Date.parse(e.created_at)).filter(Number.isFinite);
+        if(dates.length&&Math.max(...dates)<cutoff){historyComplete=true;break;}
+        if(batch.length<25){historyComplete=true;break;}
+      }
+      if(!items.length&&historyError)return send('timeline_error',{events:[],total:0});
       const petLookup=new Map();
       for(const pet of (Array.isArray(home.data?.pets)?home.data.pets:[]))if(pet.id&&pet.name)petLookup.set(String(pet.id),String(pet.name).toLowerCase());
       for(const e of items)for(const p of (Array.isArray(e.pets)?e.pets:[]))if(p.id&&p.name)petLookup.set(String(p.id),String(p.name).toLowerCase());
@@ -103,8 +129,8 @@ const server=http.createServer(async(req,res)=>{
         const map=new Map(saved.map(e=>[e.id,e]));for(const e of events)if(e.id)map.set(e.id,e);
         const merged=[...map.values()].filter(e=>new Date(e.at)>new Date(Date.now()-30*86400000)).sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,3000);
         fs.writeFileSync(file,JSON.stringify(merged),{mode:0o600});
-        return send('connected',{events:merged.slice(0,100),total:merged.length,source:'Sure Petcare timeline; event types not yet interpreted'});
-      }catch{return send('connected_no_cache',{events:events.slice(0,100),total:events.length});}
+        return send('connected',{events:merged,total:merged.length,historyComplete,historyError,source:'Sure Petcare timeline; paginated 30-day history'});
+      }catch{return send('connected_no_cache',{events,total:events.length,historyComplete,historyError});}
     }catch{return send('connection_error',{events:[],total:0});}
   }
   if(url.pathname==='/live/status'){

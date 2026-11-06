@@ -51,7 +51,7 @@ const server=http.createServer(async(req,res)=>{
         const type=String(e.type??e.data?.type??'unknown');
         if(sample[type])continue;
         const data=e&&typeof e==='object'?e:{};
-        sample[type]={fields:Object.keys(data).slice(0,30),dataFields:data.data&&typeof data.data==='object'?Object.keys(data.data).slice(0,30):[],timestampField:['created_at','timestamp','date','time','created','event_time'].find(k=>k in data)||null};
+        sample[type]={fields:Object.keys(data).filter(k=>!['households','devices','users'].includes(k)),dataFields:data.data&&typeof data.data==='object'?Object.keys(data.data).slice(0,20):[],petFieldShape:Array.isArray(data.pets)?'array '+data.pets.length:typeof data.pets,petFields:Array.isArray(data.pets)&&data.pets[0]&&typeof data.pets[0]==='object'?Object.keys(data.pets[0]):[],deviceFieldShape:Array.isArray(data.devices)?'array '+data.devices.length:typeof data.devices,timestampField:['created_at','timestamp','date','time','created','event_time'].find(k=>k in data)||null};
       }
       return output('timeline_connected',{received:entries.length,eventTypes:types,eventStructure:sample,source:'Sure Petcare cloud; field names only, no event contents or credentials returned'});
     }catch(e){return output('connection_error','Unable to reach Sure Petcare or parse its response.');}

@@ -12,7 +12,7 @@ const flapWait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function syncFlapUI(){
  const target=document.getElementById('flap-live-status'),checkbox=document.getElementById('houseIndoorToggle'),label=document.getElementById('houseIndoorStatus');
  const known=flapConfirmed==='indoor_only'||flapConfirmed==='normal';
- const status=flapConfirmed==='indoor_only'?'Indoor only — exits restricted, entry allowed':flapConfirmed==='normal'?'Normal — exits allowed':'Flap status unavailable';
+ const status=flapConfirmed==='indoor_only'?'Indoor only — exits restricted, entry allowed':flapConfirmed==='normal'?'Free Access — entry and exit allowed':'Flap status unavailable';
  if(target)target.textContent=flapMessage||status;
  if(checkbox){checkbox.disabled=flapCommandPending||!known;checkbox.checked=flapCommandPending&&flapDesired?flapDesired==='indoor_only':flapConfirmed==='indoor_only';}
  if(label)label.textContent=flapMessage||(known?'Confirmed by Home Assistant':'Unable to confirm flap status — controls disabled');
@@ -36,7 +36,7 @@ window.setLiveFlapMode=async function(enabled){
  const desired=enabled?'indoor_only':'normal';
  if(desired===flapConfirmed){syncFlapUI();return;}
  flapCommandPending=true;flapDesired=desired;
- flapMessage=enabled?'Changing to Indoor only… Please wait.':'Changing to Normal… Please wait.';
+ flapMessage=enabled?'Changing to Indoor only… Please wait.':'Changing to Free Access… Please wait.';
  syncFlapUI();
  try{
   const response=await fetch('./live/flap/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:desired}),signal:AbortSignal.timeout(18000)});
@@ -124,7 +124,7 @@ window.renderSurePetDetail=function(){
  const events=records().filter(e=>e.pet===petName);
  const status=window.sureLiveStates?.[petName]||'Unknown';
  const summary=events.slice(0,10).map(e=>rowFor(e,true)).join('')||'<div class="empty">No Sure Petcare activity recorded.</div>';
- root.innerHTML='<div class="card"><h2>'+escapeHtml(p.name)+'</h2><p><strong>Current status: '+escapeHtml(status)+'</strong></p><p class="small">Live presence from Home Assistant</p><div class="card" style="margin:12px 0;background:#f4f8f5"><strong>Indoor-only preference</strong><div class="row between" style="margin-top:8px"><span>'+((typeof state!=='undefined'&&state.houseIndoor)?'Whole-house Indoor-only':p.indoorMode==='indoor'?'Indoor-only':p.indoorMode==='scheduled'?'Scheduled':'Normal')+'</span><button class="button secondary" onclick="openPet(\''+escapeHtml(p.id)+'\')">Change setting</button></div></div><div class="row"><button class="button secondary" onclick="showPetTimeline(\''+escapeHtml(p.id)+'\')">View full timeline</button><button class="button secondary" onclick="openPetCurfew(\''+escapeHtml(p.id)+'\')">Curfew settings</button></div></div><div class="card" style="margin-top:12px"><h3>Recent activity</h3>'+summary+'</div>';
+ root.innerHTML='<div class="card"><h2>'+escapeHtml(p.name)+'</h2><p><strong>Current status: '+escapeHtml(status)+'</strong></p><p class="small">Live presence from Home Assistant</p><div class="card" style="margin:12px 0;background:#f4f8f5"><strong>Indoor-only preference</strong><div class="row between" style="margin-top:8px"><span>'+((typeof state!=='undefined'&&state.houseIndoor)?'Whole-house Indoor-only':p.indoorMode==='indoor'?'Indoor-only':p.indoorMode==='scheduled'?'Scheduled':'Free Access')+'</span><button class="button secondary" onclick="openPet(\''+escapeHtml(p.id)+'\')">Change setting</button></div></div><div class="row"><button class="button secondary" onclick="showPetTimeline(\''+escapeHtml(p.id)+'\')">View full timeline</button><button class="button secondary" onclick="openPetCurfew(\''+escapeHtml(p.id)+'\')">Curfew settings</button></div></div><div class="card" style="margin-top:12px"><h3>Recent activity</h3>'+summary+'</div>';
 };
 window.renderSureTimeline=function(){
  const target=document.getElementById('timelineEvents'),count=document.getElementById('eventCount');

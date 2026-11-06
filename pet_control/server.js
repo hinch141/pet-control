@@ -76,13 +76,13 @@ const server=http.createServer(async(req,res)=>{
       const home=await homeRes.json();const hs=home.data?.households||home.data?.household||home.households||[];
       const house=Array.isArray(hs)?hs[0]:hs;const houseId=house?.id||home.data?.household_id||home.data?.household?.id;
       if(!houseId)return send('household_error',{events:[],total:0});
-      // Page through the Sure timeline to cover the last 30 days, not just today's first page.
+      // Backfill up to six months from Sure Petcare and retain all retrieved history locally.
       // Cap requests and stop at the first older page to avoid excessive cloud traffic.
       const items=[];
-      const cutoff=Date.now()-30*86400000;
+      const cutoff=Date.now()-183*86400000;
       let historyComplete=false,historyError=false;
       const seenIds=new Set();
-      for(let page=0;page<40;page++){
+      for(let page=0;page<240;page++){
         let response;
         try{response=await fetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page='+page,{headers,signal:AbortSignal.timeout(12000)});}
         catch{historyError=true;break;}
@@ -102,7 +102,7 @@ const server=http.createServer(async(req,res)=>{
         if(!fresh){historyComplete=true;break;}
         const dates=batch.map(e=>Date.parse(e.created_at)).filter(Number.isFinite);
         if(dates.length&&Math.max(...dates)<cutoff){historyComplete=true;break;}
-        if(batch.length<25){historyComplete=true;break;}
+        // Page sizes vary; an empty page or an older-than-cutoff page ends backfill.
       }
       if(!items.length&&historyError)return send('timeline_error',{events:[],total:0});
       const petLookup=new Map();
@@ -129,9 +129,9 @@ const server=http.createServer(async(req,res)=>{
       try{
         const file='/data/sure-activity-cache.json';let saved=[];try{saved=JSON.parse(fs.readFileSync(file,'utf8'));if(!Array.isArray(saved))saved=[];}catch{}
         const map=new Map(saved.map(e=>[e.id,e]));for(const e of events)if(e.id)map.set(e.id,e);
-        const merged=[...map.values()].filter(e=>new Date(e.at)>new Date(Date.now()-30*86400000)).sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,3000);
+        const merged=[...map.values()].filter(e=>Number.isFinite(Date.parse(e.at))).sort((a,b)=>new Date(b.at)-new Date(a.at));
         fs.writeFileSync(file,JSON.stringify(merged),{mode:0o600});
-        const detail={events:merged,total:merged.length,historyComplete,historyError,source:'Sure Petcare timeline; paginated 30-day history'};
+        const detail={events:merged,total:merged.length,historyComplete,historyError,source:'Sure Petcare timeline; six-month backfill with long-term local retention'};
         activitySnapshot={at:Date.now(),status:'connected',detail};
         return send('connected',detail);
       }catch{return send('connected_no_cache',{events,total:events.length,historyComplete,historyError});}

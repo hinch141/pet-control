@@ -19,6 +19,51 @@ function renderTrend(date,filter){
  root.innerHTML='<div class="small" style="margin-bottom:12px"><strong>'+total+'</strong> recorded entries · '+trendDays+' days · average '+(total/trendDays).toFixed(1)+' per day</div><div style="display:flex;align-items:flex-end;gap:3px;height:95px;border-bottom:1px solid #cadbd7">'+days.map(d=>'<div title="'+escapeHtml(d.label+': '+d.entries+' entries')+'" style="flex:1;min-width:2px;height:'+Math.max(3,Math.round(d.entries/max*90))+'px;background:#21b7bd;border-radius:3px 3px 0 0"></div>').join('')+'</div><div class="small" style="display:flex;justify-content:space-between;margin-top:6px"><span>'+escapeHtml(days[0].label)+'</span><span>'+escapeHtml(days.at(-1).label)+'</span></div><p class="small">Based on retrieved movement records only. Missing history can make totals incomplete.</p>';
 }
 
+
+let chartDays=7,chartSelected=null;
+const chartDate=k=>new Date(k+'T12:00:00');
+function chartData(){
+ const all=records().filter(e=>e.direction==='In'||e.direction==='Out');
+ const filter=document.getElementById('chartPet')?.value||'all';
+ const chosen=filter==='all'?all:all.filter(e=>e.pet===filter);
+ const chronological=[...chosen].sort((a,b)=>new Date(a.at)-new Date(b.at));
+ const days=[];
+ for(let i=chartDays-1;i>=0;i--){
+  const d=new Date();d.setDate(d.getDate()-i);const key=ukDay(d);
+  const movements=chronological.filter(e=>ukDay(new Date(e.at))===key);
+  let mins=0,sessions=0;
+  for(let j=0;j<chronological.length-1;j++){
+   const out=chronological[j],next=chronological[j+1];
+   if(out.direction!=='Out'||next.direction!=='In'||out.pet!==next.pet)continue;
+   const start=new Date(out.at).getTime(),end=new Date(next.at).getTime();
+   if(end<=start||end-start>48*3600000)continue;
+   const from=Math.max(start,new Date(key+'T00:00:00').getTime());
+   const to=Math.min(end,new Date(key+'T00:00:00').getTime()+86400000);
+   if(to>from){mins+=(to-from)/60000;sessions++;}
+  }
+  days.push({key,entries:movements.filter(e=>e.direction==='In').length,exits:movements.filter(e=>e.direction==='Out').length,minutes:Math.round(mins),sessions,movements});
+ }
+ return days;
+}
+function renderActivityCharts(){
+ const timeline=document.getElementById('timeline'),home=document.getElementById('home');
+ if(!timeline||!home)return;
+ let root=document.getElementById('pet-activity-charts');
+ if(!root){root=document.createElement('div');root.id='pet-activity-charts';root.className='card';root.style.marginTop='12px';
+ const before=document.getElementById('timelineEvents');before?.before(root);}
+ const selected=document.getElementById('chartPet')?.value||'all';
+ const days=chartData(),maxMove=Math.max(1,...days.map(d=>Math.max(d.entries,d.exits))),maxMin=Math.max(1,...days.map(d=>d.minutes));
+ if(!chartSelected||!days.some(d=>d.key===chartSelected))chartSelected=days.at(-1).key;
+ const opts=['all',...names.map(n=>n.toLowerCase())].map(n=>'<option value="'+escapeHtml(n)+'"'+(n===selected?' selected':'')+'>'+(n==='all'?'All pets':escapeHtml(names.find(x=>x.toLowerCase()===n)||n))+'</option>').join('');
+ const bars=(kind)=>'<div style="display:flex;gap:4px;align-items:flex-end;height:112px;border-bottom:1px solid #d6e1db">'+days.map(d=>{const selectedDay=d.key===chartSelected;const height=kind==='time'?d.minutes/maxMin*100:Math.max(d.entries,d.exits)/maxMove*100;const bar=kind==='time'?'<span style="display:block;width:70%;height:'+Math.max(2,height)+'%;background:#176b58;border-radius:4px 4px 0 0"></span>':'<span style="display:flex;align-items:flex-end;justify-content:center;gap:2px;width:100%;height:100%"><span style="width:43%;height:'+Math.max(2,d.entries/maxMove*100)+'%;background:#247bc0;border-radius:3px 3px 0 0"></span><span style="width:43%;height:'+Math.max(2,d.exits/maxMove*100)+'%;background:#e8a04b;border-radius:3px 3px 0 0"></span></span>';return '<button type="button" aria-label="Show '+escapeHtml(d.key)+' details" onclick="window.selectActivityDay(\''+d.key+'\')" style="flex:1;min-width:0;height:100%;display:flex;align-items:flex-end;justify-content:center;border:0;border-bottom:'+(selectedDay?'3px solid #19312d':'3px solid transparent')+';background:transparent;padding:0 1px;cursor:pointer">'+bar+'</button>';}).join('')+'</div><div style="display:flex;gap:4px;margin-top:5px">'+days.map(d=>'<span class="small" style="flex:1;text-align:center;font-size:'+(chartDays===28?'8':'10')+'px">'+(chartDays===28?chartDate(d.key).getDate():chartDate(d.key).toLocaleDateString('en-GB',{weekday:'short'}))+'</span>').join('')+'</div>';
+ const d=days.find(x=>x.key===chartSelected)||days.at(-1);
+ root.innerHTML='<div class="row between"><h3 style="margin:0">Activity graphs</h3><div class="row"><button class="button secondary" onclick="window.setActivityDays(7)" '+(chartDays===7?'disabled':'')+'>7 days</button><button class="button secondary" onclick="window.setActivityDays(28)" '+(chartDays===28?'disabled':'')+'>28 days</button></div></div><label class="field" style="margin:10px 0">Pet<select id="chartPet" onchange="window.changeActivityPet(this.value)">'+opts+'</select></label><strong>Entries and exits</strong><div class="small">Blue: entries · Orange: exits</div>'+bars('moves')+'<strong style="display:block;margin-top:16px">Time spent outside</strong><div class="small">Green: time between confirmed exit and next entry</div>'+bars('time')+'<div style="margin-top:14px;padding:12px;background:#f0f5ef;border-radius:10px"><strong>'+escapeHtml(chartDate(d.key).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}))+'</strong><div class="small">'+d.entries+' entries · '+d.exits+' exits · '+Math.floor(d.minutes/60)+'h '+String(d.minutes%60).padStart(2,'0')+'m confirmed outside ('+d.sessions+' matched intervals)</div><button class="button secondary" style="margin-top:8px" onclick="window.openActivityDay(\''+d.key+'\')">View movement details →</button></div><p class="small">Graphs use retrieved records. Missing movements, ongoing outdoor visits and unavailable history are not included in outside-time totals.</p>';
+}
+window.selectActivityDay=k=>{chartSelected=k;renderActivityCharts();};
+window.setActivityDays=n=>{chartDays=n===28?28:7;chartSelected=null;renderActivityCharts();};
+window.changeActivityPet=v=>{renderActivityCharts();};
+window.openActivityDay=k=>{if(typeof jumpTimelineDate==='function')jumpTimelineDate(k);document.getElementById('timelineEvents')?.scrollIntoView({behavior:'smooth',block:'start'});};
+
 try{const saved=JSON.parse(sessionStorage.getItem('pet-sure-activity-v211')||'null');if(saved&&Array.isArray(saved.events)){activity=saved.events;loaded=true;}}catch{}
 function direction(e){
  if(e.type!==0)return 'Unknown';
@@ -47,6 +92,7 @@ function paint(){
   box.style.maxHeight='330px';box.style.overflowY='auto';box.style.overscrollBehavior='contain';
   if(loaded)box.innerHTML=todayEvents.length?todayEvents.slice(0,35).map(e=>rowFor(e)).join(''):'<div class="empty">No activity recorded today.</div>';
  }
+ if(document.getElementById('timeline')?.classList.contains('active'){renderActivityCharts();}
  if(document.getElementById('timeline')?.classList.contains('active')&&typeof window.renderSureTimeline==='function')window.renderSureTimeline();
  if(document.getElementById('petDetailContent')?.closest('.page.active')&&typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
 }
@@ -76,6 +122,7 @@ window.renderSureTimeline=function(){
  const archiveControls=document.getElementById('archive-download-controls');if(!archiveControls){const controls=document.createElement('div');controls.id='archive-download-controls';controls.className='card';controls.style.margin='10px 0';controls.innerHTML='<strong>Saved movement archive</strong><p class="small">Download your stored movements for veterinary records or analysis.</p><a class="button secondary" href="./sure/archive?format=csv" download>Download CSV</a>';target.before(controls);}
 
  const picker=document.getElementById('timelineDatePicker');if(picker){picker.value=key;picker.max=ukDay(new Date());}document.getElementById('prevDay').disabled=false;document.getElementById('nextDay').disabled=offset>=0;document.getElementById('todayButton').style.display=offset===0?'none':'block';
+ renderActivityCharts();
  count.textContent=loaded?list.filter(e=>e.direction!=='Unknown').length+' confirmed movements · '+list.filter(e=>e.direction==='In').length+' in · '+list.filter(e=>e.direction==='Out').length+' out · '+list.filter(e=>e.direction==='Unknown').length+' needing verification':'Loading activity…';
  target.style.maxHeight='65vh';target.style.overflowY='auto';
  target.innerHTML=!loaded?'<div class="empty">Loading live Sure Petcare activity…</div>':list.length?list.map(e=>rowFor(e,true)).join(''):'<div class="empty">No matching activity recorded for this day.</div>';

@@ -183,4 +183,50 @@ const server=http.createServer(async(req,res)=>{
   const file=path.join(base,filename);
   fs.readFile(file,(err,body)=>{if(err){res.writeHead(404);return res.end();}res.writeHead(200,{'Content-Type':types[path.extname(file)]||'text/plain'});res.end(body);});
 });
+// Historical backfill is independent of live polling, capped to three pages per cycle.
+let archiveBusy=false;
+async function archiveBackfill(){
+ if(archiveBusy)return;archiveBusy=true;
+ try{
+  let opts={};try{opts=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
+  if(!opts.sure_email||!opts.sure_password)return;
+  const file='/data/sure-activity-cache.json',progress='/data/sure-archive-progress.json';
+  let page=2;try{const p=JSON.parse(fs.readFileSync(progress,'utf8'));if(p.complete)return;page=Math.max(2,Number(p.nextPage)||2);}catch{}
+  const deviceId=randomUUID(),headers={'Accept':'application/json','Content-Type':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
+  const login=await fetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:opts.sure_email,password:opts.sure_password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
+  if(!login.ok)return;const auth=await login.json(),access=auth.data?.token||auth.token;if(!access)return;headers.Authorization='Bearer '+access;
+  const start=await fetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});if(!start.ok)return;
+  const home=await start.json(),hs=home.data?.households||home.data?.household||home.households||[],house=Array.isArray(hs)?hs[0]:hs;
+  const houseId=house?.id||home.data?.household_id||home.data?.household?.id;if(!houseId)return;
+  const lookup=new Map();for(const p of Array.isArray(home.data?.pets)?home.data.pets:[])if(p.id&&p.name)lookup.set(String(p.id),String(p.name).toLowerCase());
+  let saved=[];try{saved=JSON.parse(fs.readFileSync(file,'utf8'));if(!Array.isArray(saved))saved=[];}catch{}
+  const map=new Map(saved.filter(e=>e.id).map(e=>[String(e.id),e]));
+  let complete=false;
+  for(let i=0;i<3;i++){
+   const response=await fetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page='+page,{headers,signal:AbortSignal.timeout(12000)});
+   if(!response.ok)break;const body=await response.json(),batch=Array.isArray(body)?body:Array.isArray(body.data)?body.data:Array.isArray(body.data?.entries)?body.data.entries:null;
+   if(!batch)break;if(!batch.length){complete=true;break;}
+   let oldest=Infinity,newCount=0;
+   for(const e of batch){
+    const id=String(e.id??''),at=e.created_at;if(!id||!Number.isFinite(Date.parse(at)))continue;
+    oldest=Math.min(oldest,Date.parse(at));
+    if(map.has(id))continue;
+    const ids=[...(Array.isArray(e.pets)?e.pets:[]),...(Array.isArray(e.movements)?e.movements:e.movements?[e.movements]:[])];
+    const names=[...new Set(ids.map(p=>String(p.name||lookup.get(String(p.pet_id??p.petId??p.id))||'').toLowerCase()).filter(n=>pets.includes(n)))];
+    const m=Array.isArray(e.movements)?e.movements[0]:e.movements;
+    const source=[m,e.movement,e.data?.movement,e.data,e].find(x=>x&&typeof x==='object'&&(x.direction!==undefined||x.side!==undefined||x.where!==undefined))||{};
+    const details={};for(const k of ['where','direction','position','side','type','movement_type'])if(['string','number','boolean'].includes(typeof source[k]))details[k]=source[k];
+    map.set(id,{id,type:Number(e.type),at,pets:names,details});newCount++;
+   }
+   if(!newCount){complete=true;break;}
+   page++;
+   if(oldest<Date.now()-183*86400000){complete=true;break;}
+  }
+  const merged=[...map.values()].sort((a,b)=>Date.parse(b.at)-Date.parse(a.at));
+  fs.writeFileSync(file,JSON.stringify(merged),{mode:0o600});
+  fs.writeFileSync(progress,JSON.stringify({nextPage:page,complete,updated:new Date().toISOString()}),{mode:0o600});
+ }catch{}finally{archiveBusy=false;}
+}
+setTimeout(archiveBackfill,60000);
+setInterval(archiveBackfill,300000);
 server.listen(80,'0.0.0.0');

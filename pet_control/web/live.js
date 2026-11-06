@@ -45,10 +45,10 @@ function paint(){
   const today=ukDay(new Date()),todayEvents=records().filter(e=>ukDay(new Date(e.at))===today);
   count.textContent=loaded?String(todayEvents.filter(e=>e.direction!=='Unknown').length):'–';
   box.style.maxHeight='330px';box.style.overflowY='auto';box.style.overscrollBehavior='contain';
-  if(loaded)box.innerHTML=todayEvents.length?todayEvents.map(e=>rowFor(e)).join(''):'<div class="empty">No activity recorded today.</div>';
+  if(loaded)box.innerHTML=todayEvents.length?todayEvents.slice(0,35).map(e=>rowFor(e)).join(''):'<div class="empty">No activity recorded today.</div>';
  }
- if(typeof window.renderSureTimeline==='function')window.renderSureTimeline();
- if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
+ if(document.getElementById('timeline')?.classList.contains('active')&&typeof window.renderSureTimeline==='function')window.renderSureTimeline();
+ if(document.getElementById('petDetailContent')?.closest('.page.active')&&typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
 }
 window.renderSurePetDetail=function(){
  const root=document.getElementById('petDetailContent');
@@ -63,7 +63,7 @@ window.renderSurePetDetail=function(){
 };
 window.renderSureTimeline=function(){
  const target=document.getElementById('timelineEvents'),count=document.getElementById('eventCount');
- if(!target||!count)return;
+ if(!target||!count||!target.closest('.page.active'))return;
  const offset=typeof dayOffset==='number'?dayOffset:0;
  const date=new Date();date.setDate(date.getDate()+offset);
  const key=ukDay(date);
@@ -83,12 +83,12 @@ window.renderSureTimeline=function(){
 };
 async function refreshCloud(force=false){
  if(pending)return pending;
- if(!force&&Date.now()-lastFetched<30000){paint();return;}
+ if(document.hidden)return;if(!force&&Date.now()-lastFetched<30000){paint();return;}
  pending=(async()=>{
   try{
    const r=await fetch('./sure/activity',{cache:'no-store'});if(!r.ok)throw Error('unavailable');
    const data=await r.json();if(!String(data.status).startsWith('connected'))throw Error(data.status);
-   activity=data.events||[];archiveEvents=[];archiveDay='';historyInfo={total:data.total,pagesFetched:data.pagesFetched,oldestEvent:data.oldestEvent,stopReason:data.stopReason,paginationMethod:data.paginationMethod,paginationTests:data.paginationTests};loaded=true;lastFetched=Date.now();
+   activity=data.events||[];historyInfo={total:data.total,pagesFetched:data.pagesFetched,oldestEvent:data.oldestEvent,stopReason:data.stopReason,paginationMethod:data.paginationMethod,paginationTests:data.paginationTests};loaded=true;lastFetched=Date.now();
    try{sessionStorage.setItem('pet-sure-activity-v211',JSON.stringify({events:activity}));}catch{}
   }catch{if(!loaded){const box=document.getElementById('homeEvents');if(box)box.innerHTML='<div class="empty">Sure Petcare activity unavailable.</div>';}}
   finally{pending=null;paint();}

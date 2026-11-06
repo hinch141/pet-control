@@ -14,6 +14,40 @@ const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost');
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Cache-Control','no-store');
+  if(url.pathname==='/live/flap/mode'&&req.method==='POST'){
+    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+    if(!token)return reply(503,{error:'Home Assistant connection unavailable'});
+    if(!String(req.headers['content-type']||'').startsWith('application/json'))return reply(415,{error:'JSON required'});
+    try{
+      let raw='';
+      for await(const chunk of req){raw+=chunk;if(raw.length>512)return reply(413,{error:'Request too large'});}
+      const body=JSON.parse(raw),mode=body.mode;
+      if(mode!=='normal'&&mode!=='indoor_only')return reply(400,{error:'Invalid mode'});
+      const headers={Authorization:'Bearer '+token,'Content-Type':'application/json'};
+      const entity='lock.my_flap_locked_out';
+      const before=await fetch('http://supervisor/core/api/states/'+entity,{headers,signal:AbortSignal.timeout(6000)});
+      if(!before.ok)return reply(502,{error:'Unable to check current flap state'});
+      const current=String((await before.json()).state);
+      if(current!=='locked'&&current!=='unlocked')return reply(409,{error:'Flap state unknown; no command sent'});
+      const desired=mode==='indoor_only'?'locked':'unlocked';
+      if(current!==desired){
+        const action=mode==='indoor_only'?'lock':'unlock';
+        const call=await fetch('http://supervisor/core/api/services/lock/'+action,{
+          method:'POST',headers,body:JSON.stringify({entity_id:entity}),signal:AbortSignal.timeout(8000)});
+        if(!call.ok)return reply(502,{error:'Home Assistant did not accept the command'});
+      }
+      // A successful service call alone does not establish the physical flap state.
+      for(let attempt=0;attempt<3;attempt++){
+        const check=await fetch('http://supervisor/core/api/states/'+entity,{headers,signal:AbortSignal.timeout(6000)});
+        if(check.ok){
+          const actual=String((await check.json()).state);
+          if(actual===desired)return reply(200,{status:'confirmed',mode,state:actual});
+        }
+        if(attempt<2)await new Promise(resolve=>setTimeout(resolve,900));
+      }
+      return reply(202,{status:'pending',message:'Command sent, but the flap state has not yet been confirmed'});
+    }catch{return reply(502,{error:'Unable to confirm flap command. Check Home Assistant.'});}
+  }
   if(req.method!=='GET'){res.writeHead(405);return res.end();}
   if(url.pathname==='/live/flap'){
     if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({status:'unavailable'}));}

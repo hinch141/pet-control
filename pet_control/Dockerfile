@@ -1,4 +1,5 @@
-ARG BUILD_FROM=nginx:stable-alpine
-FROM ${BUILD_FROM}
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY web/ /usr/share/nginx/html/
+FROM node:22-alpine
+WORKDIR /app
+COPY server.js /app/server.js
+COPY web/ /usr/share/pet-control/
+CMD ["node","/app/server.js"]

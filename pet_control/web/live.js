@@ -93,9 +93,11 @@ let graphRange=7,graphPet='all',graphSelected='';
 window.petGraphRange=function(n){graphRange=n===28?28:7;renderGraphs();};
 window.petGraphPet=function(v){graphPet=v;renderGraphs();};
 window.petGraphDay=function(v){graphSelected=v;showGraphPopup(v);};
+let graphPopupSort='newest';
+window.petGraphPopupSort=function(v){graphPopupSort=v==='oldest'?'oldest':'newest';showGraphPopup(graphSelected);};
 function showGraphPopup(day){
  const all=graphRecords().filter(e=>e.day===day&&(graphPet==='all'||e.pet===graphPet));
- const events=all.slice().sort((a,b)=>a.at-b.at);
+ const events=all.slice().sort((a,b)=>graphPopupSort==='oldest'?a.at-b.at:b.at-a.at);
  const entries=events.filter(e=>e.direction==='In').length,exits=events.filter(e=>e.direction==='Out').length;
  const clock=t=>new Date(t).toLocaleTimeString('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'});
  const name=p=>p.charAt(0).toUpperCase()+p.slice(1);
@@ -106,7 +108,7 @@ function showGraphPopup(day){
  let overlay=document.getElementById('pet-graph-popup');
  if(!overlay){overlay=document.createElement('div');overlay.id='pet-graph-popup';overlay.setAttribute('role','presentation');overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px';overlay.addEventListener('click',e=>{if(e.target===overlay)window.closePetGraphPopup();});document.body.appendChild(overlay);}
  const title=new Date(day+'T12:00:00Z').toLocaleDateString('en-GB',{timeZone:'Europe/London',weekday:'long',day:'numeric',month:'long',year:'numeric'});
- overlay.innerHTML='<div role="dialog" aria-modal="true" aria-label="Movement details for '+escapeHtml(title)+'" style="background:#fff;color:#19312d;border-radius:14px;padding:18px;width:min(100%,460px);max-height:85vh;overflow:auto;box-shadow:0 10px 40px #0004"><div style="display:flex;justify-content:space-between;gap:12px;align-items:start"><h3 style="margin:0">'+escapeHtml(title)+'</h3><button type="button" class="button secondary" onclick="closePetGraphPopup()" aria-label="Close movement details">Close ✕</button></div><p><strong>'+entries+' entries · '+exits+' exits</strong></p>'+(cats||'<p>No confirmed movements recorded.</p>')+'<h4>Movement times</h4><div style="max-height:40vh;overflow:auto">'+(rows||'<p class="small">No recorded movements for this day.</p>')+'</div><p class="small">Shows confirmed movements in the currently retrieved history. Missing records may affect totals.</p></div>';
+ overlay.innerHTML='<div role="dialog" aria-modal="true" aria-label="Movement details for '+escapeHtml(title)+'" style="background:#fff;color:#19312d;border-radius:14px;padding:18px;width:min(100%,460px);max-height:85vh;overflow:auto;box-shadow:0 10px 40px #0004"><div style="display:flex;justify-content:space-between;gap:12px;align-items:start"><h3 style="margin:0">'+escapeHtml(title)+'</h3><button type="button" class="button secondary" onclick="closePetGraphPopup()" aria-label="Close movement details">Close ✕</button></div><p><strong>'+entries+' entries · '+exits+' exits</strong></p>'+(cats||'<p>No confirmed movements recorded.</p>')+'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h4 style="margin:12px 0">Movement times</h4><label style="font-size:14px">Order <select aria-label="Sort movement times" onchange="petGraphPopupSort(this.value)"><option value="newest"'+(graphPopupSort==='newest'?' selected':'')+'>Newest first</option><option value="oldest"'+(graphPopupSort==='oldest'?' selected':'')+'>Oldest first</option></select></label></div><div style="max-height:40vh;overflow:auto">'+(rows||'<p class="small">No recorded movements for this day.</p>')+'</div><p class="small">Shows confirmed movements in the currently retrieved history. Missing records may affect totals.</p></div>';
  overlay.style.display='flex';overlay.querySelector('button')?.focus();
 }
 window.closePetGraphPopup=function(){const el=document.getElementById('pet-graph-popup');if(el)el.style.display='none';};

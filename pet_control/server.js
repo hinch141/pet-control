@@ -80,18 +80,18 @@ const server=http.createServer(async(req,res)=>{
       // Cap requests and stop at the first older page to avoid excessive cloud traffic.
       const items=[];
       const cutoff=Date.now()-183*86400000;
-      let historyComplete=false,historyError=false;
+      let historyComplete=false,historyError=false;let pagesFetched=0,stopReason='page_limit';
       const seenIds=new Set();
       for(let page=0;page<240;page++){
         let response;
         try{response=await fetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page='+page,{headers,signal:AbortSignal.timeout(12000)});}
         catch{historyError=true;break;}
-        if(!response.ok){historyError=true;break;}
+        if(!response.ok){historyError=true;stopReason='http_'+response.status;break;}
         let body;
         try{body=await response.json();}catch{historyError=true;break;}
         const batch=Array.isArray(body)?body:Array.isArray(body.data)?body.data:Array.isArray(body.data?.entries)?body.data.entries:null;
-        if(!batch){historyError=true;break;}
-        if(!batch.length){historyComplete=true;break;}
+        if(!batch){historyError=true;stopReason='unexpected_response';break;}
+        pagesFetched++;if(!batch.length){historyComplete=true;stopReason='empty_page';break;}
         let fresh=0;
         for(const e of batch){
           const id=String(e.id??'');
@@ -99,9 +99,9 @@ const server=http.createServer(async(req,res)=>{
           if(id)seenIds.add(id);
           items.push(e);fresh++;
         }
-        if(!fresh){historyComplete=true;break;}
+        if(!fresh){historyComplete=true;stopReason='repeated_page';break;}
         const dates=batch.map(e=>Date.parse(e.created_at)).filter(Number.isFinite);
-        if(dates.length&&Math.max(...dates)<cutoff){historyComplete=true;break;}
+        if(dates.length&&Math.max(...dates)<cutoff){historyComplete=true;stopReason='six_month_boundary';break;}
         // Page sizes vary; an empty page or an older-than-cutoff page ends backfill.
       }
       if(!items.length&&historyError)return send('timeline_error',{events:[],total:0});
@@ -131,10 +131,10 @@ const server=http.createServer(async(req,res)=>{
         const map=new Map(saved.map(e=>[e.id,e]));for(const e of events)if(e.id)map.set(e.id,e);
         const merged=[...map.values()].filter(e=>Number.isFinite(Date.parse(e.at))).sort((a,b)=>new Date(b.at)-new Date(a.at));
         fs.writeFileSync(file,JSON.stringify(merged),{mode:0o600});
-        const detail={events:merged,total:merged.length,historyComplete,historyError,source:'Sure Petcare timeline; six-month backfill with long-term local retention'};
+        const detail={events:merged,total:merged.length,historyComplete,historyError,pagesFetched,stopReason,oldestEvent:merged.at(-1)?.at||null,source:'Sure Petcare timeline; six-month backfill with long-term local retention'};
         activitySnapshot={at:Date.now(),status:'connected',detail};
         return send('connected',detail);
-      }catch{return send('connected_no_cache',{events,total:events.length,historyComplete,historyError});}
+      }catch{return send('connected_no_cache',{events,total:events.length,historyComplete,historyError,pagesFetched,stopReason});}
     }catch{return send('connection_error',{events:[],total:0});}
   }
   if(url.pathname==='/live/status'){

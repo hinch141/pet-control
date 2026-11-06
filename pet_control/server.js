@@ -7,6 +7,8 @@ const pets=['jessie','henry','rosie','violet'];
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8'};
 const token=process.env.SUPERVISOR_TOKEN;
 const server=http.createServer(async(req,res)=>{
+  const peer=(req.socket.remoteAddress||'').replace(/^::ffff:/,'');
+  if(peer!=='172.30.32.2'){res.writeHead(403);return res.end();}
   const url=new URL(req.url,'http://localhost');
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Cache-Control','no-store');

@@ -79,7 +79,52 @@ window.renderSureTimeline=function(){
  count.textContent=loaded?list.filter(e=>e.direction!=='Unknown').length+' confirmed movements · '+list.filter(e=>e.direction==='In').length+' in · '+list.filter(e=>e.direction==='Out').length+' out · '+list.filter(e=>e.direction==='Unknown').length+' needing verification':'Loading activity…';
  target.style.maxHeight='65vh';target.style.overflowY='auto';
  target.innerHTML=!loaded?'<div class="empty">Loading live Sure Petcare activity…</div>':list.length?list.map(e=>rowFor(e,true)).join(''):'<div class="empty">No matching activity recorded for this day.</div>';
+ renderGraphs();
 };
+
+let graphCache=null,graphActivityRef=null,graphArchiveRef=null;
+function graphRecords(){
+ if(graphCache&&graphActivityRef===activity&&graphArchiveRef===archiveEvents)return graphCache;
+ graphActivityRef=activity;graphArchiveRef=archiveEvents;
+ graphCache=records().filter(e=>e.direction==='In'||e.direction==='Out').map(e=>({pet:e.pet,direction:e.direction,at:new Date(e.at).getTime(),day:ukDay(new Date(e.at))})).filter(e=>Number.isFinite(e.at));
+ return graphCache;
+}
+let graphRange=7,graphPet='all',graphSelected='';
+window.petGraphRange=function(n){graphRange=n===28?28:7;renderGraphs();};
+window.petGraphPet=function(v){graphPet=v;renderGraphs();};
+window.petGraphDay=function(v){graphSelected=v;renderGraphs();};
+function renderGraphs(){
+ const timeline=document.getElementById('timelineEvents');
+ if(!timeline||!timeline.closest('.page.active'))return;
+ let root=document.getElementById('pet-graphs');
+ if(!root){root=document.createElement('div');root.id='pet-graphs';root.className='card';root.style.margin='12px 0';timeline.before(root);}
+ const events=graphRecords().filter(e=>graphPet==='all'||e.pet===graphPet);
+ const today=ukDay(new Date()),days=[];
+ for(let i=graphRange-1;i>=0;i--){const d=new Date();d.setUTCDate(d.getUTCDate()-i);days.push({day:ukDay(d),ins:0,outs:0,minutes:0});}
+ const byDay=new Map(days.map(d=>[d.day,d]));
+ const lastOut=new Map();
+ // Process chronologically, separately for each cat, so interleaved pet events do not corrupt durations.
+ for(let i=events.length-1;i>=0;i--){const e=events[i],b=byDay.get(e.day);
+  if(b){if(e.direction==='In')b.ins++;else b.outs++;}
+  if(e.direction==='Out'){lastOut.set(e.pet,e.at);continue;}
+  const start=lastOut.get(e.pet);if(start===undefined||e.at<=start)continue;
+  lastOut.delete(e.pet);
+  // Split sessions across UK calendar days, including daylight-saving changes.
+  let t=start,guard=0;
+  while(t<e.at&&guard++<35){const k=ukDay(new Date(t));let next=t+3600000;while(next<e.at&&ukDay(new Date(next))===k)next+=3600000;
+   let lo=t,hi=Math.min(e.at,next);if(ukDay(new Date(hi))!==k){while(hi-lo>1000){const mid=Math.floor((lo+hi)/2);if(ukDay(new Date(mid))===k)lo=mid;else hi=mid;}}
+   const end=hi===e.at?hi:hi;const row=byDay.get(k);if(row)row.minutes+=(end-t)/60000;
+   t=end>t?end:t+1000;
+  }
+ }
+ const maxMove=Math.max(1,...days.map(d=>Math.max(d.ins,d.outs))),maxTime=Math.max(1,...days.map(d=>d.minutes));
+ const bar=(value,max,color,day,title)=>'<button type="button" onclick="petGraphDay(\''+day+'\')" title="'+escapeHtml(title)+'" style="flex:1;min-width:0;height:'+Math.max(2,Math.round(value/max*94))+'px;background:'+color+';border:0;border-radius:3px 3px 0 0;padding:0;cursor:pointer" aria-label="'+escapeHtml(title)+'"></button>';
+ const bars=(kind)=>'<div style="display:flex;align-items:flex-end;gap:3px;height:100px;border-bottom:1px solid #cbd9d4">'+days.map(d=>kind==='move'?'<div style="flex:1;display:flex;gap:1px;align-items:flex-end;height:100%">'+bar(d.ins,maxMove,'#178f99',d.day,d.day+': '+d.ins+' entries')+bar(d.outs,maxMove,'#e49a46',d.day,d.day+': '+d.outs+' exits')+'</div>':bar(d.minutes,maxTime,'#5d7ec3',d.day,d.day+': '+Math.round(d.minutes)+' minutes outside')).join('')+'</div>';
+ const selected=byDay.get(graphSelected)||days[days.length-1];
+ const opts=['all',...names.map(n=>n.toLowerCase())].map(n=>'<option value="'+escapeHtml(n)+'"'+(graphPet===n?' selected':'')+'>'+(n==='all'?'All cats':escapeHtml(n.charAt(0).toUpperCase()+n.slice(1)))+'</option>').join('');
+ root.innerHTML='<h3 style="margin-top:0">Movement graphs</h3><div class="row" style="gap:8px;flex-wrap:wrap"><label>Cat <select onchange="petGraphPet(this.value)">'+opts+'</select></label><button class="button secondary" onclick="petGraphRange(7)" '+(graphRange===7?'aria-pressed="true"':'')+'>7 days</button><button class="button secondary" onclick="petGraphRange(28)" '+(graphRange===28?'aria-pressed="true"':'')+'>28 days</button></div><h4>Entries and exits</h4>'+bars('move')+'<p class="small">Blue: entries · Orange: exits</p><h4>Time spent outside</h4>'+bars('time')+'<p class="small">Minutes between confirmed exits and returns, by cat</p><div class="small">'+escapeHtml(days[0].day)+' to '+escapeHtml(today)+'</div><p><strong>'+escapeHtml(selected.day)+'</strong>: '+selected.ins+' in · '+selected.outs+' out · '+Math.round(selected.minutes)+' minutes outside</p><p class="small">Tap a bar for daily figures. Based on currently retrieved events; older or missing history may produce incomplete totals. Unfinished trips are excluded.</p>';
+}
+
 async function refreshCloud(force=false){
  if(pending)return pending;
  if(document.hidden)return;if(!force&&Date.now()-lastFetched<30000){paint();return;}

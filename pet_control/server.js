@@ -163,7 +163,7 @@ const server=http.createServer(async(req,res)=>{
     if(req.method==='POST'){
       if(!String(req.headers['content-type']||'').startsWith('application/json'))return reply(415,{error:'JSON required'});
       let raw='';try{for await(const chunk of req){raw+=chunk;if(raw.length>512)return reply(413,{error:'Request too large'});}body=JSON.parse(raw);}catch{return reply(400,{error:'Invalid JSON'});}
-      if(!['inside','outside'].includes(body?.location)||!/^\\d+$/.test(String(body?.petId||'')))return reply(400,{error:'Invalid pet or location'});
+      if(!['inside','outside'].includes(body?.location)||!/^\d+$/.test(String(body?.petId||'')))return reply(400,{error:'Invalid pet or location'});
     }
     let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
     const email=String(options.sure_email||'').trim(),password=String(options.sure_password||'');

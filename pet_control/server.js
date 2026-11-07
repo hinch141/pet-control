@@ -109,7 +109,10 @@ async function sureFetch(url,options={}){
   if(wait)await surePause(wait);
   if(Date.now()<sureTraffic.cooldown)throw Error('Sure Petcare rate limit active; requests paused');
   sureTraffic.next=Date.now()+3000;
-  const response=await fetch(url,options);
+  const {timeoutMs,...fetchOptions}=options;
+  // Start the timeout when the queued request actually begins, not while it waits.
+  if(timeoutMs)fetchOptions.signal=AbortSignal.timeout(timeoutMs);
+  const response=await fetch(url,fetchOptions);
   if(response.status===429){
    const retry=Number(response.headers.get('retry-after'));
    sureTraffic.cooldown=Date.now()+(Number.isFinite(retry)&&retry>0?Math.min(retry*1000,900000):300000);
@@ -130,16 +133,16 @@ async function surePetSession(){
  let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
  if(!options.sure_email||!options.sure_password)throw Error('Sure Petcare not configured');
  const deviceId=sureDeviceId,headers={'Content-Type':'application/json',Accept:'application/json',Origin:'https://surepetcare.io',Referer:'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
- const login=await sureFetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:options.sure_email,password:options.sure_password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
+ const login=await sureFetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:options.sure_email,password:options.sure_password,device_id:deviceId}),timeoutMs:12000});
  if(!login.ok)throw Error('Sure Petcare login failed');
  const auth=await login.json(),access=auth.data?.token||auth.token||auth.access_token||auth.data?.access_token;
  if(!access)throw Error('Sure Petcare login token unavailable');
  headers.Authorization='Bearer '+access;
- const dashboard=async()=>{const r=await sureFetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('Sure Petcare permission check failed');return (await r.json()).data||{};};
+ const dashboard=async()=>{const r=await sureFetch('https://app.api.surehub.io/api/me/start',{headers,timeoutMs:12000});if(!r.ok)throw Error('Sure Petcare permission check failed');return (await r.json()).data||{};};
  const set=async(device,tag,profile)=>{
   const queuedAt=Date.now();
   try{
-   const r=await sureFetch('https://app.api.surehub.io/api/device/'+device+'/tag/'+tag,{method:'PUT',headers,body:JSON.stringify({profile}),signal:AbortSignal.timeout(12000)});
+   const r=await sureFetch('https://app.api.surehub.io/api/device/'+device+'/tag/'+tag,{method:'PUT',headers,body:JSON.stringify({profile}),timeoutMs:12000});
    if(!r.ok)throw Error('Sure Petcare permission update returned HTTP '+r.status);
    console.log('Sure Petcare permission write accepted in '+(Date.now()-queuedAt)+'ms');
   }catch(err){

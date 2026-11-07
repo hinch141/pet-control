@@ -159,7 +159,7 @@ async function petCurfewTick(){
      }
      entry.owned=false;entry.phase='external';entry.lastError='Flap permission changed externally; curfew paused until next window';logPetCurfew(id,'external_access_detected','Free Access observed after confirmation grace period');continue;
     }else entry.phase=active?'curfew':'free';
-    entry.lastError='';
+    if(entry.phase!=='releasing')entry.lastError='';
    }catch(err){entry.lastError=String(err.message||err).slice(0,160);logPetCurfew(id,'scheduler_error',entry.lastError);}
   }
   savePetCurfews();

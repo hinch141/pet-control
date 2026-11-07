@@ -6,7 +6,7 @@ section.innerHTML='<strong>Live Sure Petcare status</strong><div id="pet-live-li
 const flapSection=document.createElement('section');
 flapSection.className='card';
 flapSection.style.cssText='margin-top:14px;background:#fff;color:#19312d;width:100%;';
-flapSection.innerHTML='<strong>Cat flap — live lock status</strong><div id="flap-live-status" style="margin-top:8px">Checking Home Assistant…</div><p class="small" style="margin-bottom:0">Controls use the exit restriction only. Entry remains permitted.</p>';
+flapSection.innerHTML='<strong>Whole-house flap — live lock status</strong><div id="flap-live-status" style="margin-top:8px">Checking Home Assistant…</div><p class="small" style="margin-bottom:0">This reports the whole-house flap lock, not individual cat curfews. Entry remains permitted.</p>';
 let flapPending=false,flapCommandPending=false,flapConfirmed=null,flapMessage='',flapDesired=null,flapLastSuccess=0,flapRetryTimer=null;
 const flapWait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function syncFlapUI(){
@@ -304,7 +304,7 @@ async function refreshCloud(force=false){
  })();
  return pending;
 }
-const mount=()=>{const home=document.getElementById('home');const stats=home?.querySelector('.stats');if(stats){stats.insertAdjacentElement('afterend',section);section.insertAdjacentElement('afterend',flapSection);}else if(home){home.prepend(section);section.insertAdjacentElement('afterend',flapSection);}else{document.body.prepend(section);section.insertAdjacentElement('afterend',flapSection);}};
+const mount=()=>{const home=document.getElementById('home');const stats=home?.querySelector('.stats');if(stats)stats.insertAdjacentElement('afterend',section);else if(home)home.prepend(section);else document.body.prepend(section);const toggle=home?.querySelector('#houseIndoorToggle');const houseCard=toggle?.closest('.card');if(houseCard)houseCard.insertAdjacentElement('afterend',flapSection);else section.insertAdjacentElement('afterend',flapSection);};
 let statusPending=false;
 async function refresh(){
 if(statusPending||document.hidden)return;

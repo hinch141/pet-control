@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.18.83
+- Renamed app branding to Hinchliffe Pet HQ, with a friendlier tagline and updated installable web app manifest.
+- Improved visual contrast, colourful cards, gradients, buttons and navigation. No scheduler or permission changes.
+- Corrected outdated Settings wording: individual curfews and manual access controls are live; household invitations remain incomplete.
+
+
 ## v2.18.82
 - Refreshed colours, pet cards, status pills, navigation and activity presentation without modifying server-side commands or scheduling.
 - Added per-cat daily inward entry counts on the home cards using existing cached Sure Petcare activity; no extra API requests.

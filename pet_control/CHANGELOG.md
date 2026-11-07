@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.51 — 7 November 2026
+- Replace alarming whole-house warning with a friendly reassurance that individual settings remain unchanged.
+- Make Continue the primary action, with optional Review Jessie / Review cats and Cancel.
+- Continue now performs the original whole-house action directly without a second confirmation; guided review remains available.
+
 ## 2.18.50 — 7 November 2026
 - Warn about individual cat restrictions and curfews before changing whole-house access or enabling/disabling whole-house curfews.
 - Guide users through affected cats with previous/next controls and return links from access and curfew settings.

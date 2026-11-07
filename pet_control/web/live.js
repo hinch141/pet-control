@@ -192,6 +192,7 @@ function paint(){
 }
 let petPermissionCache={};
 let petPermissionRequest=null;
+window.getLivePetAccess=id=>petPermissionCache[String(id||'')]||'Checking…';
 async function refreshPetPermissionDisplay(){
  if(petPermissionRequest)return petPermissionRequest;
  petPermissionRequest=(async()=>{
@@ -204,6 +205,7 @@ async function refreshPetPermissionDisplay(){
   }catch{petPermissionCache={};}
   finally{petPermissionRequest=null;}
   if(document.getElementById('petDetailContent')?.closest('.page.active'))window.renderSurePetDetail();
+  if(document.getElementById('home')?.classList.contains('active')&&typeof render==='function')render();
  })();
  return petPermissionRequest;
 }

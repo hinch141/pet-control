@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.18.75 — 7 November 2026
+- Route Sure Petcare requests from all server endpoints and archive backfill through one global serialised request limiter (minimum three seconds between requests).
+- Reuse authenticated Sure Petcare responses for ten minutes, deduplicating concurrent logins, with hashed credential cache keys.
+- Briefly cache dashboard snapshots, invalidating on permission/location writes.
+- Respect HTTP 429 Retry-After or pause outbound requests for five minutes by default; clear cached sessions on rate limiting or unauthorised responses.
+- Existing frontend polling remains but no longer causes a fresh cloud login on each read.
+- This is a protective change; physical flap permission propagation and overlapping curfew reliability still require validation.
+
 ## 2.18.74 — 7 November 2026
 - Individual curfew release no longer blocks on an immediate Sure Petcare read-after-write check.
 - Confirm Free Access from later cloud snapshots; retry an unconfirmed release no more frequently than every 20 seconds.

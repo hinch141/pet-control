@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.50 — 7 November 2026
+- Warn about individual cat restrictions and curfews before changing whole-house access or enabling/disabling whole-house curfews.
+- Guide users through affected cats with previous/next controls and return links from access and curfew settings.
+- Preserve individual schedules and manual holds; require final confirmation of the original whole-house change.
+
 ## 2.18.49 — 7 November 2026
 - Connect seven-day per-cat curfews to a persistent Home Assistant add-on scheduler, running without the phone open.
 - Apply individual Sure Petcare tag permissions (Indoor Only / Free Access), independently for each cat.

@@ -170,7 +170,7 @@ function renderTimeline(){
  el('timelineEvents').innerHTML=events.map(eventRow).join('')||'<div class="empty">No movements recorded on this day.<br><span class="small">Use the arrows to browse other days.</span></div>';
 }
 const dayNames=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-function ensureSchedule(p){if(!p.curfewV3){let old=p.curfewV2;let weekdays=old?.weekdays||{start:p.start||'21:00',end:p.end||'07:00'};let weekends=old?.weekendSame!==false?weekdays:(old?.weekends||weekdays);p.curfewV3={days:dayNames.map((_,i)=>({...((i<5)?weekdays:weekends),enabled:false}))};}p.curfewV3.days=p.curfewV3.days.map(d=>({...d,enabled:d.enabled===true&&d.start!==d.end,start:/^([01]\\d|2[0-3]):[0-5]\\d$/.test(d.start||'')?d.start:'22:00',end:/^([01]\\d|2[0-3]):[0-5]\\d$/.test(d.end||'')?d.end:'07:00'}));return p.curfewV3}
+function ensureSchedule(p){if(!p.curfewV3){let old=p.curfewV2;let weekdays=old?.weekdays||{start:p.start||'21:00',end:p.end||'07:00'};let weekends=old?.weekendSame!==false?weekdays:(old?.weekends||weekdays);p.curfewV3={days:dayNames.map((_,i)=>({...((i<5)?weekdays:weekends),enabled:false}))};}p.curfewV3.days=p.curfewV3.days.map(d=>({...d,enabled:d.enabled===true&&d.start!==d.end,start:/^([01]\d|2[0-3]):[0-5]\d$/.test(d.start||'')?d.start:'22:00',end:/^([01]\d|2[0-3]):[0-5]\d$/.test(d.end||'')?d.end:'07:00'}));return p.curfewV3}
 let petCurfewSyncTimers={};
 async function loadLivePetCurfews(){
  try{

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.18.69 — 7 November 2026
+- Fix Edit times after the already-passed individual curfew warning: retain the selected day and unsaved time edits instead of reloading the previous server schedule and unchecking the day.
+- Return to the existing editor without sending the draft to Sure Petcare until the user makes a subsequent change or confirms saving.
+
 ## 2.18.68 — 7 November 2026
 - Add a save confirmation when an enabled individual curfew for today has already finished; display the next occurrence next week.
 - Apply the same check to individual-day, same-all-week and copied schedules via the common save path.

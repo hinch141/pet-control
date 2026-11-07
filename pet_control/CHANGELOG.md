@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.72 — 7 November 2026
+- Home cards now use the same effective Home Assistant presence status as the live refresh and pet detail, rather than rebuilding from a separate raw value during unrelated rerenders.
+- Preserve any pending manual location display override consistently until Home Assistant confirms or it expires.
+- No changes to cat access commands or curfew scheduling.
+
 ## 2.18.71 — 7 November 2026
 - Curfew diagnostics and event-history buttons now toggle their respective expanded results closed on a second tap.
 - No changes to automatic access scheduling or Home Assistant presence sensors in this release; both are under investigation after the overlapping-curfew test.

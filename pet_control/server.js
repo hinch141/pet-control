@@ -65,7 +65,7 @@ const server=http.createServer(async(req,res)=>{
       if(wasOwned){curfewBusy=true;try{await curfewCommand('normal');curfew.ownsLock=false;curfew.lastError='';saveCurfew();}catch(e){curfew.lastError='Curfew disabled, but flap unlock not confirmed: '+e.message;saveCurfew();return reply(502,{error:curfew.lastError});}finally{curfewBusy=false;}}
       return reply(200,curfew);
     }
-    if(body.action!=='enable'||!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(body.start)||!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(body.end)||body.start>=body.end)return reply(400,{error:'Choose a start and end time on the same day, with the end later than the start.'});
+    if(body.action!=='enable'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(body.start)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(body.end)||body.start>=body.end)return reply(400,{error:'Choose a start and end time on the same day, with the end later than the start.'});
     if(curfew.enabled||curfew.ownsLock)return reply(409,{error:'Disable the current curfew first.'});
     curfew={enabled:true,start:body.start,end:body.end,date:nextCurfewDate(body.start),phase:'waiting',ownsLock:false,lastError:''};
     saveCurfew();return reply(200,curfew);
@@ -347,7 +347,7 @@ const server=http.createServer(async(req,res)=>{
   if(url.pathname==='/sure/archive'){
     let events=[];try{events=JSON.parse(fs.readFileSync('/data/sure-activity-cache.json','utf8'));if(!Array.isArray(events))events=[];}catch{}
     const date=url.searchParams.get('date');
-    if(date&&/^\\d{4}-\\d{2}-\\d{2}$/.test(date))events=events.filter(e=>(()=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(e.at)).map(p=>[p.type,p.value]));return parts.year+'-'+parts.month+'-'+parts.day;})()===date);
+    if(date&&/^\d{4}-\d{2}-\d{2}$/.test(date))events=events.filter(e=>(()=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(e.at)).map(p=>[p.type,p.value]));return parts.year+'-'+parts.month+'-'+parts.day;})()===date);
     if(url.searchParams.get('format')==='csv'){
       const q=x=>'"'+String(x??'').replace(/"/g,'""')+'"';
       const lines=['Time (UTC),Pet,Movement'];

@@ -235,7 +235,7 @@ function syncLivePetCurfew(id){
    const nextDate=next.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
    modal('<h3>Today’s curfew has already passed</h3><p>'+esc(p.name)+'’s '+esc(d.name)+' curfew ('+esc(d.start)+'–'+esc(d.end)+') has already finished today. It will next run on '+esc(nextDate)+'.</p><div class="row"><button class="button" id="confirmIndividualPastCurfew">Save schedule</button><button class="button outline" id="editIndividualPastCurfew">Edit times</button></div>');
    el('confirmIndividualPastCurfew').onclick=async()=>{closeModal();await post();};
-   el('editIndividualPastCurfew').onclick=async()=>{closeModal();await loadLivePetCurfews();toast('Schedule not changed. Edit the times and try again.');};
+   el('editIndividualPastCurfew').onclick=()=>{closeModal();render();toast('Times ready to edit. The selected day remains checked; changes are not yet sent to the flap.');};
    return;
   }
   await post();

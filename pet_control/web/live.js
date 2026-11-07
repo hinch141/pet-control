@@ -9,33 +9,59 @@ flapSection.style.cssText='margin-top:14px;margin-bottom:14px;background:#fff;co
 flapSection.innerHTML='<strong>Whole-house flap — live lock status</strong><div id="flap-live-status" style="margin-top:8px">Checking Home Assistant…</div><p class="small" style="margin-bottom:0">This reports the whole-house flap lock, not individual cat curfews. Entry remains permitted.</p>';
 
 let wholeCurfew=null,curfewActionBusy=false;
+const ukDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')?d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4):'';
 function showWholeCurfew(){
- const toggle=document.getElementById('houseCurfewEnabled'),start=document.getElementById('houseCurfewStart'),end=document.getElementById('houseCurfewEnd'),status=document.getElementById('houseCurfewStatus');
+ const toggle=document.getElementById('houseCurfewEnabled'),status=document.getElementById('houseCurfewStatus');
  if(!toggle||!status)return;
  toggle.disabled=curfewActionBusy||!wholeCurfew;
  toggle.checked=!!wholeCurfew?.enabled;
- if(start){start.disabled=curfewActionBusy||!!wholeCurfew?.enabled;if(wholeCurfew?.enabled)start.value=wholeCurfew.start;}
- if(end){end.disabled=curfewActionBusy||!!wholeCurfew?.enabled;if(wholeCurfew?.enabled)end.value=wholeCurfew.end;}
- status.textContent=wholeCurfew?.enabled?(wholeCurfew.phase==='active'?'Curfew active — Indoor Only until '+wholeCurfew.end:'Scheduled for '+wholeCurfew.date+' from '+wholeCurfew.start+' to '+wholeCurfew.end)+(wholeCurfew.lastError?' · '+wholeCurfew.lastError:''):wholeCurfew?.lastError||'Curfew off — manual flap control available.';
+ const ranges=(wholeCurfew?.ranges||[]).map(r=>r.start+'–'+r.end).join(', ');
+ status.textContent=wholeCurfew?.enabled?(wholeCurfew.phase==='active'?'Active — Indoor Only':'Enabled — daily schedule')+' · '+ranges:wholeCurfew?.phase==='off'?'Off · '+ranges:'Loading curfew…';
+ if(wholeCurfew?.phase==='overridden')status.textContent='Manual override active · '+ranges;
+ if(wholeCurfew?.lastError)status.textContent+=' · '+wholeCurfew.lastError;
 }
 async function refreshWholeCurfew(){
  if(curfewActionBusy)return;
  try{const r=await fetch('./live/flap/curfew',{cache:'no-store',signal:AbortSignal.timeout(8000)});if(!r.ok)throw Error();wholeCurfew=await r.json();}catch{wholeCurfew=null;}
  showWholeCurfew();
 }
-window.toggleWholeCurfew=async function(enabled){
- if(curfewActionBusy)return;
- const start=document.getElementById('houseCurfewStart')?.value,end=document.getElementById('houseCurfewEnd')?.value;
- if(enabled&&(!start||!end||start>=end)){toast('End time must be later than start time on the same day.');showWholeCurfew();return;}
+async function saveWholeCurfew(action,ranges){
  curfewActionBusy=true;showWholeCurfew();
  try{
-  const r=await fetch('./live/flap/curfew',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(enabled?{action:'enable',start,end}:{action:'disable'}),signal:AbortSignal.timeout(20000)});
+  const r=await fetch('./live/flap/curfew',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,ranges}),signal:AbortSignal.timeout(20000)});
   const d=await r.json();if(!r.ok)throw Error(d.error||'Curfew could not be changed');
-  wholeCurfew=d;toast(enabled?'One-off curfew scheduled':'Curfew cancelled');await refreshFlap();
- }catch(e){toast(e.message||'Curfew change failed');}
+  wholeCurfew=d;toast(action==='disable'?'Curfew switched off':action==='save'?'Curfew times saved':'Curfew enabled');
+  if(action==='disable')await refreshFlap();
+  return true;
+ }catch(e){toast(e.message||'Curfew change failed');return false;}
  finally{curfewActionBusy=false;await refreshWholeCurfew();showWholeCurfew();}
+}
+window.toggleWholeCurfew=async function(enabled){
+ if(curfewActionBusy)return;
+ await saveWholeCurfew(enabled?'enable':'disable',wholeCurfew?.ranges||[{start:'10:00',end:'10:01'}]);
 };
-
+let curfewDraft=[];
+function drawCurfewRows(){
+ const target=document.getElementById('curfewRangeRows');if(!target)return;
+ target.innerHTML=curfewDraft.map((r,i)=>'<div class="row" style="gap:8px;align-items:end;margin:10px 0;flex-wrap:wrap"><label class="small">From<input type="time" aria-label="Start time '+(i+1)+'" value="'+r.start+'" data-curfew-start="'+i+'" style="display:block;max-width:125px;padding:9px;border:1px solid #b9c8be;border-radius:8px"></label><label class="small">Until<input type="time" aria-label="End time '+(i+1)+'" value="'+r.end+'" data-curfew-end="'+i+'" style="display:block;max-width:125px;padding:9px;border:1px solid #b9c8be;border-radius:8px"></label><button class="button secondary" type="button" onclick="removeCurfewRange('+i+')" '+(curfewDraft.length===1?'disabled':'')+'>Remove</button></div>').join('');
+}
+function collectCurfewRows(){
+ document.querySelectorAll('[data-curfew-start]').forEach(el=>{curfewDraft[Number(el.dataset.curfewStart)].start=el.value;});
+ document.querySelectorAll('[data-curfew-end]').forEach(el=>{curfewDraft[Number(el.dataset.curfewEnd)].end=el.value;});
+}
+window.addCurfewRange=function(){collectCurfewRows();if(curfewDraft.length>=12){toast('Maximum 12 ranges');return;}curfewDraft.push({start:'22:00',end:'06:00'});drawCurfewRows();};
+window.removeCurfewRange=function(i){collectCurfewRows();if(curfewDraft.length<=1)return;curfewDraft.splice(i,1);drawCurfewRows();};
+window.openWholeCurfewEditor=function(){
+ if(wholeCurfew?.enabled){toast('Switch the curfew off before editing its times.');return;}
+ curfewDraft=(wholeCurfew?.ranges||[{start:'10:00',end:'10:01'}]).map(r=>({...r}));
+ modal('<h3>Whole-house curfew times</h3><p class="small">Add up to 12 daily time ranges. Overnight ranges are allowed. All cats can still enter.</p><div id="curfewRangeRows"></div><button class="button secondary" type="button" onclick="addCurfewRange()">+ Add another range</button><div class="row" style="margin-top:18px"><button class="button" type="button" onclick="saveCurfewEditor()">Save times</button><button class="button outline" type="button" onclick="closeModal()">Cancel</button></div>');
+ drawCurfewRows();
+};
+window.saveCurfewEditor=async function(){
+ collectCurfewRows();
+ const good=await saveWholeCurfew('save',curfewDraft);
+ if(good)closeModal();
+};
 let flapPending=false,flapCommandPending=false,flapConfirmed=null,flapMessage='',flapDesired=null,flapLastSuccess=0,flapRetryTimer=null;
 const flapWait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function syncFlapUI(){

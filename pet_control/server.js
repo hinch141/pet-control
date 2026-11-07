@@ -2,7 +2,7 @@
 const http=require('node:http');
 const fs=require('node:fs');
 const path=require('node:path');
-const {randomUUID}=require('node:crypto');
+const {randomUUID,createHash}=require('node:crypto');
 const base='/usr/share/pet-control';
 const pets=['jessie','henry','rosie','violet'];
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8'};
@@ -94,7 +94,7 @@ async function sureFetch(url,options={}){
  if(!endpoint.startsWith('https://app.api.surehub.io/api/'))throw Error('Unexpected Sure Petcare endpoint');
  const login=endpoint.endsWith('/auth/login'),dashboard=endpoint.endsWith('/me/start');
  const method=String(options.method||'GET').toUpperCase();
- const key=login?(()=>{try{const b=JSON.parse(options.body||'{}');return String(b.email_address||'')+'\\0'+String(b.password||'');}catch{return String(options.body||'');}})():'';
+ const key=login?(()=>{try{const b=JSON.parse(options.body||'{}');return createHash('sha256').update(String(b.email_address||'')+'|'+String(b.password||'')).digest('hex');}catch{return String(options.body||'');}})():'';
  if(login){
   const prior=sureTraffic.login.get(key);
   if(prior&&Date.now()<prior.expires)return prior.response.clone();
@@ -107,7 +107,7 @@ async function sureFetch(url,options={}){
   const wait=Math.max(0,sureTraffic.next-Date.now());
   if(wait)await surePause(wait);
   if(Date.now()<sureTraffic.cooldown)throw Error('Sure Petcare rate limit active; requests paused');
-  sureTraffic.next=Date.now()+2000;
+  sureTraffic.next=Date.now()+3000;
   const response=await fetch(url,options);
   if(response.status===429){
    const retry=Number(response.headers.get('retry-after'));
@@ -579,7 +579,7 @@ const server=http.createServer(async(req,res)=>{
       const householdId=first?.id||household.data?.household_id||household.data?.household?.id;
       if(!householdId)return output('login_connected','Authentication works. Household response structure needs adapting for timeline.');
       const endpoint='https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(householdId)+'?page=0';
-      const timeline=await fetch(endpoint,{headers,signal:AbortSignal.timeout(12000)});
+      const timeline=await sureFetch(endpoint,{headers,signal:AbortSignal.timeout(12000)});
       if(!timeline.ok)return output('timeline_failed','Sure Petcare timeline returned HTTP '+timeline.status+'.');
       const payload=await timeline.json();
       const entries=Array.isArray(payload)?payload:Array.isArray(payload.data)?payload.data:Array.isArray(payload.data?.entries)?payload.data.entries:null;

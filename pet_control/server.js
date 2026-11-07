@@ -317,6 +317,7 @@ const server=http.createServer(async(req,res)=>{
    }catch(err){return reply(400,{error:String(err.message||err)});}
   }
   if(url.pathname==='/sure/pet-access'&&req.method==='POST'){
+   sureTraffic.lastInteractive=Date.now();
    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
    try{
     let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>512)return reply(413,{error:'Request too large'});}
@@ -528,6 +529,7 @@ const server=http.createServer(async(req,res)=>{
   }
   // Read-only discovery of per-cat tag profiles. Never changes any flap or tag.
   if(url.pathname==='/sure/pet-permissions'){
+    sureTraffic.lastInteractive=Date.now();
     if(sureTraffic.permissionRead&&Date.now()<sureTraffic.permissionRead.expires){res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(sureTraffic.permissionRead.body));}
     const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(body));};
     let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
@@ -727,6 +729,8 @@ const server=http.createServer(async(req,res)=>{
 // Historical backfill is independent of live polling, capped to three pages per cycle.
 let archiveBusy=false;
 async function archiveBackfill(){
+ // Historical import is optional: never compete with active interactive requests.
+ if(Date.now()-(sureTraffic.lastInteractive||0)<120000)return;
  if(archiveBusy)return;archiveBusy=true;
  try{
   let opts={};try{opts=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}

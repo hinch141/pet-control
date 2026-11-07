@@ -8,13 +8,71 @@ const pets=['jessie','henry','rosie','violet'];
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8'};
 const token=process.env.SUPERVISOR_TOKEN;
 let activitySnapshot=null,activityPending=null;
+
+const curfewFile='/data/whole_house_curfew.json';
+let curfew={enabled:false,start:'10:00',end:'10:01',date:null,phase:'waiting',ownsLock:false,lastError:''};
+try{const saved=JSON.parse(fs.readFileSync(curfewFile,'utf8'));curfew={...curfew,...saved};}catch{}
+function saveCurfew(){fs.writeFileSync(curfewFile,JSON.stringify(curfew),{mode:0o600});}
+function londonDateTime(date=new Date()){const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));return {date:p.year+'-'+p.month+'-'+p.day,time:p.hour+':'+p.minute};}
+function nextCurfewDate(start){let d=new Date();for(let i=0;i<3;i++){const local=londonDateTime(d);if(local.time<start)return local.date;d=new Date(d.getTime()+86400000);}return londonDateTime(d).date;}
+let curfewBusy=false;
+async function curfewCommand(mode){
+ if(!token)throw Error('Home Assistant connection unavailable');
+ const headers={Authorization:'Bearer '+token,'Content-Type':'application/json'},entity='lock.my_flap_locked_out';
+ const read=async()=>{const r=await fetch('http://supervisor/core/api/states/'+entity,{headers,signal:AbortSignal.timeout(6000)});if(!r.ok)throw Error('Cannot read flap state');return String((await r.json()).state);};
+ const desired=mode==='indoor_only'?'locked':'unlocked',before=await read();
+ if(!['locked','unlocked'].includes(before))throw Error('Flap state unknown');
+ if(before!==desired){const action=desired==='locked'?'lock':'unlock';const r=await fetch('http://supervisor/core/api/services/lock/'+action,{method:'POST',headers,body:JSON.stringify({entity_id:entity}),signal:AbortSignal.timeout(8000)});if(!r.ok)throw Error('Flap command rejected');}
+ for(let i=0;i<5;i++){if(await read()===desired)return;if(i<4)await new Promise(resolve=>setTimeout(resolve,1000));}
+ throw Error('Flap state not yet confirmed');
+}
+async function curfewTick(){
+ if(curfewBusy||!curfew.enabled||!curfew.date)return;
+ const now=londonDateTime();
+ if(now.date<curfew.date)return;
+ curfewBusy=true;
+ try{
+  if(now.date>curfew.date||now.time>=curfew.end){
+   if(curfew.ownsLock){await curfewCommand('normal');curfew.ownsLock=false;}
+   curfew.enabled=false;curfew.phase='completed';curfew.lastError='';saveCurfew();return;
+  }
+  if(now.time>=curfew.start&&curfew.phase==='waiting'){
+   await curfewCommand('indoor_only');curfew.ownsLock=true;curfew.phase='active';curfew.lastError='';saveCurfew();
+  }
+ }catch(e){curfew.lastError=String(e.message||e).slice(0,180);saveCurfew();}
+ finally{curfewBusy=false;}
+}
+setInterval(()=>curfewTick().catch(()=>{}),10000);
+setTimeout(()=>curfewTick().catch(()=>{}),2000);
+
 const server=http.createServer(async(req,res)=>{
   const peer=(req.socket.remoteAddress||'').replace(/^::ffff:/,'');
   if(peer!=='172.30.32.2'){res.writeHead(403);return res.end();}
   const url=new URL(req.url,'http://localhost');
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Cache-Control','no-store');
+
+  if(url.pathname==='/live/flap/curfew'&&(req.method==='GET'||req.method==='POST')){
+   const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+   if(req.method==='GET')return reply(200,{...curfew,now:londonDateTime()});
+   if(curfewBusy)return reply(409,{error:'Curfew transition in progress. Please retry.'});
+   try{
+    let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>512)return reply(413,{error:'Request too large'});}
+    const body=JSON.parse(raw);
+    if(body.action==='disable'){
+      const wasOwned=curfew.ownsLock;
+      curfew.enabled=false;curfew.phase='disabled';saveCurfew();
+      if(wasOwned){curfewBusy=true;try{await curfewCommand('normal');curfew.ownsLock=false;curfew.lastError='';saveCurfew();}catch(e){curfew.lastError='Curfew disabled, but flap unlock not confirmed: '+e.message;saveCurfew();return reply(502,{error:curfew.lastError});}finally{curfewBusy=false;}}
+      return reply(200,curfew);
+    }
+    if(body.action!=='enable'||!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(body.start)||!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(body.end)||body.start>=body.end)return reply(400,{error:'Choose a start and end time on the same day, with the end later than the start.'});
+    if(curfew.enabled||curfew.ownsLock)return reply(409,{error:'Disable the current curfew first.'});
+    curfew={enabled:true,start:body.start,end:body.end,date:nextCurfewDate(body.start),phase:'waiting',ownsLock:false,lastError:''};
+    saveCurfew();return reply(200,curfew);
+   }catch(e){return reply(400,{error:'Unable to save curfew: '+e.message});}
+  }
   if(url.pathname==='/live/flap/mode'&&req.method==='POST'){
+    if(curfew.enabled||curfew.ownsLock)return (res.writeHead(409,{'Content-Type':'application/json'}),res.end(JSON.stringify({error:'Disable the scheduled curfew before using manual control.'})));
     const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
     if(!token)return reply(503,{error:'Home Assistant connection unavailable'});
     if(!String(req.headers['content-type']||'').startsWith('application/json'))return reply(415,{error:'JSON required'});

@@ -128,15 +128,25 @@ async function petCurfewTick(){
      await sure.set(match.device,match.tag,3);
      entry.phase='curfew';entry.lastTransition=new Date().toISOString();logPetCurfew(id,'automatic_start_accepted','Cloud write accepted; verification pending');
     }else if(!active&&entry.owned){
-     entry.phase='releasing';savePetCurfews();logPetCurfew(id,'automatic_release_requested','Current profile '+match.profile);
-     if(match.profile===3){
-      await sure.set(match.device,match.tag,2);
-      // Keep ownership until the cloud confirms Free Access; retry on later ticks.
-      const verified=surePetMatch(await sure.dashboard(),id);
-      entry.lastObservedProfile=verified.profile;
-      if(verified.profile!==2)throw Error('Free Access not yet confirmed; will retry');
-     }else if(match.profile!==2)throw Error('Unexpected permission; manual check required');
-     entry.owned=false;entry.phase='free';entry.lastTransition=new Date().toISOString();logPetCurfew(id,'automatic_release_confirmed','Free Access');
+     // Cloud read-after-write can lag. Verify on later scheduler passes rather
+     // than sending another command every five seconds or blocking other pets.
+     entry.phase='releasing';
+     if(match.profile===2){
+      entry.owned=false;entry.phase='free';entry.lastTransition=new Date().toISOString();
+      entry.lastReleaseRequest=null;
+      logPetCurfew(id,'automatic_release_confirmed','Free Access observed in cloud');
+     }else if(match.profile===3){
+      const last=Date.parse(entry.lastReleaseRequest||'');
+      const retryDue=!Number.isFinite(last)||Date.now()-last>=20000;
+      if(retryDue){
+       entry.lastReleaseRequest=new Date().toISOString();
+       savePetCurfews();
+       logPetCurfew(id,'automatic_release_requested','Indoor Only observed; requesting Free Access');
+       await sure.set(match.device,match.tag,2);
+       logPetCurfew(id,'automatic_release_accepted','Cloud write accepted; awaiting confirmation');
+      }
+      entry.lastError='Waiting for Free Access cloud confirmation';
+     }else throw Error('Unexpected permission; manual check required');
     }else if(active&&entry.owned&&match.profile===2){
      // Sure Petcare may still report the pre-write profile for several polls.
      // Do not surrender ownership immediately: that strands an Indoor Only

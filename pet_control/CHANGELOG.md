@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.18.41 — 7 November 2026
+- Add a one-off whole-house curfew with start and end time fields beside the existing Indoor-only control.
+- Run curfew from the Home Assistant add-on, even with the app closed.
+- Allow curfew cancellation at any time, restoring Free Access when the curfew owns the lock.
+- Show scheduled, active and error states; retain manual flap control when curfew is off.
+
 ## 2.18.40 — 7 November 2026
 - Show a manually changed cat location immediately after Sure Petcare accepts it.
 - Display a synchronising message until Home Assistant confirms the new location.

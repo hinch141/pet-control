@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.18.52 — 7 November 2026
+- Clearly state that individual curfews and manual restrictions remain in place when changing whole-house settings.
+- Show manual holds and curfews together with optional guided review.
+- Separately confirmed bulk disable of individual curfews retains manual Keep indoors restrictions and saved weekly times.
+- Add bulk curfew administration under Settings, separate from whole-house access controls.
+
 ## 2.18.51 — 7 November 2026
 - Replace alarming whole-house warning with a friendly reassurance that individual settings remain unchanged.
 - Make Continue the primary action, with optional Review Jessie / Review cats and Cancel.

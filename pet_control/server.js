@@ -67,7 +67,7 @@ let petCurfewState={pets:{}};
 try{const saved=JSON.parse(fs.readFileSync(petCurfewFile,'utf8'));if(saved&&saved.pets&&typeof saved.pets==='object')petCurfewState=saved;}catch{}
 const savePetCurfews=()=>fs.writeFileSync(petCurfewFile,JSON.stringify(petCurfewState),{mode:0o600});
 let petCurfewBusy=false;
-const validPetTime=t=>typeof t==='string'&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(t);
+const validPetTime=t=>typeof t==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t);
 function petCurfewActive(entry,date=new Date()){
  if(!entry.enabled)return false;
  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);

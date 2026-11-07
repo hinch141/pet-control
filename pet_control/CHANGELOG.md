@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.53 — 7 November 2026
+- Display actual confirmed Sure Petcare individual tag permission (Indoor Only / Free Access) on each cat profile rather than stale local preference.
+- Refresh permission on opening a cat profile and after manual access updates; show Checking or unavailable when not confirmed.
+- Do not change flap access while correcting the display.
+
 ## 2.18.52 — 7 November 2026
 - Clearly state that individual curfews and manual restrictions remain in place when changing whole-house settings.
 - Show manual holds and curfews together with optional guided review.

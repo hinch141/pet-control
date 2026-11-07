@@ -7,6 +7,35 @@ const flapSection=document.createElement('section');
 flapSection.className='card';
 flapSection.style.cssText='margin-top:14px;margin-bottom:14px;background:#fff;color:#19312d;width:100%;';
 flapSection.innerHTML='<strong>Whole-house flap — live lock status</strong><div id="flap-live-status" style="margin-top:8px">Checking Home Assistant…</div><p class="small" style="margin-bottom:0">This reports the whole-house flap lock, not individual cat curfews. Entry remains permitted.</p>';
+
+let wholeCurfew=null,curfewActionBusy=false;
+function showWholeCurfew(){
+ const toggle=document.getElementById('houseCurfewEnabled'),start=document.getElementById('houseCurfewStart'),end=document.getElementById('houseCurfewEnd'),status=document.getElementById('houseCurfewStatus');
+ if(!toggle||!status)return;
+ toggle.disabled=curfewActionBusy||!wholeCurfew;
+ toggle.checked=!!wholeCurfew?.enabled;
+ if(start){start.disabled=curfewActionBusy||!!wholeCurfew?.enabled;if(wholeCurfew?.enabled)start.value=wholeCurfew.start;}
+ if(end){end.disabled=curfewActionBusy||!!wholeCurfew?.enabled;if(wholeCurfew?.enabled)end.value=wholeCurfew.end;}
+ status.textContent=wholeCurfew?.enabled?(wholeCurfew.phase==='active'?'Curfew active — Indoor Only until '+wholeCurfew.end:'Scheduled for '+wholeCurfew.date+' from '+wholeCurfew.start+' to '+wholeCurfew.end)+(wholeCurfew.lastError?' · '+wholeCurfew.lastError:''):wholeCurfew?.lastError||'Curfew off — manual flap control available.';
+}
+async function refreshWholeCurfew(){
+ if(curfewActionBusy)return;
+ try{const r=await fetch('./live/flap/curfew',{cache:'no-store',signal:AbortSignal.timeout(8000)});if(!r.ok)throw Error();wholeCurfew=await r.json();}catch{wholeCurfew=null;}
+ showWholeCurfew();
+}
+window.toggleWholeCurfew=async function(enabled){
+ if(curfewActionBusy)return;
+ const start=document.getElementById('houseCurfewStart')?.value,end=document.getElementById('houseCurfewEnd')?.value;
+ if(enabled&&(!start||!end||start>=end)){toast('End time must be later than start time on the same day.');showWholeCurfew();return;}
+ curfewActionBusy=true;showWholeCurfew();
+ try{
+  const r=await fetch('./live/flap/curfew',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(enabled?{action:'enable',start,end}:{action:'disable'}),signal:AbortSignal.timeout(20000)});
+  const d=await r.json();if(!r.ok)throw Error(d.error||'Curfew could not be changed');
+  wholeCurfew=d;toast(enabled?'One-off curfew scheduled':'Curfew cancelled');await refreshFlap();
+ }catch(e){toast(e.message||'Curfew change failed');}
+ finally{curfewActionBusy=false;await refreshWholeCurfew();showWholeCurfew();}
+};
+
 let flapPending=false,flapCommandPending=false,flapConfirmed=null,flapMessage='',flapDesired=null,flapLastSuccess=0,flapRetryTimer=null;
 const flapWait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function syncFlapUI(){
@@ -43,6 +72,7 @@ async function refreshFlap(){
  }finally{flapPending=false;syncFlapUI();}
 }
 window.setLiveFlapMode=async function(enabled){
+ if(wholeCurfew?.enabled||wholeCurfew?.ownsLock){toast('Turn off the scheduled curfew first to use manual Indoor-only control.');syncFlapUI();return;}
  if(flapCommandPending||!flapConfirmed||Date.now()-flapLastSuccess>=30000){syncFlapUI();return;}
  const desired=enabled?'indoor_only':'normal';
  if(desired===flapConfirmed){syncFlapUI();return;}
@@ -367,5 +397,5 @@ finally{statusPending=false;if(typeof window.renderSurePetDetail==='function')wi
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshSureLocations(true);refreshFlap();refreshCloud();});else{mount();refresh();refreshFlap();refreshCloud();}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();}});
-setInterval(refresh,5000);setInterval(refreshSureLocations,20000);setInterval(refreshFlap,15000);setInterval(refreshCloud,60000);
+setInterval(refresh,5000);setInterval(refreshSureLocations,20000);setInterval(refreshFlap,15000);setInterval(refreshWholeCurfew,10000);refreshWholeCurfew();setInterval(refreshCloud,60000);
 })();

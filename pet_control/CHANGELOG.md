@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.61 — 7 November 2026
+- Persist a rolling history of individual curfew start, release, manual access and scheduler error events in the add-on data folder.
+- Show read-only event history alongside curfew diagnostics for evidence-based troubleshooting.
+- Keep existing access priority and automatic scheduler behaviour unchanged pending a verified release test.
+
 ## 2.18.60 — 7 November 2026
 - Add read-only Individual curfew diagnostics panel showing each cat's schedule status, active phase, ownership, manual hold, observed cloud profile, last check and last error.
 - Clarify that enabled individual curfews are live, not local preferences.

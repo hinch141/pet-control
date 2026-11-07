@@ -513,7 +513,7 @@ let statusPending=false;
 async function refresh(){
 if(statusPending||document.hidden)return;
 statusPending=true;
-try{const r=await fetch('./live/status',{cache:'no-store'});if(!r.ok)throw Error('unavailable');const d=await r.json();
+try{const r=await fetch('./live/status',{cache:'no-store',signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('unavailable');const d=await r.json();
 window.sureLiveStates=Object.fromEntries(d.pets.map(p=>[p.name,p.state==='on'?'Home':p.state==='off'?'Away':'Unknown']));
 document.getElementById('pet-live-list').innerHTML=names.map(n=>{const p=d.pets.find(x=>x.name===n.toLowerCase());const status=effectivePetStatus(n);return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+n+'</span><strong>'+status+'</strong></div>'}).join('');
 document.getElementById('pet-live-time').textContent='Updated '+new Date(d.updated).toLocaleTimeString('en-GB');
@@ -521,6 +521,7 @@ document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.q
 }catch(e){if(!window.sureLiveStates)document.getElementById('pet-live-list').textContent='Live status unavailable. Check Home Assistant app logs.';}
 finally{statusPending=false;if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();}
 }
+window.refreshPetPresence=refresh;
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshSureLocations(true);refreshFlap();refreshCloud();refreshPetPermissionDisplay();});else{mount();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();syncCurfewPermissionStatus();}});
 setInterval(refresh,5000);setInterval(refreshSureLocations,20000);setInterval(refreshFlap,15000);setInterval(refreshWholeCurfew,10000);setInterval(syncCurfewPermissionStatus,3000);syncCurfewPermissionStatus();refreshWholeCurfew();setInterval(refreshCloud,60000);

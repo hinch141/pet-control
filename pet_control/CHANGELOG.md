@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.63 — 7 November 2026
+- Reduce individual curfew scheduler checks from every 15 seconds to every 5 seconds.
+- Reduce on-screen scheduler status polling from every 10 seconds to every 3 seconds.
+- Preserve cloud confirmation and manual Keep indoors priority; actual cloud response latency remains outside app control.
+
 ## 2.18.62 — 7 November 2026
 - Poll lightweight server curfew status every ten seconds and synchronise confirmed per-cat access with Home and pet profile displays.
 - Show Updating access during scheduled transitions and the last confirmed check time.

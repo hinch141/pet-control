@@ -192,8 +192,22 @@ function rowFor(e,fullDate=false){
  const time=new Date(e.at).toLocaleString('en-GB',{timeZone:'Europe/London',...(fullDate?{day:'numeric',month:'short'}:{}),hour:'2-digit',minute:'2-digit'});
  return '<div class="listrow"><div class="row"><div class="eventicon" aria-label="'+labelFor(e)+'">'+iconFor(e)+'</div><div><strong>'+escapeHtml(name)+'</strong><div class="small">'+labelFor(e)+'</div></div></div><span class="small">'+time+'</span></div>';
 }
+function refreshTodayEntryBadges(){
+ const today=ukDay(new Date());
+ const counts=new Map();
+ if(loaded)for(const e of records()){
+  if(e.direction!=='In'||ukDay(new Date(e.at))!==today)continue;
+  const key=String(e.pet||'').toLowerCase();counts.set(key,(counts.get(key)||0)+1);
+ }
+ document.querySelectorAll('[data-pet-entries]').forEach(node=>{
+  const name=node.getAttribute('data-pet-entries');
+  node.textContent='↙ Entries today: '+(loaded?String(counts.get(name)||0):'—');
+ });
+}
+window.refreshTodayEntryBadges=refreshTodayEntryBadges;
 function paint(){
  window.petLiveHistoryLoaded=true;
+ refreshTodayEntryBadges();
  const box=document.getElementById('homeEvents'),count=document.getElementById('countEvents');
  if(box&&count){
   const today=ukDay(new Date()),todayEvents=records().filter(e=>ukDay(new Date(e.at))===today);

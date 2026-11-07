@@ -135,6 +135,44 @@ const server=http.createServer(async(req,res)=>{
       return reply(202,{status:'pending',message:'Command sent, but the flap state has not yet been confirmed'});
     }catch{return reply(502,{error:'Unable to confirm flap command. Check Home Assistant.'});}
   }
+  if(url.pathname==='/sure/pet-access'&&req.method==='POST'){
+   const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+   try{
+    let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>512)return reply(413,{error:'Request too large'});}
+    const body=JSON.parse(raw);
+    if(!/^[0-9]+$/.test(String(body.petId||''))||!['free_access','indoor_only'].includes(body.mode))return reply(400,{error:'Invalid cat or access mode'});
+    if(globalThis.petAccessBusy)return reply(409,{error:'Another cat access change is in progress'});
+    globalThis.petAccessBusy=true;
+    let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
+    if(!options.sure_email||!options.sure_password)return reply(503,{error:'Sure Petcare credentials missing'});
+    const deviceId=randomUUID(),headers={'Content-Type':'application/json',Accept:'application/json',Origin:'https://surepetcare.io',Referer:'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
+    const login=await fetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:options.sure_email,password:options.sure_password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
+    if(!login.ok)throw Error('Sure Petcare login failed');
+    const auth=await login.json();headers.Authorization='Bearer '+(auth.data?.token||auth.token||auth.access_token||auth.data?.access_token||'');
+    const dashboard=async()=>{const resp=await fetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});if(!resp.ok)throw Error('Unable to read current permissions');return (await resp.json()).data||{};};
+    const data=await dashboard(),pets=(data.pets||[]).filter(p=>String(p.id)===String(body.petId));
+    if(pets.length!==1)throw Error('Cat could not be uniquely identified');
+    const matches=(data.devices||[]).filter(d=>[6,13].includes(Number(d.product_id))).flatMap(d=>(d.tags||[]).filter(t=>String(t.id)===String(pets[0].tag_id)).map(t=>({device:d,tag:t})));
+    if(matches.length!==1)throw Error('Cat flap tag could not be uniquely identified');
+    const chosen=matches[0],current=Number(chosen.tag.profile),desired=body.mode==='indoor_only'?3:2;
+    if(![2,3].includes(current))throw Error('Unsupported current permission; no change made');
+    if(current!==desired){
+     const id=Number(chosen.device.id),tag=Number(chosen.tag.tag_id??chosen.tag.id);
+     if(!Number.isSafeInteger(id)||!Number.isSafeInteger(tag)||id<=0||tag<=0)throw Error('Invalid device or tag');
+     const resp=await fetch('https://app.api.surehub.io/api/device/'+id+'/tag/'+tag,{method:'PUT',headers,body:JSON.stringify({profile:desired}),signal:AbortSignal.timeout(12000)});
+     if(!resp.ok)throw Error('Sure Petcare rejected the permission change');
+    }
+    let confirmed=current===desired;
+    for(let attempt=0;!confirmed&&attempt<6;attempt++){
+     await new Promise(resolve=>setTimeout(resolve,2000));
+     const check=await dashboard();
+     const tags=(check.devices||[]).filter(d=>[6,13].includes(Number(d.product_id))).flatMap(d=>(d.tags||[]).filter(t=>String(t.id)===String(pets[0].tag_id)));
+     confirmed=tags.length===1&&Number(tags[0].profile)===desired;
+    }
+    return reply(200,{status:confirmed?'confirmed':'pending',mode:body.mode,name:pets[0].name});
+   }catch(e){return reply(502,{error:String(e.message||'Unable to change access').slice(0,160)});}
+   finally{globalThis.petAccessBusy=false;}
+  }
   if(url.pathname==='/sure/pet-permission-test'&&req.method==='POST'){
     const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(body));};
     if(!String(req.headers['content-type']||'').startsWith('application/json'))return reply(415,{error:'JSON required'});

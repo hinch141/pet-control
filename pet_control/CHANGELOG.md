@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.18.56 — 7 November 2026
+- Show last confirmed per-cat access immediately from session cache while refreshing in the background; retain it on cloud timeouts and label stale results.
+- Throttle repeated permission lookups and prefetch on startup and return to the app.
+- Clarify that whole-house Free Access does not imply every individual cat can exit.
+- Force a fresh permission lookup following manual per-cat changes.
+
 ## 2.18.55 — 7 November 2026
 - Fix rejection when enabling an individual curfew while other unchecked days contain incomplete or identical times.
 - Validate times only for enabled individual days; leave disabled days unconfigured without blocking the schedule.

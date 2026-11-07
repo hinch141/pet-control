@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.18.74 — 7 November 2026
+- Individual curfew release no longer blocks on an immediate Sure Petcare read-after-write check.
+- Confirm Free Access from later cloud snapshots; retry an unconfirmed release no more frequently than every 20 seconds.
+- Retain scheduler ownership and a visible pending confirmation message until the cloud reports Free Access.
+- No changes to manual holds or whole-house curfews.
+
 ## 2.18.73 — 7 November 2026
 - Trigger an immediate Home Assistant presence refresh whenever the Home tab is selected, in addition to existing five-second polling and foreground refresh.
 - Add a 12-second timeout to presence polling so a stalled request cannot block subsequent refreshes indefinitely.

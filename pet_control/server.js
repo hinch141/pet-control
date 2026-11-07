@@ -42,8 +42,10 @@ async function curfewTick(){
   const now=londonDateTime(),active=curfew.ranges.some(r=>curfewInRange(now.time,r));
   if(active){
    if(curfew.phase!=='active'&&curfew.phase!=='overridden'){
-    const before=await curfewCommand('indoor_only');
-    curfew.ownsLock=before==='unlocked';curfew.phase='active';
+    const before=await readCurfewFlap();
+    if(before==='unlocked'){curfew.ownsLock=true;saveCurfew();}
+    await curfewCommand('indoor_only');
+    curfew.phase='active';
    }else if(curfew.ownsLock&&(await readCurfewFlap())!=='locked'){
     // Someone manually changed the flap. Do not fight the manual override.
     curfew.ownsLock=false;curfew.phase='overridden';
@@ -75,7 +77,9 @@ const server=http.createServer(async(req,res)=>{
     const body=JSON.parse(raw);
     if(body.action==='disable'){
      curfew.enabled=false;curfew.phase='off';saveCurfew();
-     if(curfew.ownsLock){
+     // Explicit cancellation requests Free Access, even if a prior command was not confirmed.
+     // This avoids leaving the flap locked after a partially successful curfew start.
+     if((await readCurfewFlap())==='locked'){
       curfewBusy=true;
       try{await curfewCommand('normal');curfew.ownsLock=false;curfew.lastError='';saveCurfew();}
       catch(e){curfew.lastError='Curfew disabled but unlock not confirmed: '+e.message;saveCurfew();return reply(502,{error:curfew.lastError});}
@@ -96,7 +100,8 @@ const server=http.createServer(async(req,res)=>{
    }catch(e){return reply(400,{error:'Unable to save curfew: '+e.message});}
   }
   if(url.pathname==='/live/flap/mode'&&req.method==='POST'){
-    if(curfew.enabled||curfew.ownsLock)return (res.writeHead(409,{'Content-Type':'application/json'}),res.end(JSON.stringify({error:'Disable the scheduled curfew before using manual control.'})));
+    if(curfew.enabled)return (res.writeHead(409,{'Content-Type':'application/json'}),res.end(JSON.stringify({error:'Disable the scheduled curfew before using manual control.'})));
+    if(!curfew.enabled&&curfew.ownsLock){curfew.ownsLock=false;saveCurfew();}
     const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
     if(!token)return reply(503,{error:'Home Assistant connection unavailable'});
     if(!String(req.headers['content-type']||'').startsWith('application/json'))return reply(415,{error:'JSON required'});

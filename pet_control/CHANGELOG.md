@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.73 — 7 November 2026
+- Trigger an immediate Home Assistant presence refresh whenever the Home tab is selected, in addition to existing five-second polling and foreground refresh.
+- Add a 12-second timeout to presence polling so a stalled request cannot block subsequent refreshes indefinitely.
+- Keep the shared Home/Away display logic from v2.18.72; no access-control or curfew changes.
+
 ## 2.18.72 — 7 November 2026
 - Home cards now use the same effective Home Assistant presence status as the live refresh and pet detail, rather than rebuilding from a separate raw value during unrelated rerenders.
 - Preserve any pending manual location display override consistently until Home Assistant confirms or it expires.

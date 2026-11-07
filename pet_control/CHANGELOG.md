@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.18.58 — 7 November 2026
+- Fix root cause of individual curfew save failures: incorrectly escaped time-validation regular expressions in the server and web schedule normaliser rejected valid HH:mm values.
+- Preserve existing schedules and manual access permissions; no automatic reset of cats.
+
 ## 2.18.57 — 7 November 2026
 - Correct legacy individual curfew days without explicit enabled flags being treated as checked.
 - Require an explicit checked day before its schedule is active; disable legacy equal-time days on load.

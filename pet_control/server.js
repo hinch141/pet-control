@@ -205,6 +205,17 @@ const server=http.createServer(async(req,res)=>{
       return reply(202,{status:'pending',message:'Command sent, but the flap state has not yet been confirmed'});
     }catch{return reply(502,{error:'Unable to confirm flap command. Check Home Assistant.'});}
   }
+  if(url.pathname==='/sure/pet-curfews/bulk-disable'&&req.method==='POST'){
+   const reply=(status,body)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(body));};
+   if(petCurfewBusy||globalThis.petAccessBusy)return reply(409,{error:'Cat access update in progress'});
+   let raw='';try{for await(const chunk of req){raw+=chunk;if(raw.length>256)return reply(413,{error:'Request too large'});}
+    const body=JSON.parse(raw);if(body.confirm!=='DISABLE_ALL_INDIVIDUAL_CURFEWS')return reply(400,{error:'Confirmation required'});
+    const ids=Object.keys(petCurfewState.pets).filter(id=>petCurfewState.pets[id].enabled);
+    for(const id of ids)petCurfewState.pets[id].enabled=false;
+    savePetCurfews();setImmediate(()=>petCurfewTick().catch(()=>{}));
+    return reply(200,{disabled:ids.length,manualRestrictionsPreserved:true});
+   }catch(e){return reply(400,{error:String(e.message||e)});}
+  }
   if(url.pathname==='/sure/pet-curfews'&&(req.method==='GET'||req.method==='POST')){
    const reply=(status,body)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
    if(req.method==='GET')return reply(200,{pets:petCurfewState.pets,now:londonDateTime()});

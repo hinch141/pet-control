@@ -136,7 +136,18 @@ async function surePetSession(){
  if(!access)throw Error('Sure Petcare login token unavailable');
  headers.Authorization='Bearer '+access;
  const dashboard=async()=>{const r=await sureFetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('Sure Petcare permission check failed');return (await r.json()).data||{};};
- const set=async(device,tag,profile)=>{const r=await sureFetch('https://app.api.surehub.io/api/device/'+device+'/tag/'+tag,{method:'PUT',headers,body:JSON.stringify({profile}),signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('Sure Petcare refused permission update');};
+ const set=async(device,tag,profile)=>{
+  const queuedAt=Date.now();
+  try{
+   const r=await sureFetch('https://app.api.surehub.io/api/device/'+device+'/tag/'+tag,{method:'PUT',headers,body:JSON.stringify({profile}),signal:AbortSignal.timeout(12000)});
+   if(!r.ok)throw Error('Sure Petcare permission update returned HTTP '+r.status);
+   console.log('Sure Petcare permission write accepted in '+(Date.now()-queuedAt)+'ms');
+  }catch(err){
+   const duration=Date.now()-queuedAt;
+   const timedOut=err?.name==='TimeoutError'||err?.name==='AbortError';
+   throw Error(timedOut?'Sure Petcare write timed out after '+duration+'ms; outcome unknown, check official app':String(err.message||err));
+  }
+ };
  return {dashboard,set};
 }
 function surePetMatch(data,petId){

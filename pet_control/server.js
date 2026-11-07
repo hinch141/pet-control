@@ -205,13 +205,30 @@ const server=http.createServer(async(req,res)=>{
       return reply(202,{status:'pending',message:'Command sent, but the flap state has not yet been confirmed'});
     }catch{return reply(502,{error:'Unable to confirm flap command. Check Home Assistant.'});}
   }
+  if(url.pathname==='/sure/pet-curfews'&&(req.method==='GET'||req.method==='POST')){
+   const reply=(status,body)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+   if(req.method==='GET')return reply(200,{pets:petCurfewState.pets,now:londonDateTime()});
+   if(petCurfewBusy||globalThis.petAccessBusy)return reply(409,{error:'A cat permission update is in progress. Retry shortly.'});
+   try{
+    let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>8192)return reply(413,{error:'Schedule too large'});}
+    const body=JSON.parse(raw),id=String(body.petId||'');
+    if(!/^[0-9]+$/.test(id)||typeof body.enabled!=='boolean'||!Array.isArray(body.days)||body.days.length!==7)return reply(400,{error:'Invalid cat or weekly schedule'});
+    const days=body.days.map(d=>({enabled:d.enabled!==false,start:d.start,end:d.end}));
+    if(days.some(d=>!validPetTime(d.start)||!validPetTime(d.end)||d.start===d.end))return reply(400,{error:'Each day needs valid, different start and end times'});
+    const old=petCurfewState.pets[id]||{manual:false,owned:false};
+    // A manual restriction remains authoritative, including when schedules are edited.
+    petCurfewState.pets[id]={...old,enabled:body.enabled,days,lastError:''};
+    savePetCurfews();setImmediate(()=>petCurfewTick().catch(()=>{}));
+    return reply(200,{petId:id,...petCurfewState.pets[id]});
+   }catch(err){return reply(400,{error:String(err.message||err)});}
+  }
   if(url.pathname==='/sure/pet-access'&&req.method==='POST'){
    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
    try{
     let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>512)return reply(413,{error:'Request too large'});}
     const body=JSON.parse(raw);
     if(!/^[0-9]+$/.test(String(body.petId||''))||!['free_access','indoor_only'].includes(body.mode))return reply(400,{error:'Invalid cat or access mode'});
-    if(globalThis.petAccessBusy)return reply(409,{error:'Another cat access change is in progress'});
+    if(globalThis.petAccessBusy||petCurfewBusy)return reply(409,{error:'A cat access or curfew change is in progress'});
     globalThis.petAccessBusy=true;
     let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
     if(!options.sure_email||!options.sure_password)return reply(503,{error:'Sure Petcare credentials missing'});
@@ -239,6 +256,11 @@ const server=http.createServer(async(req,res)=>{
      const tags=(check.devices||[]).filter(d=>[6,13].includes(Number(d.product_id))).flatMap(d=>(d.tags||[]).filter(t=>String(t.id)===String(pets[0].tag_id)));
      confirmed=tags.length===1&&Number(tags[0].profile)===desired;
     }
+    const entry=petCurfewState.pets[String(body.petId)]||{enabled:false,days:[],owned:false,manual:false};
+    // Explicit manual Indoor Only always wins; explicit Free Access clears manual hold.
+    entry.manual=body.mode==='indoor_only';
+    entry.owned=false;
+    petCurfewState.pets[String(body.petId)]=entry;savePetCurfews();
     return reply(200,{status:confirmed?'confirmed':'pending',mode:body.mode,name:pets[0].name});
    }catch(e){return reply(502,{error:String(e.message||'Unable to change access').slice(0,160)});}
    finally{globalThis.petAccessBusy=false;}

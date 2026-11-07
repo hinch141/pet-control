@@ -169,7 +169,7 @@ async function petCurfewTick(){
      entry.phase='releasing';
      if(match.profile===2){
       // A cloud readback is not proof the physical flap has applied the command.
-      entry.owned=false;entry.phase='free_cloud_reported';
+      entry.owned=false;entry.phase='free';
       entry.lastTransition=new Date().toISOString();entry.lastReleaseRequest=null;
       entry.lastError='';
       logPetCurfew(id,'automatic_release_cloud_reported','Free Access reported by Sure Petcare; physical flap not verified');
@@ -192,7 +192,7 @@ async function petCurfewTick(){
      entry.lastError='Awaiting Indoor Only readback; physical flap not verified';
     }else if(active&&entry.owned){
      if(match.profile===3){
-      entry.phase='curfew_cloud_reported';entry.lastError='';
+      entry.phase='curfew';entry.lastError='';
      }else if(match.profile===2){
       // Preserve ownership until the end time. Never abandon release responsibility
       // because an asynchronous cloud snapshot disagrees with the start write.

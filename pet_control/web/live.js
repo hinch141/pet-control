@@ -6,7 +6,7 @@ section.innerHTML='<strong>Live Sure Petcare status</strong><div id="pet-live-li
 const flapSection=document.createElement('section');
 flapSection.className='card';
 flapSection.style.cssText='margin-top:14px;margin-bottom:14px;background:#fff;color:#19312d;width:100%;';
-flapSection.innerHTML='<strong>Whole-house flap — live lock status</strong><div id="flap-live-status" style="margin-top:8px">Checking Home Assistant…</div><p class="small" style="margin-bottom:0">This reports the whole-house flap lock, not individual cat curfews. Entry remains permitted.</p>';
+flapSection.innerHTML='<strong>Whole-house flap setting</strong><div id="flap-live-status" style="margin-top:8px">Checking Home Assistant…</div><p class="small" style="margin-bottom:0">This is the shared flap setting. Individual cat restrictions and curfews may still prevent particular cats from exiting. Entry remains permitted.</p>';
 
 let wholeCurfew=null,curfewActionBusy=false;
 const ukDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')?d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4):'';
@@ -77,7 +77,7 @@ function syncFlapUI(){
  const target=document.getElementById('flap-live-status'),checkbox=document.getElementById('houseIndoorToggle'),label=document.getElementById('houseIndoorStatus');
  const known=flapConfirmed==='indoor_only'||flapConfirmed==='normal';
  const fresh=known&&Date.now()-flapLastSuccess<30000;
- const status=flapConfirmed==='indoor_only'?'Indoor only — exits restricted, entry allowed':flapConfirmed==='normal'?'Free Access — entry and exit allowed':'Checking flap status…';
+ const status=flapConfirmed==='indoor_only'?'Indoor only — exits restricted, entry allowed':flapConfirmed==='normal'?'Free Access — no whole-house exit restriction':'Checking flap status…';
  if(target)target.textContent=flapMessage||status;
  if(checkbox){checkbox.disabled=flapCommandPending||!fresh;checkbox.checked=flapCommandPending&&flapDesired?flapDesired==='indoor_only':flapConfirmed==='indoor_only';}
  if(label)label.textContent=flapCommandPending?'Waiting for Home Assistant to confirm…':flapMessage||(fresh?'Confirmed by Home Assistant':'Checking connection — controls temporarily unavailable');
@@ -190,19 +190,27 @@ function paint(){
  if(document.getElementById('timeline')?.classList.contains('active')&&typeof window.renderSureTimeline==='function')window.renderSureTimeline();
  if(document.getElementById('petDetailContent')?.closest('.page.active')&&typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
 }
-let petPermissionCache={};
-let petPermissionRequest=null;
-window.getLivePetAccess=id=>petPermissionCache[String(id||'')]||'Checking…';
-async function refreshPetPermissionDisplay(){
+let petPermissionCache={},petPermissionCheckedAt=0,petPermissionRequest=null,petPermissionLastAttempt=0;
+try{const saved=JSON.parse(sessionStorage.getItem('pet-control-permissions')||'{}');if(saved&&saved.cache&&typeof saved.cache==='object'){petPermissionCache=saved.cache;petPermissionCheckedAt=Number(saved.at)||0;}}catch{}
+window.getLivePetAccess=id=>{
+ const value=petPermissionCache[String(id||'')];
+ if(!value)return 'Status unavailable';
+ return value+(petPermissionCheckedAt&&Date.now()-petPermissionCheckedAt>120000?' · last confirmed':'');
+};
+window.getPetAccessCheckedAt=()=>petPermissionCheckedAt;
+async function refreshPetPermissionDisplay(force=false){
  if(petPermissionRequest)return petPermissionRequest;
+ if(!force&&Date.now()-petPermissionLastAttempt<30000)return;
+ petPermissionLastAttempt=Date.now();
  petPermissionRequest=(async()=>{
   try{
    const r=await fetch('./sure/pet-permissions',{cache:'no-store',signal:AbortSignal.timeout(30000)});
    if(!r.ok)throw Error('Permission unavailable');
    const data=await r.json(),next={};
    for(const cat of data.cats||[])if(cat.matched&&cat.surePetId)next[String(cat.surePetId)]=cat.profile==='indoor_only'?'Indoor Only':cat.profile==='free_access'?'Free Access':'Status unavailable';
-   petPermissionCache=next;
-  }catch{petPermissionCache={};}
+   petPermissionCache=next;petPermissionCheckedAt=Date.now();
+   try{sessionStorage.setItem('pet-control-permissions',JSON.stringify({cache:next,at:petPermissionCheckedAt}));}catch{}
+  }catch{/* Keep the last confirmed state rather than resetting every cat to Checking. */}
   finally{petPermissionRequest=null;}
   if(document.getElementById('petDetailContent')?.closest('.page.active'))window.renderSurePetDetail();
   if(document.getElementById('home')?.classList.contains('active')&&typeof render==='function')render();

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.43 — 7 November 2026
+- Reject curfew ranges with identical start and end times before saving.
+- Warn when a daytime curfew range has already finished today, and require confirmation to save it for tomorrow's daily run.
+- Preserve overnight curfew ranges that cross midnight.
+
 ## 2.18.42 — 7 November 2026
 - Fix the date-selection bug that skipped upcoming curfew times.
 - Replace one-off scheduling with a daily whole-house schedule supporting up to 12 time ranges, including overnight ranges.

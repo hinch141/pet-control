@@ -10,35 +10,49 @@ const token=process.env.SUPERVISOR_TOKEN;
 let activitySnapshot=null,activityPending=null;
 
 const curfewFile='/data/whole_house_curfew.json';
-let curfew={enabled:false,start:'10:00',end:'10:01',date:null,phase:'waiting',ownsLock:false,lastError:''};
-try{const saved=JSON.parse(fs.readFileSync(curfewFile,'utf8'));curfew={...curfew,...saved};}catch{}
+let curfew={enabled:false,ranges:[{start:'10:00',end:'10:01'}],phase:'off',ownsLock:false,lastError:'',override:false};
+try{const saved=JSON.parse(fs.readFileSync(curfewFile,'utf8'));curfew={...curfew,...saved};if(!Array.isArray(saved.ranges))curfew.ranges=[{start:saved.start||'10:00',end:saved.end||'10:01'}];if(saved.enabled&&saved.date){curfew.enabled=false;curfew.phase='off';curfew.lastError='Previous one-off curfew has been stopped. Review and enable the new daily schedule.';}}catch{}
 function saveCurfew(){fs.writeFileSync(curfewFile,JSON.stringify(curfew),{mode:0o600});}
 function londonDateTime(date=new Date()){const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));return {date:p.year+'-'+p.month+'-'+p.day,time:p.hour+':'+p.minute};}
-function nextCurfewDate(start){let d=new Date();for(let i=0;i<3;i++){const local=londonDateTime(d);if(local.time<start)return local.date;d=new Date(d.getTime()+86400000);}return londonDateTime(d).date;}
 let curfewBusy=false;
-async function curfewCommand(mode){
+async function readCurfewFlap(){
  if(!token)throw Error('Home Assistant connection unavailable');
- const headers={Authorization:'Bearer '+token,'Content-Type':'application/json'},entity='lock.my_flap_locked_out';
- const read=async()=>{const r=await fetch('http://supervisor/core/api/states/'+entity,{headers,signal:AbortSignal.timeout(6000)});if(!r.ok)throw Error('Cannot read flap state');return String((await r.json()).state);};
- const desired=mode==='indoor_only'?'locked':'unlocked',before=await read();
- if(!['locked','unlocked'].includes(before))throw Error('Flap state unknown');
- if(before!==desired){const action=desired==='locked'?'lock':'unlock';const r=await fetch('http://supervisor/core/api/services/lock/'+action,{method:'POST',headers,body:JSON.stringify({entity_id:entity}),signal:AbortSignal.timeout(8000)});if(!r.ok)throw Error('Flap command rejected');}
- for(let i=0;i<5;i++){if(await read()===desired)return;if(i<4)await new Promise(resolve=>setTimeout(resolve,1000));}
+ const r=await fetch('http://supervisor/core/api/states/lock.my_flap_locked_out',{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(6000)});
+ if(!r.ok)throw Error('Unable to read flap state');
+ const state=String((await r.json()).state);
+ if(state!=='locked'&&state!=='unlocked')throw Error('Flap state unknown');
+ return state;
+}
+async function curfewCommand(mode){
+ const desired=mode==='indoor_only'?'locked':'unlocked';
+ const before=await readCurfewFlap();
+ if(before===desired)return before;
+ const headers={Authorization:'Bearer '+token,'Content-Type':'application/json'};
+ const action=desired==='locked'?'lock':'unlock';
+ const r=await fetch('http://supervisor/core/api/services/lock/'+action,{method:'POST',headers,body:JSON.stringify({entity_id:'lock.my_flap_locked_out'}),signal:AbortSignal.timeout(8000)});
+ if(!r.ok)throw Error('Home Assistant rejected flap command');
+ for(let i=0;i<5;i++){if(await readCurfewFlap()===desired)return before;if(i<4)await new Promise(resolve=>setTimeout(resolve,1000));}
  throw Error('Flap state not yet confirmed');
 }
+function curfewInRange(time,range){return range.start<range.end?(time>=range.start&&time<range.end):(time>=range.start||time<range.end);}
 async function curfewTick(){
- if(curfewBusy||!curfew.enabled||!curfew.date)return;
- const now=londonDateTime();
- if(now.date<curfew.date)return;
+ if(curfewBusy||!curfew.enabled)return;
  curfewBusy=true;
  try{
-  if(now.date>curfew.date||now.time>=curfew.end){
+  const now=londonDateTime(),active=curfew.ranges.some(r=>curfewInRange(now.time,r));
+  if(active){
+   if(curfew.phase!=='active'){
+    const before=await curfewCommand('indoor_only');
+    curfew.ownsLock=before==='unlocked';curfew.phase='active';
+   }else if(curfew.ownsLock&&(await readCurfewFlap())!=='locked'){
+    // Someone manually changed the flap. Do not fight the manual override.
+    curfew.ownsLock=false;curfew.phase='overridden';
+   }
+  }else{
    if(curfew.ownsLock){await curfewCommand('normal');curfew.ownsLock=false;}
-   curfew.enabled=false;curfew.phase='completed';curfew.lastError='';saveCurfew();return;
+   curfew.phase='waiting';
   }
-  if(now.time>=curfew.start&&curfew.phase==='waiting'){
-   await curfewCommand('indoor_only');curfew.ownsLock=true;curfew.phase='active';curfew.lastError='';saveCurfew();
-  }
+  curfew.lastError='';saveCurfew();
  }catch(e){curfew.lastError=String(e.message||e).slice(0,180);saveCurfew();}
  finally{curfewBusy=false;}
 }
@@ -57,18 +71,28 @@ const server=http.createServer(async(req,res)=>{
    if(req.method==='GET')return reply(200,{...curfew,now:londonDateTime()});
    if(curfewBusy)return reply(409,{error:'Curfew transition in progress. Please retry.'});
    try{
-    let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>512)return reply(413,{error:'Request too large'});}
+    let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>4096)return reply(413,{error:'Request too large'});}
     const body=JSON.parse(raw);
     if(body.action==='disable'){
-      const wasOwned=curfew.ownsLock;
-      curfew.enabled=false;curfew.phase='disabled';saveCurfew();
-      if(wasOwned){curfewBusy=true;try{await curfewCommand('normal');curfew.ownsLock=false;curfew.lastError='';saveCurfew();}catch(e){curfew.lastError='Curfew disabled, but flap unlock not confirmed: '+e.message;saveCurfew();return reply(502,{error:curfew.lastError});}finally{curfewBusy=false;}}
-      return reply(200,curfew);
+     curfew.enabled=false;curfew.phase='off';saveCurfew();
+     if(curfew.ownsLock){
+      curfewBusy=true;
+      try{await curfewCommand('normal');curfew.ownsLock=false;curfew.lastError='';saveCurfew();}
+      catch(e){curfew.lastError='Curfew disabled but unlock not confirmed: '+e.message;saveCurfew();return reply(502,{error:curfew.lastError});}
+      finally{curfewBusy=false;}
+     }
+     return reply(200,curfew);
     }
-    if(body.action!=='enable'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(body.start)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(body.end)||body.start>=body.end)return reply(400,{error:'Choose a start and end time on the same day, with the end later than the start.'});
-    if(curfew.enabled||curfew.ownsLock)return reply(409,{error:'Disable the current curfew first.'});
-    curfew={enabled:true,start:body.start,end:body.end,date:nextCurfewDate(body.start),phase:'waiting',ownsLock:false,lastError:''};
-    saveCurfew();return reply(200,curfew);
+    const validTime=t=>typeof t==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t);
+    if(body.action!=='enable'||!Array.isArray(body.ranges)||body.ranges.length<1||body.ranges.length>12)return reply(400,{error:'Add between 1 and 12 time ranges.'});
+    const ranges=body.ranges.map(r=>({start:r.start,end:r.end}));
+    if(ranges.some(r=>!validTime(r.start)||!validTime(r.end)||r.start===r.end))return reply(400,{error:'Each range needs different valid start and end times.'});
+    const minutes=t=>Number(t.slice(0,2))*60+Number(t.slice(3));
+    const spans=ranges.flatMap(r=>{const a=minutes(r.start),b=minutes(r.end);return a<b?[[a,b]]:[[a,1440],[0,b]];}).sort((a,b)=>a[0]-b[0]);
+    if(spans.some((x,i)=>i>0&&x[0]<spans[i-1][1]))return reply(400,{error:'Curfew ranges must not overlap.'});
+    if(curfew.enabled||curfew.ownsLock)return reply(409,{error:'Turn off the current curfew before changing its ranges.'});
+    curfew={enabled:true,ranges,phase:'waiting',ownsLock:false,lastError:'',override:false};
+    saveCurfew();setImmediate(()=>curfewTick().catch(()=>{}));return reply(200,curfew);
    }catch(e){return reply(400,{error:'Unable to save curfew: '+e.message});}
   }
   if(url.pathname==='/live/flap/mode'&&req.method==='POST'){

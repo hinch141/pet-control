@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.18.70 — 7 November 2026
+- Prevent the individual curfew scheduler from surrendering ownership immediately when Sure Petcare briefly reports the pre-write Free Access state after an Indoor Only command.
+- Allow up to 60 seconds for cloud status propagation before treating Free Access as an external change; preserve explicit manual overrides.
+- Record an external-access-detected event when ownership is relinquished after the grace period.
+- Maintain owned restrictions for automatic release and retry at curfew end.
+
 ## 2.18.69 — 7 November 2026
 - Fix Edit times after the already-passed individual curfew warning: retain the selected day and unsaved time edits instead of reloading the previous server schedule and unchecking the day.
 - Return to the existing editor without sending the draft to Sure Petcare until the user makes a subsequent change or confirms saving.

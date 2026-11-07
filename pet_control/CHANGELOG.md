@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.18.64 — 7 November 2026
+- Prevent incomplete or unsuccessful Sure Petcare permission responses from clearing previously confirmed individual access states.
+- Merge only valid confirmed cat permissions into the displayed cache and do not mark an empty response as freshly checked.
+- Show 'Access not yet confirmed' when no confirmed reading exists and distinguish last-confirmed timestamps from live readings.
+- Leave curfew control and manual access priorities unchanged.
+
 ## 2.18.63 — 7 November 2026
 - Reduce individual curfew scheduler checks from every 15 seconds to every 5 seconds.
 - Reduce on-screen scheduler status polling from every 10 seconds to every 3 seconds.

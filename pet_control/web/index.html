@@ -252,8 +252,13 @@ function openPet(id){let p=id?pet(id):null;modal(`<h3>${p?'Edit pet':'Add pet'}<
  if(!p||!target)return;
  try{
   const r=await fetch('./sure/pet-permissions',{cache:'no-store',signal:AbortSignal.timeout(30000)}),data=await r.json();
+  if(!r.ok||data.status!=='read_only'){
+   target.textContent='Sure Petcare check unavailable'+(data.message?' — '+data.message:'')+'. Existing access has not been changed.';
+   if(actions)actions.textContent='Try closing and reopening this screen to check again.';
+   return;
+  }
   const match=(data.cats||[]).find(c=>String(c.surePetId)===String(p.surePetId));
-  target.textContent=match?.matched?(match.profile==='indoor_only'?'Current access: Indoor Only':match.profile==='free_access'?'Current access: Free Access':'Current permission unknown'):'Cannot verify this cat’s flap tag';
+  target.textContent=match?.matched?(match.profile==='indoor_only'?'Current access: Indoor Only':match.profile==='free_access'?'Current access: Free Access':'Current permission unknown'):'Tag could not be matched in the latest Sure Petcare response';
   if(actions){
    const mode=match?.matched&&match.profile==='indoor_only'?'free_access':match?.matched&&match.profile==='free_access'?'indoor_only':null;
    if(mode){

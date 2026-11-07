@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.55 — 7 November 2026
+- Fix rejection when enabling an individual curfew while other unchecked days contain incomplete or identical times.
+- Validate times only for enabled individual days; leave disabled days unconfigured without blocking the schedule.
+- Default newly migrated weekly curfew days to unchecked until deliberately selected.
+
 ## 2.18.54 — 7 November 2026
 - Fix Home screen cat cards to display confirmed individual Sure Petcare flap access rather than stale local preference.
 - Refresh individual permission information when Home opens and update cards after the result arrives.

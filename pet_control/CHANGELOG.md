@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.18.85
+- Added a user-controlled PWA update notification and refresh mechanism for future Android home-screen installs.
+- Service worker now precaches the app shell and live.js, checks for updates when the app is reopened or focused, and activates a new version only after confirmation.
+- Kept Ingress and authentication boundary unchanged; no external port or unauthenticated endpoint exposed. Curfew and Sure Petcare logic unchanged.
+
+
 ## v2.18.84
 - Corrected the misleading individual curfew subtitle to describe live automatic schedules.
 - Added dimensional card shadows, raised buttons, layered gradients, and richer navigation styling without changing application logic.

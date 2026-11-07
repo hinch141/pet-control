@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.18.77 — 7 November 2026
+- Reuse a successful read-only cat-permissions snapshot for 20 seconds, reducing duplicate Sure cloud requests when navigating between cats.
+- Invalidate cached permission snapshots after successful cloud writes.
+- Defer optional historical archive backfill while a user has recently inspected or changed pet permissions.
+- Preserve central Sure request spacing and HTTP 429 protection. Curfew automation remains unverified.
+
 ## 2.18.76 — 7 November 2026
 - Correct shared Sure Petcare session caching to use a consistent X-Device-Id across all server requests instead of new device identities for each route.
 - Display a specific cooldown message when a read-only permission check is blocked by the rate limiter.

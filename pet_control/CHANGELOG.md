@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.45 — 7 November 2026
+- Make the individual flap permission check expandable and collapsible.
+- Allow read-only results to be hidden after checking.
+- Remove the obsolete Jessie-only test button from the Curfews page.
+
 ## 2.18.44 — 7 November 2026
 - Fix curfew cancellation so an explicit Off command attempts to restore Free Access even when an earlier lock confirmation was incomplete.
 - Record ownership before issuing the timed lock command, allowing the end-of-curfew retry to recover after a partial success.

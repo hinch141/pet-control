@@ -41,7 +41,7 @@ async function curfewTick(){
  try{
   const now=londonDateTime(),active=curfew.ranges.some(r=>curfewInRange(now.time,r));
   if(active){
-   if(curfew.phase!=='active'){
+   if(curfew.phase!=='active'&&curfew.phase!=='overridden'){
     const before=await curfewCommand('indoor_only');
     curfew.ownsLock=before==='unlocked';curfew.phase='active';
    }else if(curfew.ownsLock&&(await readCurfewFlap())!=='locked'){

@@ -556,7 +556,7 @@ const server=http.createServer(async(req,res)=>{
         return {surePetId:String(p.id??''),sureTagId:String(p.tag_id??''),name:String(p.name||'Unnamed cat').slice(0,60),matched:!!match,ambiguous:matches.length>1,profile:profile===2?'free_access':profile===3?'indoor_only':profile===0?'keep_current':'unknown',entry_safe_profile_known:profile===2||profile===3};
       });
       const result={status:'read_only',cats,flap_count:flaps.length,message:'Read-only discovery complete. No flap or pet permissions changed. Physical behaviour and write permissions are not yet verified.'};sureTraffic.permissionRead={body:result,expires:Date.now()+20000};return reply(200,result);
-    }catch(err){return reply(200,{status:'connection_error',message:String(err.message||err).includes('rate limit')?'Sure Petcare rate limit active. Requests are paused; please wait before checking again.':'Unable to retrieve individual cat permissions from Sure Petcare.'});}
+    }catch(err){const msg=String(err?.message||err);const reason=msg.includes('rate limit')?'rate_limited':err?.name==='TimeoutError'||err?.name==='AbortError'?'timeout':msg.includes('fetch failed')?'network_error':'request_error';return reply(200,{status:'connection_error',reason,message:reason==='rate_limited'?'Sure Petcare rate limit active. Requests are paused; please wait before checking again.':reason==='timeout'?'Sure Petcare request timed out; no permission was changed.':reason==='network_error'?'Unable to reach Sure Petcare; no permission was changed.':'Unable to retrieve individual cat permissions from Sure Petcare. No permission was changed.'});}
   }
   if(url.pathname==='/sure/diagnostic'){
     let options={};

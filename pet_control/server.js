@@ -11,7 +11,7 @@ let activitySnapshot=null,activityPending=null;
 
 const curfewFile='/data/whole_house_curfew.json';
 let curfew={enabled:false,ranges:[{start:'10:00',end:'10:01'}],phase:'off',ownsLock:false,lastError:'',override:false};
-try{const saved=JSON.parse(fs.readFileSync(curfewFile,'utf8'));curfew={...curfew,...saved};if(!Array.isArray(saved.ranges))curfew.ranges=[{start:saved.start||'10:00',end:saved.end||'10:01'}];if(saved.enabled&&saved.date){curfew.enabled=false;curfew.phase='off';curfew.lastError='Previous one-off curfew has been stopped. Review and enable the new daily schedule.';}}catch{}
+try{const saved=JSON.parse(fs.readFileSync(curfewFile,'utf8'));curfew={...curfew,...saved};if(!Array.isArray(saved.ranges))curfew.ranges=[{start:saved.start||'10:00',end:saved.end||'10:01'}];if(saved.enabled&&saved.date){curfew.enabled=!!saved.ownsLock;curfew.phase=saved.ownsLock?'active':'off';curfew.lastError='Previous one-off schedule was migrated. Review the new daily time ranges.';}}catch{}
 function saveCurfew(){fs.writeFileSync(curfewFile,JSON.stringify(curfew),{mode:0o600});}
 function londonDateTime(date=new Date()){const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));return {date:p.year+'-'+p.month+'-'+p.day,time:p.hour+':'+p.minute};}
 let curfewBusy=false;

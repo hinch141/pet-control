@@ -40,20 +40,34 @@ window.applyWholeCurfew=async function(enabled){if(curfewActionBusy)return;await
 window.refreshWholeCurfew=refreshWholeCurfew;
 window.toggleWholeCurfew=function(enabled){if(curfewActionBusy)return;showWholeCurfew();if(typeof requestHouseSetting==='function')requestHouseSetting('curfew',enabled);};
 let curfewDraft=[];
+function wholeCurfewMinuteAfter(time){
+ const parts=String(time||'').split(':').map(Number);
+ if(parts.length!==2||!Number.isInteger(parts[0])||!Number.isInteger(parts[1])||parts[0]<0||parts[0]>23||parts[1]<0||parts[1]>59)return null;
+ const next=(parts[0]*60+parts[1]+1)%1440;
+ return String(Math.floor(next/60)).padStart(2,'0')+':'+String(next%60).padStart(2,'0');
+}
+window.wholeCurfewStartChanged=function(input){
+ const i=Number(input.dataset.curfewStart),end=document.querySelector('[data-curfew-end="'+i+'"]');
+ const next=wholeCurfewMinuteAfter(input.value);
+ if(!next||!end||!curfewDraft[i])return;
+ end.value=next;
+ curfewDraft[i].start=input.value;
+ curfewDraft[i].end=next;
+};
 function drawCurfewRows(){
  const target=document.getElementById('curfewRangeRows');if(!target)return;
- target.innerHTML=curfewDraft.map((r,i)=>'<div class="row" style="gap:8px;align-items:end;margin:10px 0;flex-wrap:wrap"><label class="small">From<input type="time" aria-label="Start time '+(i+1)+'" value="'+r.start+'" data-curfew-start="'+i+'" style="display:block;max-width:125px;padding:9px;border:1px solid #b9c8be;border-radius:8px"></label><label class="small">Until<input type="time" aria-label="End time '+(i+1)+'" value="'+r.end+'" data-curfew-end="'+i+'" style="display:block;max-width:125px;padding:9px;border:1px solid #b9c8be;border-radius:8px"></label><button class="button secondary" type="button" onclick="removeCurfewRange('+i+')" '+(curfewDraft.length===1?'disabled':'')+'>Remove</button></div>').join('');
+ target.innerHTML=curfewDraft.map((r,i)=>'<div class="row" style="gap:8px;align-items:end;margin:10px 0;flex-wrap:wrap"><label class="small">From<input type="time" aria-label="Start time '+(i+1)+'" value="'+r.start+'" data-curfew-start="'+i+'" onchange="wholeCurfewStartChanged(this)" style="display:block;max-width:125px;padding:9px;border:1px solid #b9c8be;border-radius:8px"></label><label class="small">Until<input type="time" aria-label="End time '+(i+1)+'" value="'+r.end+'" data-curfew-end="'+i+'" style="display:block;max-width:125px;padding:9px;border:1px solid #b9c8be;border-radius:8px"></label><button class="button secondary" type="button" onclick="removeCurfewRange('+i+')" '+(curfewDraft.length===1?'disabled':'')+'>Remove</button></div>').join('');
 }
 function collectCurfewRows(){
  document.querySelectorAll('[data-curfew-start]').forEach(el=>{curfewDraft[Number(el.dataset.curfewStart)].start=el.value;});
  document.querySelectorAll('[data-curfew-end]').forEach(el=>{curfewDraft[Number(el.dataset.curfewEnd)].end=el.value;});
 }
-window.addCurfewRange=function(){collectCurfewRows();if(curfewDraft.length>=12){toast('Maximum 12 ranges');return;}curfewDraft.push({start:'22:00',end:'06:00'});drawCurfewRows();};
+window.addCurfewRange=function(){collectCurfewRows();if(curfewDraft.length>=12){toast('Maximum 12 ranges');return;}curfewDraft.push({start:'22:00',end:'22:01'});drawCurfewRows();};
 window.removeCurfewRange=function(i){collectCurfewRows();if(curfewDraft.length<=1)return;curfewDraft.splice(i,1);drawCurfewRows();};
 window.openWholeCurfewEditor=function(){
  if(wholeCurfew?.enabled){toast('Switch the curfew off before editing its times.');return;}
  curfewDraft=(wholeCurfew?.ranges||[{start:'10:00',end:'10:01'}]).map(r=>({...r}));
- modal('<h3>Whole-house curfew times</h3><p class="small">Add up to 12 daily time ranges. Overnight ranges are allowed. All cats can still enter.</p><div id="curfewRangeRows"></div><button class="button secondary" type="button" onclick="addCurfewRange()">+ Add another range</button><div class="row" style="margin-top:18px"><button class="button" type="button" onclick="saveCurfewEditor()">Save times</button><button class="button outline" type="button" onclick="closeModal()">Cancel</button></div>');
+ modal('<h3>Whole-house curfew times</h3><p class="small">Add up to 12 daily time ranges. Changing a start time sets the end one minute later; you can then adjust it. Overnight ranges are allowed. All cats can still enter.</p><div id="curfewRangeRows"></div><button class="button secondary" type="button" onclick="addCurfewRange()">+ Add another range</button><div class="row" style="margin-top:18px"><button class="button" type="button" onclick="saveCurfewEditor()">Save times</button><button class="button outline" type="button" onclick="closeModal()">Cancel</button></div>');
  drawCurfewRows();
 };
 window.saveCurfewEditor=async function(){

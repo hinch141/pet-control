@@ -150,62 +150,71 @@ function surePetMatch(data,petId){
 }
 async function petCurfewTick(){
  if(petCurfewBusy||globalThis.petAccessBusy)return;
- const due=Object.entries(petCurfewState.pets).filter(([id,e])=>e.enabled||e.owned);
+ const due=Object.entries(petCurfewState.pets).filter(([,e])=>e.enabled||e.owned);
  if(!due.length)return;
  petCurfewBusy=true;
  try{
-  const sure=await surePetSession(),data=await sure.dashboard();
+  const sure=await surePetSession();
+  // Each transition gets a fresh cloud snapshot. Never reuse the same snapshot
+  // across writes to different cats: it can report an obsolete profile.
   for(const [id,entry] of due){
    try{
-    const match=surePetMatch(data,id),active=petCurfewActive(entry);
-    entry.lastChecked=new Date().toISOString();
+    const match=surePetMatch(await sure.dashboard(),id);
+    const active=petCurfewActive(entry),now=Date.now();
+    entry.lastChecked=new Date(now).toISOString();
     entry.lastObservedProfile=match.profile;
     entry.activeNow=active;
     if(entry.manual){entry.owned=false;entry.phase='manual';continue;}
-    if(active&&!entry.owned){
-     if(match.profile!==2){entry.lastError='Existing Indoor Only restriction preserved; curfew cannot take ownership';entry.phase='external';continue;}
-     // Record ownership before the write so a successful write followed by a timeout can be recovered.
-     entry.owned=true;entry.phase='applying';savePetCurfews();logPetCurfew(id,'automatic_start_requested','Indoor Only');
-     await sure.set(match.device,match.tag,3);
-     entry.phase='curfew';entry.lastTransition=new Date().toISOString();logPetCurfew(id,'automatic_start_accepted','Cloud write accepted; verification pending');
-    }else if(!active&&entry.owned){
-     // Cloud read-after-write can lag. Verify on later scheduler passes rather
-     // than sending another command every five seconds or blocking other pets.
+    if(!active&&entry.owned){
      entry.phase='releasing';
      if(match.profile===2){
-      entry.owned=false;entry.phase='free';entry.lastTransition=new Date().toISOString();
-      entry.lastReleaseRequest=null;
-      logPetCurfew(id,'automatic_release_confirmed','Free Access observed in cloud');
+      // A cloud readback is not proof the physical flap has applied the command.
+      entry.owned=false;entry.phase='free_cloud_reported';
+      entry.lastTransition=new Date().toISOString();entry.lastReleaseRequest=null;
+      entry.lastError='';
+      logPetCurfew(id,'automatic_release_cloud_reported','Free Access reported by Sure Petcare; physical flap not verified');
      }else if(match.profile===3){
       const last=Date.parse(entry.lastReleaseRequest||'');
-      const retryDue=!Number.isFinite(last)||Date.now()-last>=20000;
-      if(retryDue){
-       entry.lastReleaseRequest=new Date().toISOString();
-       savePetCurfews();
-       logPetCurfew(id,'automatic_release_requested','Indoor Only observed; requesting Free Access');
+      if(!Number.isFinite(last)||now-last>=30000){
+       entry.lastReleaseRequest=new Date().toISOString();savePetCurfews();
+       logPetCurfew(id,'automatic_release_requested','Requesting Free Access');
        await sure.set(match.device,match.tag,2);
-       logPetCurfew(id,'automatic_release_accepted','Cloud write accepted; awaiting confirmation');
+       logPetCurfew(id,'automatic_release_accepted','Cloud accepted command; physical flap not verified');
       }
-      entry.lastError='Waiting for Free Access cloud confirmation';
-     }else throw Error('Unexpected permission; manual check required');
-    }else if(active&&entry.owned&&match.profile===2){
-     // Sure Petcare may still report the pre-write profile for several polls.
-     // Do not surrender ownership immediately: that strands an Indoor Only
-     // restriction with no automatic release when the window finishes.
-     const since=Date.now()-Date.parse(entry.lastTransition||'');
-     if(Number.isFinite(since)&&since>=0&&since<60000){
+      entry.lastError='Awaiting Sure Petcare Free Access readback; physical flap not verified';
+     }else throw Error('Unexpected cloud profile; manual verification required');
+    }else if(active&&!entry.owned){
+     if(match.profile!==2){entry.phase='external';entry.lastError='Existing restriction preserved; automatic curfew cannot take ownership';continue;}
+     entry.owned=true;entry.phase='applying';entry.lastTransition=new Date().toISOString();
+     savePetCurfews();logPetCurfew(id,'automatic_start_requested','Requesting Indoor Only');
+     await sure.set(match.device,match.tag,3);
+     logPetCurfew(id,'automatic_start_accepted','Cloud accepted command; physical flap not verified');
+     entry.lastError='Awaiting Indoor Only readback; physical flap not verified';
+    }else if(active&&entry.owned){
+     if(match.profile===3){
+      entry.phase='curfew_cloud_reported';entry.lastError='';
+     }else if(match.profile===2){
+      // Preserve ownership until the end time. Never abandon release responsibility
+      // because an asynchronous cloud snapshot disagrees with the start write.
       entry.phase='applying';
-      entry.lastError='Waiting for Indoor Only cloud confirmation';
-      continue;
-     }
-     entry.owned=false;entry.phase='external';entry.lastError='Flap permission changed externally; curfew paused until next window';logPetCurfew(id,'external_access_detected','Free Access observed after confirmation grace period');continue;
-    }else entry.phase=active?'curfew':'free';
-    if(entry.phase!=='releasing')entry.lastError='';
-   }catch(err){entry.lastError=String(err.message||err).slice(0,160);logPetCurfew(id,'scheduler_error',entry.lastError);}
+      const since=now-Date.parse(entry.lastTransition||'');
+      if(Number.isFinite(since)&&since>=30000){
+       entry.lastError='Indoor Only not confirmed by Sure Petcare; check flap manually';
+      }else entry.lastError='Awaiting Indoor Only cloud readback';
+     }else throw Error('Unexpected cloud profile during curfew');
+    }else{
+     entry.phase='free';entry.lastError='';
+    }
+   }catch(err){
+    entry.lastError=String(err.message||err).slice(0,160);
+    logPetCurfew(id,'scheduler_error',entry.lastError);
+   }
   }
   savePetCurfews();
- }catch(err){for(const [,entry] of due)entry.lastError=String(err.message||err).slice(0,160);savePetCurfews();}
- finally{petCurfewBusy=false;}
+ }catch(err){
+  for(const [,entry] of due)entry.lastError=String(err.message||err).slice(0,160);
+  savePetCurfews();
+ }finally{petCurfewBusy=false;}
 }
 setInterval(()=>petCurfewTick().catch(()=>{}),10000);
 setTimeout(()=>petCurfewTick().catch(()=>{}),3500);

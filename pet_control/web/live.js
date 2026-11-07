@@ -305,20 +305,60 @@ async function refreshCloud(force=false){
  return pending;
 }
 const mount=()=>{const home=document.getElementById('home');const stats=home?.querySelector('.stats');if(stats)stats.insertAdjacentElement('afterend',section);else if(home)home.prepend(section);else document.body.prepend(section);const toggle=home?.querySelector('#houseIndoorToggle');const houseCard=toggle?.closest('.card');if(houseCard)houseCard.insertAdjacentElement('afterend',flapSection);else section.insertAdjacentElement('afterend',flapSection);};
+let sureLocationPending=false,sureLocationBusy=false,sureLocationLast=0;
+async function refreshSureLocations(force=false){
+ if(sureLocationPending||sureLocationBusy||document.hidden||(!force&&Date.now()-sureLocationLast<20000))return;
+ sureLocationPending=true;
+ try{
+  const response=await fetch('./sure/locations',{cache:'no-store',signal:AbortSignal.timeout(30000)});
+  if(!response.ok)throw Error('Sure Petcare unavailable');
+  const data=await response.json();
+  if(data.status!=='connected')throw Error('Locations unavailable');
+  sureLocationLast=Date.now();
+  window.sureLiveStates=Object.fromEntries(data.pets.map(p=>[p.name.toLowerCase(),p.location==='inside'?'Home':p.location==='outside'?'Away':'Unknown']));
+  window.surePetLocations=Object.fromEntries(data.pets.map(p=>[p.name.toLowerCase(),p]));
+  paintSureLocations();
+ }catch(e){const el=document.getElementById('pet-live-time');if(el)el.textContent='Direct Sure Petcare update unavailable — showing Home Assistant status';}
+ finally{sureLocationPending=false;}
+}
+function paintSureLocations(){
+ const locations=window.surePetLocations;if(!locations)return;
+ const list=document.getElementById('pet-live-list');
+ if(list)list.innerHTML=names.map(n=>{const p=locations[n.toLowerCase()];return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+escapeHtml(n)+'</span><strong>'+(p?.location==='inside'?'Home':p?.location==='outside'?'Away':'Unknown')+'</strong></div>';}).join('');
+ const stamp=document.getElementById('pet-live-time');if(stamp)stamp.textContent='Sure Petcare checked '+new Date().toLocaleTimeString('en-GB');
+ document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim()?.toLowerCase();const p=locations[name];if(!p)return;const pill=card.querySelector('.pill');if(pill){pill.textContent=p.location==='inside'?'Home':p.location==='outside'?'Away':'Unknown';pill.classList.toggle('out',p.location==='outside');}});
+ if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
+}
+window.manualSureLocation=async function(id,where){
+ const p=(state.pets||[]).find(x=>x.id===id);
+ if(!p||!['inside','outside'].includes(where)||sureLocationBusy)return;
+ const live=window.surePetLocations?.[p.name.toLowerCase()];
+ if(!live?.petId)return alert('Unable to identify this cat in Sure Petcare. Refresh the location first.');
+ if(!confirm('Mark '+p.name+' as '+(where==='inside'?'Inside':'Outside')+' in Sure Petcare?'))return;
+ sureLocationBusy=true;
+ try{
+  const response=await fetch('./sure/locations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({petId:live.petId,location:where}),signal:AbortSignal.timeout(20000)});
+  const data=await response.json();if(!response.ok)throw Error(data.error||'Location update failed');
+  alert('Sure Petcare accepted the change for '+p.name+'. Checking its updated status.');
+  sureLocationLast=0;
+  await refreshSureLocations(true);
+ }catch(e){alert('Could not confirm the location update: '+e.message);}
+ finally{sureLocationBusy=false;}
+};
 let statusPending=false;
 async function refresh(){
 if(statusPending||document.hidden)return;
 statusPending=true;
 try{const r=await fetch('./live/status',{cache:'no-store'});if(!r.ok)throw Error('unavailable');const d=await r.json();
-window.sureLiveStates=Object.fromEntries(d.pets.map(p=>[p.name,p.state==='on'?'Home':p.state==='off'?'Away':'Unknown']));
+if(!window.surePetLocations)window.sureLiveStates=Object.fromEntries(d.pets.map(p=>[p.name,p.state==='on'?'Home':p.state==='off'?'Away':'Unknown']));
 if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
-document.getElementById('pet-live-list').innerHTML=names.map(n=>{const p=d.pets.find(x=>x.name===n.toLowerCase());const status=p?.state==='on'?'Home':p?.state==='off'?'Away':'Unknown';return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+n+'</span><strong>'+status+'</strong></div>'}).join('');
-document.getElementById('pet-live-time').textContent='Updated '+new Date(d.updated).toLocaleTimeString('en-GB');
-document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim();const p=d.pets.find(x=>x.name===name?.toLowerCase());if(!p)return;const pill=card.querySelector('.pill');const detail=card.querySelector('.small');const status=p.state==='on'?'Home':p.state==='off'?'Away':'Unknown';if(pill){pill.textContent=status;pill.classList.toggle('out',status==='Away');}if(detail){detail.innerHTML=detail.innerHTML.replace(/Sample status only|Awaiting live status/g,'Live status from Sure Petcare');}});
+if(!window.surePetLocations)document.getElementById('pet-live-list').innerHTML=names.map(n=>{const p=d.pets.find(x=>x.name===n.toLowerCase());const status=p?.state==='on'?'Home':p?.state==='off'?'Away':'Unknown';return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+n+'</span><strong>'+status+'</strong></div>'}).join('');
+if(!window.surePetLocations)document.getElementById('pet-live-time').textContent='Updated '+new Date(d.updated).toLocaleTimeString('en-GB');
+document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim();const p=d.pets.find(x=>x.name===name?.toLowerCase());if(!p)return;const pill=card.querySelector('.pill');const detail=card.querySelector('.small');const status=p.state==='on'?'Home':p.state==='off'?'Away':'Unknown';if(pill&&!window.surePetLocations){pill.textContent=status;pill.classList.toggle('out',status==='Away');}if(detail){detail.innerHTML=detail.innerHTML.replace(/Sample status only|Awaiting live status/g,'Live status from Sure Petcare');}});
 }catch(e){if(!window.sureLiveStates)document.getElementById('pet-live-list').textContent='Live status unavailable. Check Home Assistant app logs.';}
-finally{statusPending=false;}
+finally{statusPending=false;if(window.surePetLocations)paintSureLocations();}
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshFlap();refreshCloud();});else{mount();refresh();refreshFlap();refreshCloud();}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshSureLocations(true);refreshFlap();refreshCloud();});else{mount();refresh();refreshFlap();refreshCloud();}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();}});
-setInterval(refresh,5000);setInterval(refreshFlap,15000);setInterval(refreshCloud,60000);
+setInterval(refresh,5000);setInterval(refreshSureLocations,20000);setInterval(refreshFlap,15000);setInterval(refreshCloud,60000);
 })();

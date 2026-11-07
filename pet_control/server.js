@@ -94,13 +94,15 @@ async function sureFetch(url,options={}){
  if(!endpoint.startsWith('https://app.api.surehub.io/api/'))throw Error('Unexpected Sure Petcare endpoint');
  const login=endpoint.endsWith('/auth/login'),dashboard=endpoint.endsWith('/me/start');
  const method=String(options.method||'GET').toUpperCase();
- const key=login?String(options.body||''):'';
+ const key=login?(()=>{try{const b=JSON.parse(options.body||'{}');return String(b.email_address||'')+'\\0'+String(b.password||'');}catch{return String(options.body||'');}})():'';
  if(login){
   const prior=sureTraffic.login.get(key);
   if(prior&&Date.now()<prior.expires)return prior.response.clone();
  }
  if(dashboard&&method==='GET'&&sureTraffic.dashboard&&Date.now()<sureTraffic.dashboard.expires)return sureTraffic.dashboard.response.clone();
  const job=async()=>{
+  if(login){const cached=sureTraffic.login.get(key);if(cached&&Date.now()<cached.expires)return cached.response.clone();}
+  if(dashboard&&method==='GET'&&sureTraffic.dashboard&&Date.now()<sureTraffic.dashboard.expires)return sureTraffic.dashboard.response.clone();
   if(Date.now()<sureTraffic.cooldown)throw Error('Sure Petcare rate limit active; requests paused');
   const wait=Math.max(0,sureTraffic.next-Date.now());
   if(wait)await surePause(wait);

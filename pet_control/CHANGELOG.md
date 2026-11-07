@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.18.54 — 7 November 2026
+- Fix Home screen cat cards to display confirmed individual Sure Petcare flap access rather than stale local preference.
+- Refresh individual permission information when Home opens and update cards after the result arrives.
+- Show Checking while loading, and keep Home and pet profile access labels consistent.
+- No changes to actual cat flap permissions.
+
 ## 2.18.53 — 7 November 2026
 - Display actual confirmed Sure Petcare individual tag permission (Indoor Only / Free Access) on each cat profile rather than stale local preference.
 - Refresh permission on opening a cat profile and after manual access updates; show Checking or unavailable when not confirmed.

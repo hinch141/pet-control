@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.18.71 — 7 November 2026
+- Curfew diagnostics and event-history buttons now toggle their respective expanded results closed on a second tap.
+- No changes to automatic access scheduling or Home Assistant presence sensors in this release; both are under investigation after the overlapping-curfew test.
+
 ## 2.18.70 — 7 November 2026
 - Prevent the individual curfew scheduler from surrendering ownership immediately when Sure Petcare briefly reports the pre-write Free Access state after an Indoor Only command.
 - Allow up to 60 seconds for cloud status propagation before treating Free Access as an external change; preserve explicit manual overrides.

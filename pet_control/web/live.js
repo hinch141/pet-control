@@ -134,7 +134,7 @@ window.renderSurePetDetail=function(){
  const events=records().filter(e=>e.pet===petName);
  const status=window.sureLiveStates?.[petName]||'Unknown';
  const summary=events.slice(0,10).map(e=>rowFor(e,true)).join('')||'<div class="empty">No Sure Petcare activity recorded.</div>';
- root.innerHTML='<div class="card"><div class="detailhero">'+(typeof petAvatar==='function'?petAvatar(p):'')+'<h2>'+escapeHtml(p.name)+'</h2></div><h2 style="display:none">'+escapeHtml(p.name)+'</h2><p><strong>Current status: '+escapeHtml(status)+'</strong></p><div class="row" style="margin:12px 0;gap:8px"><button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'inside\')">Mark Inside</button><button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'outside\')">Mark Outside</button></div><p class="small">Location from Sure Petcare when available; Home Assistant fallback</p><div class="card" style="margin:12px 0;background:#f4f8f5"><strong>Indoor-only preference</strong><div class="row between" style="margin-top:8px"><span>'+((typeof state!=='undefined'&&state.houseIndoor)?'Whole-house Indoor-only':p.indoorMode==='indoor'?'Indoor-only':p.indoorMode==='scheduled'?'Scheduled':'Free Access')+'</span><button class="button secondary" onclick="openPet(\''+escapeHtml(p.id)+'\')">Change setting</button></div></div><div class="row"><button class="button secondary" onclick="showPetTimeline(\''+escapeHtml(p.id)+'\')">View full timeline</button><button class="button secondary" onclick="openPetCurfew(\''+escapeHtml(p.id)+'\')">Curfew settings</button></div></div><div class="card" style="margin-top:12px"><h3>Recent activity</h3>'+summary+'</div>';
+ root.innerHTML='<div class="card"><div class="detailhero">'+(typeof petAvatar==='function'?petAvatar(p):'')+'<h2>'+escapeHtml(p.name)+'</h2></div><h2 style="display:none">'+escapeHtml(p.name)+'</h2><p><strong>Current status: '+escapeHtml(status)+'</strong></p><div class="row" style="margin:12px 0;gap:8px"><button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'inside\')">Mark Inside</button><button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'outside\')">Mark Outside</button></div><p class="small">Live presence tracked through Home Assistant</p><div class="card" style="margin:12px 0;background:#f4f8f5"><strong>Indoor-only preference</strong><div class="row between" style="margin-top:8px"><span>'+((typeof state!=='undefined'&&state.houseIndoor)?'Whole-house Indoor-only':p.indoorMode==='indoor'?'Indoor-only':p.indoorMode==='scheduled'?'Scheduled':'Free Access')+'</span><button class="button secondary" onclick="openPet(\''+escapeHtml(p.id)+'\')">Change setting</button></div></div><div class="row"><button class="button secondary" onclick="showPetTimeline(\''+escapeHtml(p.id)+'\')">View full timeline</button><button class="button secondary" onclick="openPetCurfew(\''+escapeHtml(p.id)+'\')">Curfew settings</button></div></div><div class="card" style="margin-top:12px"><h3>Recent activity</h3>'+summary+'</div>';
 };
 window.renderSureTimeline=function(){
  const target=document.getElementById('timelineEvents'),count=document.getElementById('eventCount');
@@ -315,9 +315,9 @@ async function refreshSureLocations(force=false){
   const data=await response.json();
   if(data.status!=='connected')throw Error('Locations unavailable');
   sureLocationLast=Date.now();
-  window.sureLiveStates=Object.fromEntries(data.pets.map(p=>[p.name.toLowerCase(),p.location==='inside'?'Home':p.location==='outside'?'Away':'Unknown']));
+  // Preserve the Home Assistant tracking feed; direct position lookup is only for manual controls.
   window.surePetLocations=Object.fromEntries(data.pets.map(p=>[p.name.toLowerCase(),p]));
-  paintSureLocations();
+  // Do not replace tracked presence with an unverified direct location lookup.
  }catch(e){const el=document.getElementById('pet-live-time');if(el)el.textContent='Direct Sure Petcare update unavailable — showing Home Assistant status';}
  finally{sureLocationPending=false;}
 }
@@ -342,6 +342,7 @@ window.manualSureLocation=async function(id,where){
   alert('Sure Petcare accepted the change for '+p.name+'. Checking its updated status.');
   sureLocationLast=0;
   await refreshSureLocations(true);
+  await refresh();
  }catch(e){alert('Could not confirm the location update: '+e.message);}
  finally{sureLocationBusy=false;}
 };
@@ -350,13 +351,13 @@ async function refresh(){
 if(statusPending||document.hidden)return;
 statusPending=true;
 try{const r=await fetch('./live/status',{cache:'no-store'});if(!r.ok)throw Error('unavailable');const d=await r.json();
-if(!window.surePetLocations)window.sureLiveStates=Object.fromEntries(d.pets.map(p=>[p.name,p.state==='on'?'Home':p.state==='off'?'Away':'Unknown']));
+window.sureLiveStates=Object.fromEntries(d.pets.map(p=>[p.name,p.state==='on'?'Home':p.state==='off'?'Away':'Unknown']));
 if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
-if(!window.surePetLocations)document.getElementById('pet-live-list').innerHTML=names.map(n=>{const p=d.pets.find(x=>x.name===n.toLowerCase());const status=p?.state==='on'?'Home':p?.state==='off'?'Away':'Unknown';return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+n+'</span><strong>'+status+'</strong></div>'}).join('');
-if(!window.surePetLocations)document.getElementById('pet-live-time').textContent='Updated '+new Date(d.updated).toLocaleTimeString('en-GB');
-document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim();const p=d.pets.find(x=>x.name===name?.toLowerCase());if(!p)return;const pill=card.querySelector('.pill');const detail=card.querySelector('.small');const status=p.state==='on'?'Home':p.state==='off'?'Away':'Unknown';if(pill&&!window.surePetLocations){pill.textContent=status;pill.classList.toggle('out',status==='Away');}if(detail){detail.innerHTML=detail.innerHTML.replace(/Sample status only|Awaiting live status/g,'Live status from Sure Petcare');}});
+document.getElementById('pet-live-list').innerHTML=names.map(n=>{const p=d.pets.find(x=>x.name===n.toLowerCase());const status=p?.state==='on'?'Home':p?.state==='off'?'Away':'Unknown';return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+n+'</span><strong>'+status+'</strong></div>'}).join('');
+document.getElementById('pet-live-time').textContent='Updated '+new Date(d.updated).toLocaleTimeString('en-GB');
+document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim();const p=d.pets.find(x=>x.name===name?.toLowerCase());if(!p)return;const pill=card.querySelector('.pill');const detail=card.querySelector('.small');const status=p.state==='on'?'Home':p.state==='off'?'Away':'Unknown';if(pill){pill.textContent=status;pill.classList.toggle('out',status==='Away');}if(detail){detail.innerHTML=detail.innerHTML.replace(/Sample status only|Awaiting live status/g,'Live status from Sure Petcare');}});
 }catch(e){if(!window.sureLiveStates)document.getElementById('pet-live-list').textContent='Live status unavailable. Check Home Assistant app logs.';}
-finally{statusPending=false;if(window.surePetLocations)paintSureLocations();}
+finally{statusPending=false;}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshSureLocations(true);refreshFlap();refreshCloud();});else{mount();refresh();refreshFlap();refreshCloud();}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();}});

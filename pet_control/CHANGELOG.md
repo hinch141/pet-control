@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.59 — 7 November 2026
+- Keep ownership of automatic Indoor Only restriction until Sure Petcare confirms the automatic Free Access release; retry failed or unconfirmed releases.
+- Record last scheduler check, observed profile, active phase, transition and errors for diagnosis.
+- Preserve manual Keep indoors priority and never automatically release manual restrictions.
+
 ## 2.18.58 — 7 November 2026
 - Fix root cause of individual curfew save failures: incorrectly escaped time-validation regular expressions in the server and web schedule normaliser rejected valid HH:mm values.
 - Preserve existing schedules and manual access permissions; no automatic reset of cats.

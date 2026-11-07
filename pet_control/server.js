@@ -138,7 +138,16 @@ async function petCurfewTick(){
      }else if(match.profile!==2)throw Error('Unexpected permission; manual check required');
      entry.owned=false;entry.phase='free';entry.lastTransition=new Date().toISOString();logPetCurfew(id,'automatic_release_confirmed','Free Access');
     }else if(active&&entry.owned&&match.profile===2){
-     entry.owned=false;entry.phase='external';entry.lastError='Flap permission changed externally; curfew paused until next window';continue;
+     // Sure Petcare may still report the pre-write profile for several polls.
+     // Do not surrender ownership immediately: that strands an Indoor Only
+     // restriction with no automatic release when the window finishes.
+     const since=Date.now()-Date.parse(entry.lastTransition||'');
+     if(Number.isFinite(since)&&since>=0&&since<60000){
+      entry.phase='applying';
+      entry.lastError='Waiting for Indoor Only cloud confirmation';
+      continue;
+     }
+     entry.owned=false;entry.phase='external';entry.lastError='Flap permission changed externally; curfew paused until next window';logPetCurfew(id,'external_access_detected','Free Access observed after confirmation grace period');continue;
     }else entry.phase=active?'curfew':'free';
     entry.lastError='';
    }catch(err){entry.lastError=String(err.message||err).slice(0,160);logPetCurfew(id,'scheduler_error',entry.lastError);}

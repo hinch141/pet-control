@@ -206,7 +206,7 @@ async function petCurfewTick(){
  }catch(err){for(const [,entry] of due)entry.lastError=String(err.message||err).slice(0,160);savePetCurfews();}
  finally{petCurfewBusy=false;}
 }
-setInterval(()=>petCurfewTick().catch(()=>{}),5000);
+setInterval(()=>petCurfewTick().catch(()=>{}),10000);
 setTimeout(()=>petCurfewTick().catch(()=>{}),3500);
 
 const server=http.createServer(async(req,res)=>{
@@ -767,5 +767,5 @@ async function archiveBackfill(){
  }catch{}finally{archiveBusy=false;}
 }
 setTimeout(archiveBackfill,60000);
-setInterval(archiveBackfill,300000);
+setInterval(archiveBackfill,900000);
 server.listen(80,'0.0.0.0');

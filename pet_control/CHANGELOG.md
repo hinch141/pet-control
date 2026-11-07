@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.60 — 7 November 2026
+- Add read-only Individual curfew diagnostics panel showing each cat's schedule status, active phase, ownership, manual hold, observed cloud profile, last check and last error.
+- Clarify that enabled individual curfews are live, not local preferences.
+- No automated permission changes in this diagnostic release.
+
 ## 2.18.59 — 7 November 2026
 - Keep ownership of automatic Indoor Only restriction until Sure Petcare confirms the automatic Free Access release; retry failed or unconfirmed releases.
 - Record last scheduler check, observed profile, active phase, transition and errors for diagnosis.

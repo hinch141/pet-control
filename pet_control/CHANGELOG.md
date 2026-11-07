@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.65 — 7 November 2026
+- When changing an individual day or all-week curfew start, automatically initialise the end time to one minute later.
+- Handle midnight wrap (23:59 to 00:00); the end time remains editable for longer curfews.
+- Do not alter existing saved curfew times unless the start time is edited.
+
 ## 2.18.64 — 7 November 2026
 - Prevent incomplete or unsuccessful Sure Petcare permission responses from clearing previously confirmed individual access states.
 - Merge only valid confirmed cat permissions into the displayed cache and do not mark an empty response as freshly checked.

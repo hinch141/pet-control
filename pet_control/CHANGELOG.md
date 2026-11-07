@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.18.67 — 7 November 2026
+- Match whole-house curfew time editing to individual curfews: editing a start time automatically sets its end one minute later, including midnight wrap.
+- Keep end times editable and preserve previously saved whole-house ranges unless their start is changed.
+- Initialise additional whole-house ranges with 22:00–22:01 rather than an overnight default.
+- Keep all existing whole-house and individual curfew scheduling rules unchanged.
+
 ## 2.18.66 — 7 November 2026
 - Correct misleading edit-pet warning that described all Sure Petcare lookup failures as an unmatched flap tag.
 - Distinguish connection/authentication failures from genuine tag matching failures, displaying the server-provided explanation.

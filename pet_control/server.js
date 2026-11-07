@@ -61,6 +61,76 @@ async function curfewTick(){
 setInterval(()=>curfewTick().catch(()=>{}),10000);
 setTimeout(()=>curfewTick().catch(()=>{}),2000);
 
+
+const petCurfewFile='/data/pet_curfews.json';
+let petCurfewState={pets:{}};
+try{const saved=JSON.parse(fs.readFileSync(petCurfewFile,'utf8'));if(saved&&saved.pets&&typeof saved.pets==='object')petCurfewState=saved;}catch{}
+const savePetCurfews=()=>fs.writeFileSync(petCurfewFile,JSON.stringify(petCurfewState),{mode:0o600});
+let petCurfewBusy=false;
+const validPetTime=t=>typeof t==='string'&&/^([01]\\d|2[0-3]):[0-5]\\d$/.test(t);
+function petCurfewActive(entry,date=new Date()){
+ if(!entry.enabled)return false;
+ const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);
+ const fields=Object.fromEntries(parts.map(p=>[p.type,p.value])),days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],today=days.indexOf(fields.weekday);
+ if(today<0)return false;
+ const clock=fields.hour+':'+fields.minute,prev=(today+6)%7;
+ const active=(d,previous)=>{if(!d||d.enabled===false||!validPetTime(d.start)||!validPetTime(d.end)||d.start===d.end)return false;return d.start<d.end?!previous&&clock>=d.start&&clock<d.end:previous?clock<d.end:clock>=d.start;};
+ return active(entry.days[today],false)||active(entry.days[prev],true);
+}
+async function surePetSession(){
+ let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
+ if(!options.sure_email||!options.sure_password)throw Error('Sure Petcare not configured');
+ const deviceId=randomUUID(),headers={'Content-Type':'application/json',Accept:'application/json',Origin:'https://surepetcare.io',Referer:'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
+ const login=await fetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:options.sure_email,password:options.sure_password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
+ if(!login.ok)throw Error('Sure Petcare login failed');
+ const auth=await login.json(),access=auth.data?.token||auth.token||auth.access_token||auth.data?.access_token;
+ if(!access)throw Error('Sure Petcare login token unavailable');
+ headers.Authorization='Bearer '+access;
+ const dashboard=async()=>{const r=await fetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('Sure Petcare permission check failed');return (await r.json()).data||{};};
+ const set=async(device,tag,profile)=>{const r=await fetch('https://app.api.surehub.io/api/device/'+device+'/tag/'+tag,{method:'PUT',headers,body:JSON.stringify({profile}),signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('Sure Petcare refused permission update');};
+ return {dashboard,set};
+}
+function surePetMatch(data,petId){
+ const pets=(data.pets||[]).filter(p=>String(p.id)===String(petId));
+ if(pets.length!==1)throw Error('Cat not uniquely identified');
+ const matches=(data.devices||[]).filter(d=>[6,13].includes(Number(d.product_id))).flatMap(d=>(d.tags||[]).filter(t=>String(t.id)===String(pets[0].tag_id)).map(t=>({device:d,tag:t})));
+ if(matches.length!==1)throw Error('Flap tag not uniquely identified');
+ const match=matches[0],device=Number(match.device.id),tag=Number(match.tag.tag_id??match.tag.id);
+ if(!Number.isSafeInteger(device)||!Number.isSafeInteger(tag)||device<=0||tag<=0)throw Error('Invalid flap identifiers');
+ return {device,tag,profile:Number(match.tag.profile)};
+}
+async function petCurfewTick(){
+ if(petCurfewBusy||globalThis.petAccessBusy)return;
+ const due=Object.entries(petCurfewState.pets).filter(([id,e])=>e.enabled||e.owned);
+ if(!due.length)return;
+ petCurfewBusy=true;
+ try{
+  const sure=await surePetSession();let data=await sure.dashboard();
+  for(const [id,entry] of due){
+   try{
+    const match=surePetMatch(data,id),active=petCurfewActive(entry);
+    if(entry.manual){entry.owned=false;continue;}
+    if(active&&!entry.owned){
+     if(match.profile!==2){entry.lastError='Existing Indoor Only restriction preserved; curfew cannot take ownership';continue;}
+     entry.owned=true;savePetCurfews();
+     await sure.set(match.device,match.tag,3);
+    }else if(!active&&entry.owned){
+     if(match.profile===3)await sure.set(match.device,match.tag,2);
+     entry.owned=false;
+    }else if(active&&entry.owned&&match.profile===2){
+     // Manual external changes are respected rather than repeatedly overridden.
+     entry.owned=false;entry.lastError='Flap permission changed externally; curfew paused until next window';
+    }
+    entry.lastError='';
+   }catch(err){entry.lastError=String(err.message||err).slice(0,160);}
+  }
+  savePetCurfews();
+ }catch(err){for(const [,entry] of due)entry.lastError=String(err.message||err).slice(0,160);savePetCurfews();}
+ finally{petCurfewBusy=false;}
+}
+setInterval(()=>petCurfewTick().catch(()=>{}),15000);
+setTimeout(()=>petCurfewTick().catch(()=>{}),3500);
+
 const server=http.createServer(async(req,res)=>{
   const peer=(req.socket.remoteAddress||'').replace(/^::ffff:/,'');
   if(peer!=='172.30.32.2'){res.writeHead(403);return res.end();}

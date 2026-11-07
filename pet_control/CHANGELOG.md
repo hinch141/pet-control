@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.18.48 — 7 November 2026
+- Prevent the mobile keyboard appearing automatically after changing a cat's individual access.
+- Keep the pet name field editable when deliberately tapped.
+
 ## 2.18.47 — 7 November 2026
 - Show only Restore Free Access when a cat is currently Indoor Only.
 - Show only Keep indoors when a cat is currently on Free Access.

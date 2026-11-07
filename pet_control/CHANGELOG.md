@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.66 — 7 November 2026
+- Correct misleading edit-pet warning that described all Sure Petcare lookup failures as an unmatched flap tag.
+- Distinguish connection/authentication failures from genuine tag matching failures, displaying the server-provided explanation.
+- Do not change cat access or curfew settings.
+
 ## 2.18.65 — 7 November 2026
 - When changing an individual day or all-week curfew start, automatically initialise the end time to one minute later.
 - Handle midnight wrap (23:59 to 00:00); the end time remains editable for longer curfews.

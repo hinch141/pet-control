@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.81 — 7 November 2026
+- Correct the scheduler Sure Petcare request timeout: its 12-second countdown now begins when the queued network request starts, not when it joins the rate-limited queue.
+- Preserve three-second request pacing and existing 429 cooldown.
+- No automatic retry of an uncertain write; curfews remain disabled pending controlled testing.
+
 ## 2.18.80 — 7 November 2026
 - Curfew event history opens with five recent events, with a button to show five more at a time. Existing history is retained.
 - Permission write errors now identify uncertain timeouts and elapsed time rather than implying a rejected command.

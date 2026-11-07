@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.80 — 7 November 2026
+- Curfew event history opens with five recent events, with a button to show five more at a time. Existing history is retained.
+- Permission write errors now identify uncertain timeouts and elapsed time rather than implying a rejected command.
+- No automatic retry added for uncertain write outcomes; individual curfews should remain disabled pending controlled verification.
+
 ## 2.18.79 — 7 November 2026
 - Preserve curfew ownership through uncertain Indoor Only cloud readbacks so the release obligation is not silently lost.
 - Read a new Sure Petcare dashboard snapshot for each cat instead of sharing a potentially stale snapshot across overlapping transitions.

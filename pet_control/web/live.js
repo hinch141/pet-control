@@ -134,7 +134,7 @@ window.renderSurePetDetail=function(){
  const events=records().filter(e=>e.pet===petName);
  const status=window.sureLiveStates?.[petName]||'Unknown';
  const summary=events.slice(0,10).map(e=>rowFor(e,true)).join('')||'<div class="empty">No Sure Petcare activity recorded.</div>';
- root.innerHTML='<div class="card"><div class="detailhero">'+(typeof petAvatar==='function'?petAvatar(p):'')+'<h2>'+escapeHtml(p.name)+'</h2></div><h2 style="display:none">'+escapeHtml(p.name)+'</h2><p><strong>Current status: '+escapeHtml(status)+'</strong></p><div class="row" style="margin:12px 0;gap:8px"><button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'inside\')">Mark Inside</button><button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'outside\')">Mark Outside</button></div><p class="small">Live presence tracked through Home Assistant</p><div class="card" style="margin:12px 0;background:#f4f8f5"><strong>Indoor-only preference</strong><div class="row between" style="margin-top:8px"><span>'+((typeof state!=='undefined'&&state.houseIndoor)?'Whole-house Indoor-only':p.indoorMode==='indoor'?'Indoor-only':p.indoorMode==='scheduled'?'Scheduled':'Free Access')+'</span><button class="button secondary" onclick="openPet(\''+escapeHtml(p.id)+'\')">Change setting</button></div></div><div class="row"><button class="button secondary" onclick="showPetTimeline(\''+escapeHtml(p.id)+'\')">View full timeline</button><button class="button secondary" onclick="openPetCurfew(\''+escapeHtml(p.id)+'\')">Curfew settings</button></div></div><div class="card" style="margin-top:12px"><h3>Recent activity</h3>'+summary+'</div>';
+ root.innerHTML='<div class="card"><div class="detailhero">'+(typeof petAvatar==='function'?petAvatar(p):'')+'<h2>'+escapeHtml(p.name)+'</h2></div><h2 style="display:none">'+escapeHtml(p.name)+'</h2><p><strong>Current status: '+escapeHtml(status)+'</strong></p><div class="row" style="margin:12px 0;gap:8px">'+(status==='Home'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'outside\')">Mark Outside</button>':status==='Away'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'inside\')">Mark Inside</button>':'<span class="small">Waiting for a tracked location.</span>')+'</div>'+(manualLocationNotice?'<p class="small" role="status">'+escapeHtml(manualLocationNotice)+'</p>':'')+'<p class="small">Live presence tracked through Home Assistant</p><div class="card" style="margin:12px 0;background:#f4f8f5"><strong>Indoor-only preference</strong><div class="row between" style="margin-top:8px"><span>'+((typeof state!=='undefined'&&state.houseIndoor)?'Whole-house Indoor-only':p.indoorMode==='indoor'?'Indoor-only':p.indoorMode==='scheduled'?'Scheduled':'Free Access')+'</span><button class="button secondary" onclick="openPet(\''+escapeHtml(p.id)+'\')">Change setting</button></div></div><div class="row"><button class="button secondary" onclick="showPetTimeline(\''+escapeHtml(p.id)+'\')">View full timeline</button><button class="button secondary" onclick="openPetCurfew(\''+escapeHtml(p.id)+'\')">Curfew settings</button></div></div><div class="card" style="margin-top:12px"><h3>Recent activity</h3>'+summary+'</div>';
 };
 window.renderSureTimeline=function(){
  const target=document.getElementById('timelineEvents'),count=document.getElementById('eventCount');
@@ -329,22 +329,25 @@ function paintSureLocations(){
  document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim()?.toLowerCase();const p=locations[name];if(!p)return;const pill=card.querySelector('.pill');if(pill){pill.textContent=p.location==='inside'?'Home':p.location==='outside'?'Away':'Unknown';pill.classList.toggle('out',p.location==='outside');}});
  if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
 }
-window.manualSureLocation=async function(id,where){
- const p=(state.pets||[]).find(x=>x.id===id);
- if(!p||!['inside','outside'].includes(where)||sureLocationBusy)return;
- const live=window.surePetLocations?.[p.name.toLowerCase()];
- if(!live?.petId)return alert('Unable to identify this cat in Sure Petcare. Refresh the location first.');
- if(!confirm('Mark '+p.name+' as '+(where==='inside'?'Inside':'Outside')+' in Sure Petcare?'))return;
- sureLocationBusy=true;
+let manualLocationNotice='';
+window.manualSureLocation=function(id,where){
+ const p=(state.pets||[]).find(x=>x.id===id);if(!p||sureLocationBusy)return;
+ const dest=where==='inside'?'Inside':'Outside';
+ modal('<h3>Update '+escapeHtml(p.name)+'’s location?</h3><p>Mark '+escapeHtml(p.name)+' as <strong>'+dest+'</strong> in Sure Petcare?</p><div class="row"><button class="button" id="confirmManualLocation">Confirm</button><button class="button outline" onclick="closeModal()">Cancel</button></div>');
+ document.getElementById('confirmManualLocation').onclick=()=>window.confirmManualSureLocation(id,where);
+};
+window.confirmManualSureLocation=async function(id,where){
+ const p=(state.pets||[]).find(x=>x.id===id);if(!p||sureLocationBusy)return;
+ closeModal();const live=window.surePetLocations?.[p.name.toLowerCase()];
+ if(!live?.petId){manualLocationNotice='Could not identify '+p.name+' in Sure Petcare. Please try again shortly.';window.renderSurePetDetail();return;}
+ sureLocationBusy=true;manualLocationNotice='Updating '+p.name+'…';window.renderSurePetDetail();
  try{
   const response=await fetch('./sure/locations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({petId:live.petId,location:where}),signal:AbortSignal.timeout(20000)});
   const data=await response.json();if(!response.ok)throw Error(data.error||'Location update failed');
-  alert('Sure Petcare accepted the change for '+p.name+'. Checking its updated status.');
-  sureLocationLast=0;
-  await refreshSureLocations(true);
-  await refresh();
- }catch(e){alert('Could not confirm the location update: '+e.message);}
- finally{sureLocationBusy=false;}
+  manualLocationNotice='Update sent to Sure Petcare. The tracked status will refresh when the change is reported.';
+  sureLocationLast=0;await refreshSureLocations(true);await refresh();
+ }catch(e){manualLocationNotice='Unable to update location: '+(e.message||'Please try again.');}
+ finally{sureLocationBusy=false;window.renderSurePetDetail();}
 };
 let statusPending=false;
 async function refresh(){

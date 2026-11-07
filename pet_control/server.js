@@ -224,8 +224,8 @@ const server=http.createServer(async(req,res)=>{
     let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>8192)return reply(413,{error:'Schedule too large'});}
     const body=JSON.parse(raw),id=String(body.petId||'');
     if(!/^[0-9]+$/.test(id)||typeof body.enabled!=='boolean'||!Array.isArray(body.days)||body.days.length!==7)return reply(400,{error:'Invalid cat or weekly schedule'});
-    const days=body.days.map(d=>({enabled:d.enabled!==false,start:d.start,end:d.end}));
-    if(days.some(d=>!validPetTime(d.start)||!validPetTime(d.end)||d.start===d.end))return reply(400,{error:'Each day needs valid, different start and end times'});
+    const days=body.days.map(d=>({enabled:d.enabled===true,start:d.start,end:d.end}));
+    if(days.some(d=>d.enabled&&(!validPetTime(d.start)||!validPetTime(d.end)||d.start===d.end)))return reply(400,{error:'Enabled curfew days need valid, different start and end times'});
     const old=petCurfewState.pets[id]||{manual:false,owned:false};
     // A manual restriction remains authoritative, including when schedules are edited.
     petCurfewState.pets[id]={...old,enabled:body.enabled,days,lastError:''};

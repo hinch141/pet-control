@@ -190,6 +190,24 @@ function paint(){
  if(document.getElementById('timeline')?.classList.contains('active')&&typeof window.renderSureTimeline==='function')window.renderSureTimeline();
  if(document.getElementById('petDetailContent')?.closest('.page.active')&&typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
 }
+let petPermissionCache={};
+let petPermissionRequest=null;
+async function refreshPetPermissionDisplay(){
+ if(petPermissionRequest)return petPermissionRequest;
+ petPermissionRequest=(async()=>{
+  try{
+   const r=await fetch('./sure/pet-permissions',{cache:'no-store',signal:AbortSignal.timeout(30000)});
+   if(!r.ok)throw Error('Permission unavailable');
+   const data=await r.json(),next={};
+   for(const cat of data.cats||[])if(cat.matched&&cat.surePetId)next[String(cat.surePetId)]=cat.profile==='indoor_only'?'Indoor Only':cat.profile==='free_access'?'Free Access':'Status unavailable';
+   petPermissionCache=next;
+  }catch{petPermissionCache={};}
+  finally{petPermissionRequest=null;}
+  if(document.getElementById('petDetailContent')?.closest('.page.active'))window.renderSurePetDetail();
+ })();
+ return petPermissionRequest;
+}
+window.refreshPetPermissionDisplay=refreshPetPermissionDisplay;
 window.renderSurePetDetail=function(){
  const root=document.getElementById('petDetailContent');
  if(!root||!root.closest('.page.active'))return;
@@ -199,7 +217,7 @@ window.renderSurePetDetail=function(){
  const events=records().filter(e=>e.pet===petName);
  const status=effectivePetStatus(petName);
  const summary=events.slice(0,10).map(e=>rowFor(e,true)).join('')||'<div class="empty">No Sure Petcare activity recorded.</div>';
- root.innerHTML='<div class="card"><div class="detailhero">'+(typeof petAvatar==='function'?petAvatar(p):'')+'<h2>'+escapeHtml(p.name)+'</h2></div><h2 style="display:none">'+escapeHtml(p.name)+'</h2><p><strong>Current status: '+escapeHtml(status)+'</strong></p><div class="row" style="margin:12px 0;gap:8px">'+(status==='Home'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'outside\')">Mark Outside</button>':status==='Away'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'inside\')">Mark Inside</button>':'<span class="small">Waiting for a tracked location.</span>')+'</div>'+(manualLocationNotice?'<p class="small" role="status">'+escapeHtml(manualLocationNotice)+'</p>':'')+'<p class="small">Live presence tracked through Home Assistant</p><div class="card" style="margin:12px 0;background:#f4f8f5"><strong>Indoor-only preference</strong><div class="row between" style="margin-top:8px"><span>'+((typeof state!=='undefined'&&state.houseIndoor)?'Whole-house Indoor-only':p.indoorMode==='indoor'?'Indoor-only':p.indoorMode==='scheduled'?'Scheduled':'Free Access')+'</span><button class="button secondary" onclick="openPet(\''+escapeHtml(p.id)+'\')">Change setting</button></div></div><div class="row"><button class="button secondary" onclick="showPetTimeline(\''+escapeHtml(p.id)+'\')">View full timeline</button><button class="button secondary" onclick="openPetCurfew(\''+escapeHtml(p.id)+'\')">Curfew settings</button></div></div><div class="card" style="margin-top:12px"><h3>Recent activity</h3>'+summary+'</div>';
+ root.innerHTML='<div class="card"><div class="detailhero">'+(typeof petAvatar==='function'?petAvatar(p):'')+'<h2>'+escapeHtml(p.name)+'</h2></div><h2 style="display:none">'+escapeHtml(p.name)+'</h2><p><strong>Current status: '+escapeHtml(status)+'</strong></p><div class="row" style="margin:12px 0;gap:8px">'+(status==='Home'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'outside\')">Mark Outside</button>':status==='Away'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'inside\')">Mark Inside</button>':'<span class="small">Waiting for a tracked location.</span>')+'</div>'+(manualLocationNotice?'<p class="small" role="status">'+escapeHtml(manualLocationNotice)+'</p>':'')+'<p class="small">Live presence tracked through Home Assistant</p><div class="card" style="margin:12px 0;background:#f4f8f5"><strong>Individual flap access</strong><div class="row between" style="margin-top:8px"><span>'+(petPermissionCache[String(p.surePetId||'')]||'Checking…')+'</span><button class="button secondary" onclick="openPet(\''+escapeHtml(p.id)+'\')">Change setting</button></div></div><div class="row"><button class="button secondary" onclick="showPetTimeline(\''+escapeHtml(p.id)+'\')">View full timeline</button><button class="button secondary" onclick="openPetCurfew(\''+escapeHtml(p.id)+'\')">Curfew settings</button></div></div><div class="card" style="margin-top:12px"><h3>Recent activity</h3>'+summary+'</div>';
 };
 window.renderSureTimeline=function(){
  const target=document.getElementById('timelineEvents'),count=document.getElementById('eventCount');

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.47 — 7 November 2026
+- Show only Restore Free Access when a cat is currently Indoor Only.
+- Show only Keep indoors when a cat is currently on Free Access.
+- Wait for verified Sure Petcare permission before offering an access action.
+
 ## 2.18.46 — 7 November 2026
 - Restore manual per-cat access controls in Edit Pet: Keep indoors and Restore Free Access.
 - Read current individual access from Sure Petcare, apply changes to the selected flap tag, and verify the reported result.

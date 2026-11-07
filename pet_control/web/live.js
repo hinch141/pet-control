@@ -458,7 +458,7 @@ document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.q
 }catch(e){if(!window.sureLiveStates)document.getElementById('pet-live-list').textContent='Live status unavailable. Check Home Assistant app logs.';}
 finally{statusPending=false;if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();}
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshSureLocations(true);refreshFlap();refreshCloud();});else{mount();refresh();refreshFlap();refreshCloud();}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();}});
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshSureLocations(true);refreshFlap();refreshCloud();refreshPetPermissionDisplay();});else{mount();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();}});
 setInterval(refresh,5000);setInterval(refreshSureLocations,20000);setInterval(refreshFlap,15000);setInterval(refreshWholeCurfew,10000);refreshWholeCurfew();setInterval(refreshCloud,60000);
 })();

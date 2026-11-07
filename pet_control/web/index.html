@@ -204,16 +204,41 @@ async function checkCurfewDiagnostics(){
  box.innerHTML=entries.length?entries.map(([id,e])=>'<div class="listrow"><div><strong>'+esc(names[id]||'Pet '+id)+'</strong><div>Weekly curfew: '+(e.enabled?'On':'Off')+' · Active now: '+(e.activeNow?'Yes':'No')+'</div><div>Manual hold: '+(e.manual?'Yes':'No')+' · Scheduler owns restriction: '+(e.owned?'Yes':'No')+'</div><div>Phase: '+esc(e.phase||'Not recorded')+' · Cloud profile: '+esc(String(e.lastObservedProfile??'Not checked'))+'</div><div>Last checked: '+esc(e.lastChecked||'Not checked')+'</div><div>Last error: '+esc(e.lastError||'None')+'</div></div></div>').join(''):'No individual curfews recorded on server';
  }catch(e){box.textContent='Unable to check scheduler: '+e.message;}
 }
+function individualCurfewPassedToday(p){
+ if(!p?.enabled)return [];
+ const now=new Date(),today=(now.getDay()+6)%7;
+ const current=now.getHours()*60+now.getMinutes();
+ const day=ensureSchedule(p).days[today];
+ if(!day?.enabled)return [];
+ const minutes=t=>{const [h,m]=String(t||'').split(':').map(Number);return Number.isInteger(h)&&Number.isInteger(m)?h*60+m:NaN};
+ const from=minutes(day.start),until=minutes(day.end);
+ // Overnight curfews finish tomorrow, so they are not already over today.
+ if(!Number.isFinite(from)||!Number.isFinite(until)||until<=from||current<until)return [];
+ return [{name:dayNames[today],start:day.start,end:day.end}];
+}
 function syncLivePetCurfew(id){
  clearTimeout(petCurfewSyncTimers[id]);
  petCurfewSyncTimers[id]=setTimeout(async()=>{
   const p=pet(id);if(!p)return;
   if(!p.surePetId){toast('Sync this cat with Sure Petcare before enabling a live curfew');p.enabled=false;save();return;}
-  try{
-   const r=await fetch('./sure/pet-curfews',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({petId:p.surePetId,enabled:!!p.enabled,days:ensureSchedule(p).days}),signal:AbortSignal.timeout(20000)});
-   const data=await r.json();if(!r.ok)throw Error(data.error||'Schedule not accepted');
-   toast('Live curfew schedule saved for '+p.name);
-  }catch(e){toast('Curfew not saved: '+e.message);await loadLivePetCurfews();}
+  const post=async()=>{
+   try{
+    const r=await fetch('./sure/pet-curfews',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({petId:p.surePetId,enabled:!!p.enabled,days:ensureSchedule(p).days}),signal:AbortSignal.timeout(20000)});
+    const data=await r.json();if(!r.ok)throw Error(data.error||'Schedule not accepted');
+    toast('Live curfew schedule saved for '+p.name);
+   }catch(e){toast('Curfew not saved: '+e.message);await loadLivePetCurfews();}
+  };
+  const passed=individualCurfewPassedToday(p);
+  if(passed.length){
+   const d=passed[0];
+   const next=new Date();next.setDate(next.getDate()+7);
+   const nextDate=next.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+   modal('<h3>Today’s curfew has already passed</h3><p>'+esc(p.name)+'’s '+esc(d.name)+' curfew ('+esc(d.start)+'–'+esc(d.end)+') has already finished today. It will next run on '+esc(nextDate)+'.</p><div class="row"><button class="button" id="confirmIndividualPastCurfew">Save schedule</button><button class="button outline" id="editIndividualPastCurfew">Edit times</button></div>');
+   el('confirmIndividualPastCurfew').onclick=async()=>{closeModal();await post();};
+   el('editIndividualPastCurfew').onclick=async()=>{closeModal();await loadLivePetCurfews();toast('Schedule not changed. Edit the times and try again.');};
+   return;
+  }
+  await post();
  },500);
 }
 function toggleAllWeek(id,active){const p=pet(id);if(!p)return;const c=ensureSchedule(p);c.allWeek=c.allWeek||{active:false,start:c.days[0].start,end:c.days[0].end};if(active&&!c.allWeek.active){c.allWeek.savedDays=JSON.parse(JSON.stringify(c.days));c.days=c.days.map(()=>({start:c.allWeek.start,end:c.allWeek.end,enabled:true}));}else if(!active&&c.allWeek.active){if(Array.isArray(c.allWeek.savedDays)&&c.allWeek.savedDays.length===7)c.days=JSON.parse(JSON.stringify(c.allWeek.savedDays));}c.allWeek.active=!!active;save();syncLivePetCurfew(id);toast(active?'Same curfew applied to all seven days':'Individual day settings restored')}

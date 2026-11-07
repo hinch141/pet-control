@@ -499,5 +499,5 @@ finally{statusPending=false;if(typeof window.renderSurePetDetail==='function')wi
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshSureLocations(true);refreshFlap();refreshCloud();refreshPetPermissionDisplay();});else{mount();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();syncCurfewPermissionStatus();}});
-setInterval(refresh,5000);setInterval(refreshSureLocations,20000);setInterval(refreshFlap,15000);setInterval(refreshWholeCurfew,10000);setInterval(syncCurfewPermissionStatus,10000);syncCurfewPermissionStatus();refreshWholeCurfew();setInterval(refreshCloud,60000);
+setInterval(refresh,5000);setInterval(refreshSureLocations,20000);setInterval(refreshFlap,15000);setInterval(refreshWholeCurfew,10000);setInterval(syncCurfewPermissionStatus,3000);syncCurfewPermissionStatus();refreshWholeCurfew();setInterval(refreshCloud,60000);
 })();

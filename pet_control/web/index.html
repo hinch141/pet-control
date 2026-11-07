@@ -187,7 +187,9 @@ async function loadLivePetCurfews(){
  }catch{}
 }
 async function checkCurfewEvents(){
- const box=el('curfewEvents');if(!box)return;box.textContent='Loading event history…';
+ const box=el('curfewEvents');if(!box)return;
+ if(box.dataset.expanded==='true'){box.replaceChildren();box.dataset.expanded='false';return;}
+ box.dataset.expanded='true';box.textContent='Loading event history…';
  try{
   const r=await fetch('./sure/pet-curfew-events',{cache:'no-store',signal:AbortSignal.timeout(15000)});
   if(!r.ok)throw Error('History unavailable');
@@ -197,7 +199,9 @@ async function checkCurfewEvents(){
  }catch(e){box.textContent='Unable to load history: '+e.message;}
 }
 async function checkCurfewDiagnostics(){
- const box=el('curfewDiagnostics');if(!box)return;box.textContent='Checking scheduler…';
+ const box=el('curfewDiagnostics');if(!box)return;
+ if(box.dataset.expanded==='true'){box.replaceChildren();box.dataset.expanded='false';return;}
+ box.dataset.expanded='true';box.textContent='Checking scheduler…';
  try{const r=await fetch('./sure/pet-curfews',{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('Scheduler unavailable');
  const data=await r.json(),names=Object.fromEntries(state.pets.map(p=>[String(p.surePetId||''),p.name]));
  const entries=Object.entries(data.pets||{});

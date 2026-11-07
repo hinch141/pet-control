@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.18.82
+- Refreshed colours, pet cards, status pills, navigation and activity presentation without modifying server-side commands or scheduling.
+- Added per-cat daily inward entry counts on the home cards using existing cached Sure Petcare activity; no extra API requests.
+
+
 ## 2.18.81 — 7 November 2026
 - Correct the scheduler Sure Petcare request timeout: its 12-second countdown now begins when the queued network request starts, not when it joins the rate-limited queue.
 - Preserve three-second request pacing and existing 429 cooldown.

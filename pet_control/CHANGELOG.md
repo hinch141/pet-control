@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.18.84
+- Corrected the misleading individual curfew subtitle to describe live automatic schedules.
+- Added dimensional card shadows, raised buttons, layered gradients, and richer navigation styling without changing application logic.
+
+
 ## v2.18.83
 - Renamed app branding to Hinchliffe Pet HQ, with a friendlier tagline and updated installable web app manifest.
 - Improved visual contrast, colourful cards, gradients, buttons and navigation. No scheduler or permission changes.

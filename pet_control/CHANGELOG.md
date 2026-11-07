@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.44 — 7 November 2026
+- Fix curfew cancellation so an explicit Off command attempts to restore Free Access even when an earlier lock confirmation was incomplete.
+- Record ownership before issuing the timed lock command, allowing the end-of-curfew retry to recover after a partial success.
+- Restore availability of the manual flap control when the curfew is disabled.
+
 ## 2.18.43 — 7 November 2026
 - Reject curfew ranges with identical start and end times before saving.
 - Warn when a daytime curfew range has already finished today, and require confirmation to save it for tomorrow's daily run.

@@ -66,6 +66,14 @@ const petCurfewFile='/data/pet_curfews.json';
 let petCurfewState={pets:{}};
 try{const saved=JSON.parse(fs.readFileSync(petCurfewFile,'utf8'));if(saved&&saved.pets&&typeof saved.pets==='object')petCurfewState=saved;}catch{}
 const savePetCurfews=()=>fs.writeFileSync(petCurfewFile,JSON.stringify(petCurfewState),{mode:0o600});
+const petCurfewEventFile='/data/pet_curfew_events.json';
+let petCurfewEvents=[];
+try{const saved=JSON.parse(fs.readFileSync(petCurfewEventFile,'utf8'));if(Array.isArray(saved))petCurfewEvents=saved.slice(-150);}catch{}
+function logPetCurfew(id,event,detail=''){
+ petCurfewEvents.push({at:new Date().toISOString(),petId:String(id),event,detail:String(detail).slice(0,200)});
+ petCurfewEvents=petCurfewEvents.slice(-150);
+ try{fs.writeFileSync(petCurfewEventFile,JSON.stringify(petCurfewEvents),{mode:0o600});}catch(e){console.error('Curfew event log failed:',e.message);}
+}
 let petCurfewBusy=false;
 const validPetTime=t=>typeof t==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t);
 function petCurfewActive(entry,date=new Date()){
@@ -116,11 +124,11 @@ async function petCurfewTick(){
     if(active&&!entry.owned){
      if(match.profile!==2){entry.lastError='Existing Indoor Only restriction preserved; curfew cannot take ownership';entry.phase='external';continue;}
      // Record ownership before the write so a successful write followed by a timeout can be recovered.
-     entry.owned=true;entry.phase='applying';savePetCurfews();
+     entry.owned=true;entry.phase='applying';savePetCurfews();logPetCurfew(id,'automatic_start_requested','Indoor Only');
      await sure.set(match.device,match.tag,3);
-     entry.phase='curfew';entry.lastTransition=new Date().toISOString();
+     entry.phase='curfew';entry.lastTransition=new Date().toISOString();logPetCurfew(id,'automatic_start_accepted','Cloud write accepted; verification pending');
     }else if(!active&&entry.owned){
-     entry.phase='releasing';savePetCurfews();
+     entry.phase='releasing';savePetCurfews();logPetCurfew(id,'automatic_release_requested','Current profile '+match.profile);
      if(match.profile===3){
       await sure.set(match.device,match.tag,2);
       // Keep ownership until the cloud confirms Free Access; retry on later ticks.
@@ -128,12 +136,12 @@ async function petCurfewTick(){
       entry.lastObservedProfile=verified.profile;
       if(verified.profile!==2)throw Error('Free Access not yet confirmed; will retry');
      }else if(match.profile!==2)throw Error('Unexpected permission; manual check required');
-     entry.owned=false;entry.phase='free';entry.lastTransition=new Date().toISOString();
+     entry.owned=false;entry.phase='free';entry.lastTransition=new Date().toISOString();logPetCurfew(id,'automatic_release_confirmed','Free Access');
     }else if(active&&entry.owned&&match.profile===2){
      entry.owned=false;entry.phase='external';entry.lastError='Flap permission changed externally; curfew paused until next window';continue;
     }else entry.phase=active?'curfew':'free';
     entry.lastError='';
-   }catch(err){entry.lastError=String(err.message||err).slice(0,160);}
+   }catch(err){entry.lastError=String(err.message||err).slice(0,160);logPetCurfew(id,'scheduler_error',entry.lastError);}
   }
   savePetCurfews();
  }catch(err){for(const [,entry] of due)entry.lastError=String(err.message||err).slice(0,160);savePetCurfews();}
@@ -227,6 +235,10 @@ const server=http.createServer(async(req,res)=>{
     return reply(200,{disabled:ids.length,manualRestrictionsPreserved:true});
    }catch(e){return reply(400,{error:String(e.message||e)});}
   }
+  if(url.pathname==='/sure/pet-curfew-events'&&req.method==='GET'){
+   res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});
+   return res.end(JSON.stringify({events:petCurfewEvents.slice(-80)}));
+  }
   if(url.pathname==='/sure/pet-curfews'&&(req.method==='GET'||req.method==='POST')){
    const reply=(status,body)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
    if(req.method==='GET')return reply(200,{pets:petCurfewState.pets,now:londonDateTime()});
@@ -280,7 +292,7 @@ const server=http.createServer(async(req,res)=>{
     }
     const entry=petCurfewState.pets[String(body.petId)]||{enabled:false,days:[],owned:false,manual:false};
     // Explicit manual Indoor Only always wins; explicit Free Access clears manual hold.
-    entry.manual=body.mode==='indoor_only';
+    logPetCurfew(body.petId,'manual_access_requested',body.mode+(confirmed?' confirmed':' pending confirmation'));entry.manual=body.mode==='indoor_only';
     entry.owned=false;
     petCurfewState.pets[String(body.petId)]=entry;savePetCurfews();
     return reply(200,{status:confirmed?'confirmed':'pending',mode:body.mode,name:pets[0].name});

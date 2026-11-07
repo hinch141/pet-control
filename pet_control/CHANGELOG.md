@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.18.78 — 7 November 2026
+- Classify failed individual permission reads as rate-limited, timed out, network error, or other request error instead of hiding all failures behind one generic message.
+- This is a diagnostic release; no claim of performance improvement or automatic curfew reliability.
+
 ## 2.18.77 — 7 November 2026
 - Reuse a successful read-only cat-permissions snapshot for 20 seconds, reducing duplicate Sure cloud requests when navigating between cats.
 - Invalidate cached permission snapshots after successful cloud writes.

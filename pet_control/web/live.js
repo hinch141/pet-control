@@ -132,7 +132,7 @@ window.renderSurePetDetail=function(){
  if(!p)return;
  const petName=p.name.toLowerCase();
  const events=records().filter(e=>e.pet===petName);
- const status=window.sureLiveStates?.[petName]||'Unknown';
+ const status=effectivePetStatus(petName);
  const summary=events.slice(0,10).map(e=>rowFor(e,true)).join('')||'<div class="empty">No Sure Petcare activity recorded.</div>';
  root.innerHTML='<div class="card"><div class="detailhero">'+(typeof petAvatar==='function'?petAvatar(p):'')+'<h2>'+escapeHtml(p.name)+'</h2></div><h2 style="display:none">'+escapeHtml(p.name)+'</h2><p><strong>Current status: '+escapeHtml(status)+'</strong></p><div class="row" style="margin:12px 0;gap:8px">'+(status==='Home'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'outside\')">Mark Outside</button>':status==='Away'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'inside\')">Mark Inside</button>':'<span class="small">Waiting for a tracked location.</span>')+'</div>'+(manualLocationNotice?'<p class="small" role="status">'+escapeHtml(manualLocationNotice)+'</p>':'')+'<p class="small">Live presence tracked through Home Assistant</p><div class="card" style="margin:12px 0;background:#f4f8f5"><strong>Indoor-only preference</strong><div class="row between" style="margin-top:8px"><span>'+((typeof state!=='undefined'&&state.houseIndoor)?'Whole-house Indoor-only':p.indoorMode==='indoor'?'Indoor-only':p.indoorMode==='scheduled'?'Scheduled':'Free Access')+'</span><button class="button secondary" onclick="openPet(\''+escapeHtml(p.id)+'\')">Change setting</button></div></div><div class="row"><button class="button secondary" onclick="showPetTimeline(\''+escapeHtml(p.id)+'\')">View full timeline</button><button class="button secondary" onclick="openPetCurfew(\''+escapeHtml(p.id)+'\')">Curfew settings</button></div></div><div class="card" style="margin-top:12px"><h3>Recent activity</h3>'+summary+'</div>';
 };
@@ -330,6 +330,9 @@ function paintSureLocations(){
  if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
 }
 let manualLocationNotice='';
+const manualOverrides=new Map();
+function effectivePetStatus(name){const key=String(name).toLowerCase(),tracked=window.sureLiveStates?.[key]||'Unknown',override=manualOverrides.get(key);if(!override)return tracked;if(tracked===override.status){manualOverrides.delete(key);if(manualLocationNotice.startsWith('Synchronising'))manualLocationNotice='Location confirmed by Home Assistant.';return tracked;}if(Date.now()-override.at>180000){manualOverrides.delete(key);if(manualLocationNotice.startsWith('Synchronising'))manualLocationNotice='Home Assistant has not confirmed the change yet. Showing its tracked location.';return tracked;}return override.status;}
+
 window.manualSureLocation=function(id,where){
  const p=(state.pets||[]).find(x=>x.id===id);if(!p||sureLocationBusy)return;
  const dest=where==='inside'?'Inside':'Outside';
@@ -344,7 +347,8 @@ window.confirmManualSureLocation=async function(id,where){
  try{
   const response=await fetch('./sure/locations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({petId:live.petId,location:where}),signal:AbortSignal.timeout(20000)});
   const data=await response.json();if(!response.ok)throw Error(data.error||'Location update failed');
-  manualLocationNotice='Update sent to Sure Petcare. The tracked status will refresh when the change is reported.';
+  manualOverrides.set(p.name.toLowerCase(),{status:where==='inside'?'Home':'Away',at:Date.now()});
+  manualLocationNotice='Synchronising with Home Assistant…';window.renderSurePetDetail();
   sureLocationLast=0;await refreshSureLocations(true);await refresh();
  }catch(e){manualLocationNotice='Unable to update location: '+(e.message||'Please try again.');}
  finally{sureLocationBusy=false;window.renderSurePetDetail();}
@@ -355,12 +359,11 @@ if(statusPending||document.hidden)return;
 statusPending=true;
 try{const r=await fetch('./live/status',{cache:'no-store'});if(!r.ok)throw Error('unavailable');const d=await r.json();
 window.sureLiveStates=Object.fromEntries(d.pets.map(p=>[p.name,p.state==='on'?'Home':p.state==='off'?'Away':'Unknown']));
-if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
-document.getElementById('pet-live-list').innerHTML=names.map(n=>{const p=d.pets.find(x=>x.name===n.toLowerCase());const status=p?.state==='on'?'Home':p?.state==='off'?'Away':'Unknown';return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+n+'</span><strong>'+status+'</strong></div>'}).join('');
+document.getElementById('pet-live-list').innerHTML=names.map(n=>{const p=d.pets.find(x=>x.name===n.toLowerCase());const status=effectivePetStatus(n);return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+n+'</span><strong>'+status+'</strong></div>'}).join('');
 document.getElementById('pet-live-time').textContent='Updated '+new Date(d.updated).toLocaleTimeString('en-GB');
-document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim();const p=d.pets.find(x=>x.name===name?.toLowerCase());if(!p)return;const pill=card.querySelector('.pill');const detail=card.querySelector('.small');const status=p.state==='on'?'Home':p.state==='off'?'Away':'Unknown';if(pill){pill.textContent=status;pill.classList.toggle('out',status==='Away');}if(detail){detail.innerHTML=detail.innerHTML.replace(/Sample status only|Awaiting live status/g,'Live status from Sure Petcare');}});
+document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim();const p=d.pets.find(x=>x.name===name?.toLowerCase());if(!p)return;const pill=card.querySelector('.pill');const detail=card.querySelector('.small');const status=effectivePetStatus(name);if(pill){pill.textContent=status;pill.classList.toggle('out',status==='Away');}if(detail){detail.innerHTML=detail.innerHTML.replace(/Sample status only|Awaiting live status/g,'Live status from Sure Petcare');}});
 }catch(e){if(!window.sureLiveStates)document.getElementById('pet-live-list').textContent='Live status unavailable. Check Home Assistant app logs.';}
-finally{statusPending=false;}
+finally{statusPending=false;if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshSureLocations(true);refreshFlap();refreshCloud();});else{mount();refresh();refreshFlap();refreshCloud();}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();}});

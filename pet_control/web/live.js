@@ -36,10 +36,9 @@ async function saveWholeCurfew(action,ranges){
  }catch(e){toast(e.message||'Curfew change failed');return false;}
  finally{curfewActionBusy=false;await refreshWholeCurfew();showWholeCurfew();}
 }
-window.toggleWholeCurfew=async function(enabled){
- if(curfewActionBusy)return;
- await saveWholeCurfew(enabled?'enable':'disable',wholeCurfew?.ranges||[{start:'10:00',end:'10:01'}]);
-};
+window.applyWholeCurfew=async function(enabled){if(curfewActionBusy)return;await saveWholeCurfew(enabled?'enable':'disable',wholeCurfew?.ranges||[{start:'10:00',end:'10:01'}]);};
+window.refreshWholeCurfew=refreshWholeCurfew;
+window.toggleWholeCurfew=function(enabled){if(curfewActionBusy)return;showWholeCurfew();if(typeof requestHouseSetting==='function')requestHouseSetting('curfew',enabled);};
 let curfewDraft=[];
 function drawCurfewRows(){
  const target=document.getElementById('curfewRangeRows');if(!target)return;

@@ -198,7 +198,7 @@ const server=http.createServer(async(req,res)=>{
         const matches=flaps.flatMap(d=>(Array.isArray(d.tags)?d.tags:[]).filter(t=>String(t.id)===String(p.tag_id)).map(t=>({device:d,tag:t})));
         const match=matches.length===1?matches[0]:null;
         const profile=match?Number(match.tag.profile):null;
-        return {name:String(p.name||'Unnamed cat').slice(0,60),matched:!!match,ambiguous:matches.length>1,profile:profile===2?'free_access':profile===3?'indoor_only':profile===0?'keep_current':'unknown',entry_safe_profile_known:profile===2||profile===3};
+        return {surePetId:String(p.id??''),sureTagId:String(p.tag_id??''),name:String(p.name||'Unnamed cat').slice(0,60),matched:!!match,ambiguous:matches.length>1,profile:profile===2?'free_access':profile===3?'indoor_only':profile===0?'keep_current':'unknown',entry_safe_profile_known:profile===2||profile===3};
       });
       return reply(200,{status:'read_only',cats,flap_count:flaps.length,message:'Read-only discovery complete. No flap or pet permissions changed. Physical behaviour and write permissions are not yet verified.'});
     }catch{return reply(200,{status:'connection_error',message:'Unable to retrieve individual cat permissions from Sure Petcare.'});}

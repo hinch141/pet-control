@@ -147,7 +147,7 @@ async function petCurfewTick(){
  }catch(err){for(const [,entry] of due)entry.lastError=String(err.message||err).slice(0,160);savePetCurfews();}
  finally{petCurfewBusy=false;}
 }
-setInterval(()=>petCurfewTick().catch(()=>{}),15000);
+setInterval(()=>petCurfewTick().catch(()=>{}),5000);
 setTimeout(()=>petCurfewTick().catch(()=>{}),3500);
 
 const server=http.createServer(async(req,res)=>{

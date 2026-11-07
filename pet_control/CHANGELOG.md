@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.76 — 7 November 2026
+- Correct shared Sure Petcare session caching to use a consistent X-Device-Id across all server requests instead of new device identities for each route.
+- Display a specific cooldown message when a read-only permission check is blocked by the rate limiter.
+- Keep individual curfews disabled during investigation; no permission changes in this release.
+
 ## 2.18.75 — 7 November 2026
 - Route Sure Petcare requests from all server endpoints and archive backfill through one global serialised request limiter (minimum three seconds between requests).
 - Reuse authenticated Sure Petcare responses for ten minutes, deduplicating concurrent logins, with hashed credential cache keys.

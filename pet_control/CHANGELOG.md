@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.18.49 — 7 November 2026
+- Connect seven-day per-cat curfews to a persistent Home Assistant add-on scheduler, running without the phone open.
+- Apply individual Sure Petcare tag permissions (Indoor Only / Free Access), independently for each cat.
+- Preserve explicit manual Keep indoors until manually restored; never release a manually held cat when a curfew ends.
+- Synchronise saved and copied weekly schedules to the add-on and load its authoritative settings when the app opens.
+- Preserve the existing whole-house curfew implementation unchanged.
+- Temporary override controls remain local-only and are not yet enforced.
+
 ## 2.18.48 — 7 November 2026
 - Prevent the mobile keyboard appearing automatically after changing a cat's individual access.
 - Keep the pet name field editable when deliberately tapped.

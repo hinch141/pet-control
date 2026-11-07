@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.46 — 7 November 2026
+- Restore manual per-cat access controls in Edit Pet: Keep indoors and Restore Free Access.
+- Read current individual access from Sure Petcare, apply changes to the selected flap tag, and verify the reported result.
+- Keep individual curfew settings separate from temporary indoor restrictions.
+
 ## 2.18.45 — 7 November 2026
 - Make the individual flap permission check expandable and collapsible.
 - Allow read-only results to be hidden after checking.

@@ -206,10 +206,18 @@ async function refreshPetPermissionDisplay(force=false){
   try{
    const r=await fetch('./sure/pet-permissions',{cache:'no-store',signal:AbortSignal.timeout(30000)});
    if(!r.ok)throw Error('Permission unavailable');
-   const data=await r.json(),next={};
-   for(const cat of data.cats||[])if(cat.matched&&cat.surePetId)next[String(cat.surePetId)]=cat.profile==='indoor_only'?'Indoor Only':cat.profile==='free_access'?'Free Access':'Status unavailable';
-   petPermissionCache=next;petPermissionCheckedAt=Date.now();
-   try{sessionStorage.setItem('pet-control-permissions',JSON.stringify({cache:next,at:petPermissionCheckedAt}));}catch{}
+   const data=await r.json();
+   if(data.status!=='read_only')throw Error(data.message||'Permission check unavailable');
+   const next={...petPermissionCache};let confirmed=0;
+   for(const cat of data.cats||[]){
+    if(!cat.matched||!cat.surePetId)continue;
+    const value=cat.profile==='indoor_only'?'Indoor Only':cat.profile==='free_access'?'Free Access':null;
+    if(value){next[String(cat.surePetId)]=value;confirmed++;}
+   }
+   if(confirmed){
+    petPermissionCache=next;petPermissionCheckedAt=Date.now();
+    try{sessionStorage.setItem('pet-control-permissions',JSON.stringify({cache:next,at:petPermissionCheckedAt}));}catch{}
+   }
   }catch{/* Keep the last confirmed state rather than resetting every cat to Checking. */}
   finally{petPermissionRequest=null;}
   if(document.getElementById('petDetailContent')?.closest('.page.active'))window.renderSurePetDetail();
@@ -224,10 +232,11 @@ function paintPermissionViews(){
  if(document.getElementById('home')?.classList.contains('active')&&typeof render==='function')render();
 }
 function petAccessLabel(id){
- const key=String(id||''),value=petPermissionCache[key]||'Status unavailable';
+ const key=String(id||''),value=petPermissionCache[key];
  const updating=curfewPendingPets.has(key);
- const at=petPermissionCheckedAt?new Date(petPermissionCheckedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'not yet checked';
- return (updating?'Updating access… · '+value:value)+' (checked '+at+')';
+ if(!value)return updating?'Updating access… · awaiting confirmation':'Access not yet confirmed';
+ const at=petPermissionCheckedAt?new Date(petPermissionCheckedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):null;
+ return (updating?'Updating access… · '+value:value)+(at?' (last confirmed '+at+')':'');
 }
 const curfewPendingPets=new Set();
 window.getPetAccessLabel=petAccessLabel;

@@ -218,6 +218,45 @@ async function refreshPetPermissionDisplay(force=false){
  return petPermissionRequest;
 }
 window.refreshPetPermissionDisplay=refreshPetPermissionDisplay;
+let curfewStatusBusy=false,curfewStatusSignature='';
+function paintPermissionViews(){
+ if(document.getElementById('petDetailContent')?.closest('.page.active'))window.renderSurePetDetail();
+ if(document.getElementById('home')?.classList.contains('active')&&typeof render==='function')render();
+}
+function petAccessLabel(id){
+ const key=String(id||''),value=petPermissionCache[key]||'Status unavailable';
+ const updating=curfewPendingPets.has(key);
+ const at=petPermissionCheckedAt?new Date(petPermissionCheckedAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'not yet checked';
+ return (updating?'Updating access… · '+value:value)+' (checked '+at+')';
+}
+const curfewPendingPets=new Set();
+window.getPetAccessLabel=petAccessLabel;
+async function syncCurfewPermissionStatus(){
+ if(curfewStatusBusy||document.hidden)return;
+ curfewStatusBusy=true;
+ try{
+  const r=await fetch('./sure/pet-curfews',{cache:'no-store',signal:AbortSignal.timeout(12000)});
+  if(!r.ok)return;
+  const d=await r.json();let changed=false,needCloud=false;
+  for(const [id,e] of Object.entries(d.pets||{})){
+   const recent=e.lastChecked&&Date.now()-Date.parse(e.lastChecked)<45000;
+   const pending=recent&&['applying','releasing'].includes(e.phase);
+   if(pending&&!curfewPendingPets.has(id)){curfewPendingPets.add(id);changed=true;}
+   if(!pending&&curfewPendingPets.delete(id))changed=true;
+   if(!recent)continue;
+   const confirmed=e.phase==='free'&&e.lastObservedProfile===2?'Free Access':e.phase==='curfew'&&e.lastObservedProfile===3?'Indoor Only':null;
+   if(confirmed&&petPermissionCache[id]!==confirmed){
+    petPermissionCache[id]=confirmed;petPermissionCheckedAt=Date.parse(e.lastChecked);
+    try{sessionStorage.setItem('pet-control-permissions',JSON.stringify({cache:petPermissionCache,at:petPermissionCheckedAt}));}catch{}
+    changed=true;
+   }
+   if(e.phase==='curfew'&&e.lastObservedProfile===2)needCloud=true;
+  }
+  if(changed)paintPermissionViews();
+  if(needCloud&&Date.now()-petPermissionLastAttempt>15000)refreshPetPermissionDisplay(true);
+ }catch{}finally{curfewStatusBusy=false;}
+}
+
 window.renderSurePetDetail=function(){
  const root=document.getElementById('petDetailContent');
  if(!root||!root.closest('.page.active'))return;
@@ -227,7 +266,7 @@ window.renderSurePetDetail=function(){
  const events=records().filter(e=>e.pet===petName);
  const status=effectivePetStatus(petName);
  const summary=events.slice(0,10).map(e=>rowFor(e,true)).join('')||'<div class="empty">No Sure Petcare activity recorded.</div>';
- root.innerHTML='<div class="card"><div class="detailhero">'+(typeof petAvatar==='function'?petAvatar(p):'')+'<h2>'+escapeHtml(p.name)+'</h2></div><h2 style="display:none">'+escapeHtml(p.name)+'</h2><p><strong>Current status: '+escapeHtml(status)+'</strong></p><div class="row" style="margin:12px 0;gap:8px">'+(status==='Home'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'outside\')">Mark Outside</button>':status==='Away'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'inside\')">Mark Inside</button>':'<span class="small">Waiting for a tracked location.</span>')+'</div>'+(manualLocationNotice?'<p class="small" role="status">'+escapeHtml(manualLocationNotice)+'</p>':'')+'<p class="small">Live presence tracked through Home Assistant</p><div class="card" style="margin:12px 0;background:#f4f8f5"><strong>Individual flap access</strong><div class="row between" style="margin-top:8px"><span>'+(petPermissionCache[String(p.surePetId||'')]||'Checking…')+'</span><button class="button secondary" onclick="openPet(\''+escapeHtml(p.id)+'\')">Change setting</button></div></div><div class="row"><button class="button secondary" onclick="showPetTimeline(\''+escapeHtml(p.id)+'\')">View full timeline</button><button class="button secondary" onclick="openPetCurfew(\''+escapeHtml(p.id)+'\')">Curfew settings</button></div></div><div class="card" style="margin-top:12px"><h3>Recent activity</h3>'+summary+'</div>';
+ root.innerHTML='<div class="card"><div class="detailhero">'+(typeof petAvatar==='function'?petAvatar(p):'')+'<h2>'+escapeHtml(p.name)+'</h2></div><h2 style="display:none">'+escapeHtml(p.name)+'</h2><p><strong>Current status: '+escapeHtml(status)+'</strong></p><div class="row" style="margin:12px 0;gap:8px">'+(status==='Home'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'outside\')">Mark Outside</button>':status==='Away'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'inside\')">Mark Inside</button>':'<span class="small">Waiting for a tracked location.</span>')+'</div>'+(manualLocationNotice?'<p class="small" role="status">'+escapeHtml(manualLocationNotice)+'</p>':'')+'<p class="small">Live presence tracked through Home Assistant</p><div class="card" style="margin:12px 0;background:#f4f8f5"><strong>Individual flap access</strong><div class="row between" style="margin-top:8px"><span>'+(petAccessLabel(p.surePetId))+'</span><button class="button secondary" onclick="openPet(\''+escapeHtml(p.id)+'\')">Change setting</button></div></div><div class="row"><button class="button secondary" onclick="showPetTimeline(\''+escapeHtml(p.id)+'\')">View full timeline</button><button class="button secondary" onclick="openPetCurfew(\''+escapeHtml(p.id)+'\')">Curfew settings</button></div></div><div class="card" style="margin-top:12px"><h3>Recent activity</h3>'+summary+'</div>';
 };
 window.renderSureTimeline=function(){
  const target=document.getElementById('timelineEvents'),count=document.getElementById('eventCount');
@@ -459,6 +498,6 @@ document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.q
 finally{statusPending=false;if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshSureLocations(true);refreshFlap();refreshCloud();refreshPetPermissionDisplay();});else{mount();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();}});
-setInterval(refresh,5000);setInterval(refreshSureLocations,20000);setInterval(refreshFlap,15000);setInterval(refreshWholeCurfew,10000);refreshWholeCurfew();setInterval(refreshCloud,60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();syncCurfewPermissionStatus();}});
+setInterval(refresh,5000);setInterval(refreshSureLocations,20000);setInterval(refreshFlap,15000);setInterval(refreshWholeCurfew,10000);setInterval(syncCurfewPermissionStatus,10000);syncCurfewPermissionStatus();refreshWholeCurfew();setInterval(refreshCloud,60000);
 })();

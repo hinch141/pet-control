@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.18.42 — 7 November 2026
+- Fix the date-selection bug that skipped upcoming curfew times.
+- Replace one-off scheduling with a daily whole-house schedule supporting up to 12 time ranges, including overnight ranges.
+- Move time editing into a popup with Add another range and Save times.
+- Keep Home screen compact, show live status and support immediate cancellation.
+- Preserve manual flap lock ownership so disabling a curfew does not unlock a pre-existing manual lock.
+
 ## 2.18.41 — 7 November 2026
 - Add a one-off whole-house curfew with start and end time fields beside the existing Indoor-only control.
 - Run curfew from the Home Assistant add-on, even with the app closed.

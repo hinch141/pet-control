@@ -59,6 +59,16 @@ window.openWholeCurfewEditor=function(){
 };
 window.saveCurfewEditor=async function(){
  collectCurfewRows();
+ const invalid=curfewDraft.some(r=>!r.start||!r.end||r.start===r.end);
+ if(invalid){toast('Start and end times must be different.');return;}
+ const now=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date());
+ const passed=curfewDraft.filter(r=>r.start<r.end&&r.end<=now);
+ if(passed.length){
+  const detail=passed.map(r=>r.start+'–'+r.end).join(', ');
+  modal('<h3>Time range already passed today</h3><p>The range '+escapeHtml(detail)+' has already ended today. As this is a daily curfew, it will next run tomorrow.</p><div class="row"><button class="button" id="confirmPastCurfew">Save for tomorrow</button><button class="button outline" onclick="openWholeCurfewEditor()">Edit times</button></div>');
+  document.getElementById('confirmPastCurfew').onclick=async()=>{const good=await saveWholeCurfew('save',curfewDraft);if(good)closeModal();};
+  return;
+ }
  const good=await saveWholeCurfew('save',curfewDraft);
  if(good)closeModal();
 };

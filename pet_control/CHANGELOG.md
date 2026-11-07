@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.18.62 — 7 November 2026
+- Poll lightweight server curfew status every ten seconds and synchronise confirmed per-cat access with Home and pet profile displays.
+- Show Updating access during scheduled transitions and the last confirmed check time.
+- Keep the last confirmed cloud value visible while the next status is pending; do not label a requested command as confirmed.
+- Preserve all curfew and manual access rules; no scheduler behaviour changes.
+
 ## 2.18.61 — 7 November 2026
 - Persist a rolling history of individual curfew start, release, manual access and scheduler error events in the add-on data folder.
 - Show read-only event history alongside curfew diagnostics for evidence-based troubleshooting.

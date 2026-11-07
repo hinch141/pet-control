@@ -105,22 +105,33 @@ async function petCurfewTick(){
  if(!due.length)return;
  petCurfewBusy=true;
  try{
-  const sure=await surePetSession();let data=await sure.dashboard();
+  const sure=await surePetSession(),data=await sure.dashboard();
   for(const [id,entry] of due){
    try{
     const match=surePetMatch(data,id),active=petCurfewActive(entry);
-    if(entry.manual){entry.owned=false;continue;}
+    entry.lastChecked=new Date().toISOString();
+    entry.lastObservedProfile=match.profile;
+    entry.activeNow=active;
+    if(entry.manual){entry.owned=false;entry.phase='manual';continue;}
     if(active&&!entry.owned){
-     if(match.profile!==2){entry.lastError='Existing Indoor Only restriction preserved; curfew cannot take ownership';continue;}
-     entry.owned=true;savePetCurfews();
+     if(match.profile!==2){entry.lastError='Existing Indoor Only restriction preserved; curfew cannot take ownership';entry.phase='external';continue;}
+     // Record ownership before the write so a successful write followed by a timeout can be recovered.
+     entry.owned=true;entry.phase='applying';savePetCurfews();
      await sure.set(match.device,match.tag,3);
+     entry.phase='curfew';entry.lastTransition=new Date().toISOString();
     }else if(!active&&entry.owned){
-     if(match.profile===3)await sure.set(match.device,match.tag,2);
-     entry.owned=false;
+     entry.phase='releasing';savePetCurfews();
+     if(match.profile===3){
+      await sure.set(match.device,match.tag,2);
+      // Keep ownership until the cloud confirms Free Access; retry on later ticks.
+      const verified=surePetMatch(await sure.dashboard(),id);
+      entry.lastObservedProfile=verified.profile;
+      if(verified.profile!==2)throw Error('Free Access not yet confirmed; will retry');
+     }else if(match.profile!==2)throw Error('Unexpected permission; manual check required');
+     entry.owned=false;entry.phase='free';entry.lastTransition=new Date().toISOString();
     }else if(active&&entry.owned&&match.profile===2){
-     // Manual external changes are respected rather than repeatedly overridden.
-     entry.owned=false;entry.lastError='Flap permission changed externally; curfew paused until next window';
-    }
+     entry.owned=false;entry.phase='external';entry.lastError='Flap permission changed externally; curfew paused until next window';continue;
+    }else entry.phase=active?'curfew':'free';
     entry.lastError='';
    }catch(err){entry.lastError=String(err.message||err).slice(0,160);}
   }

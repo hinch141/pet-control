@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.57 — 7 November 2026
+- Correct legacy individual curfew days without explicit enabled flags being treated as checked.
+- Require an explicit checked day before its schedule is active; disable legacy equal-time days on load.
+- Allow weekly curfew to be enabled first, then choose only the desired days.
+
 ## 2.18.56 — 7 November 2026
 - Show last confirmed per-cat access immediately from session cache while refreshing in the background; retain it on cloud timeouts and label stale results.
 - Throttle repeated permission lookups and prefetch on startup and return to the app.

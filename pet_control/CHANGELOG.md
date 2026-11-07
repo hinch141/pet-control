@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.18.79 — 7 November 2026
+- Preserve curfew ownership through uncertain Indoor Only cloud readbacks so the release obligation is not silently lost.
+- Read a new Sure Petcare dashboard snapshot for each cat instead of sharing a potentially stale snapshot across overlapping transitions.
+- Explicitly log cloud-reported Free Access separately from physical flap verification; avoid calling cloud readback a physical success.
+- Pace release retries at 30 seconds, retain errors and manual override precedence.
+- Individual curfews remain unverified at the physical flap; leave disabled pending controlled tests.
+
 ## 2.18.78 — 7 November 2026
 - Classify failed individual permission reads as rate-limited, timed out, network error, or other request error instead of hiding all failures behind one generic message.
 - This is a diagnostic release; no claim of performance improvement or automatic curfew reliability.

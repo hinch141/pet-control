@@ -488,6 +488,7 @@ let manualLocationNotice='';
 const manualOverrides=new Map();
 function effectivePetStatus(name){const key=String(name).toLowerCase(),tracked=window.sureLiveStates?.[key]||'Unknown',override=manualOverrides.get(key);if(!override)return tracked;if(tracked===override.status){manualOverrides.delete(key);if(manualLocationNotice.startsWith('Synchronising'))manualLocationNotice='Location confirmed by Home Assistant.';return tracked;}if(Date.now()-override.at>180000){manualOverrides.delete(key);if(manualLocationNotice.startsWith('Synchronising'))manualLocationNotice='Home Assistant has not confirmed the change yet. Showing its tracked location.';return tracked;}return override.status;}
 
+window.effectivePetStatus=effectivePetStatus;
 window.manualSureLocation=function(id,where){
  const p=(state.pets||[]).find(x=>x.id===id);if(!p||sureLocationBusy)return;
  const dest=where==='inside'?'Inside':'Outside';

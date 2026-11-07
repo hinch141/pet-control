@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.18.40 — 7 November 2026
+- Show a manually changed cat location immediately after Sure Petcare accepts it.
+- Display a synchronising message until Home Assistant confirms the new location.
+- Preserve automatic tracking and revert to tracked status if confirmation is delayed beyond three minutes.
+
 ## 2.18.39 — 7 November 2026
 - Added release notes for Home Assistant's add-on update screen.
 - No changes to pet tracking, flap permissions or curfews.

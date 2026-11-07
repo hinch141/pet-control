@@ -87,6 +87,7 @@ function petCurfewActive(entry,date=new Date()){
 }
 // All Sure Petcare traffic passes through one process-wide limiter and login cache.
 // Do not create a new remote session on each scheduler/UI poll.
+const sureDeviceId=randomUUID();
 const sureTraffic={next:0,cooldown:0,queue:Promise.resolve(),login:new Map(),dashboard:null};
 const surePause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function sureFetch(url,options={}){
@@ -128,7 +129,7 @@ async function sureFetch(url,options={}){
 async function surePetSession(){
  let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
  if(!options.sure_email||!options.sure_password)throw Error('Sure Petcare not configured');
- const deviceId=randomUUID(),headers={'Content-Type':'application/json',Accept:'application/json',Origin:'https://surepetcare.io',Referer:'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
+ const deviceId=sureDeviceId,headers={'Content-Type':'application/json',Accept:'application/json',Origin:'https://surepetcare.io',Referer:'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
  const login=await sureFetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:options.sure_email,password:options.sure_password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
  if(!login.ok)throw Error('Sure Petcare login failed');
  const auth=await login.json(),access=auth.data?.token||auth.token||auth.access_token||auth.data?.access_token;
@@ -325,7 +326,7 @@ const server=http.createServer(async(req,res)=>{
     globalThis.petAccessBusy=true;
     let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
     if(!options.sure_email||!options.sure_password)return reply(503,{error:'Sure Petcare credentials missing'});
-    const deviceId=randomUUID(),headers={'Content-Type':'application/json',Accept:'application/json',Origin:'https://surepetcare.io',Referer:'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
+    const deviceId=sureDeviceId,headers={'Content-Type':'application/json',Accept:'application/json',Origin:'https://surepetcare.io',Referer:'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
     const login=await sureFetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:options.sure_email,password:options.sure_password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
     if(!login.ok)throw Error('Sure Petcare login failed');
     const auth=await login.json();headers.Authorization='Bearer '+(auth.data?.token||auth.token||auth.access_token||auth.data?.access_token||'');
@@ -371,7 +372,7 @@ const server=http.createServer(async(req,res)=>{
       let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
       const email=String(options.sure_email||'').trim(),password=String(options.sure_password||'');
       if(!email||!password)return reply(503,{error:'Sure Petcare is not configured'});
-      const deviceId=randomUUID();
+      const deviceId=sureDeviceId;
       const headers={'Content-Type':'application/json','Accept':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
       const login=await sureFetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:email,password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
       if(!login.ok)throw Error('Sure Petcare login failed');
@@ -479,7 +480,7 @@ const server=http.createServer(async(req,res)=>{
     const email=String(options.sure_email||'').trim(),password=String(options.sure_password||'');
     if(!email||!password)return reply(503,{error:'Sure Petcare credentials not configured'});
     try{
-      const headers={'Content-Type':'application/json','Accept':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':randomUUID()};
+      const headers={'Content-Type':'application/json','Accept':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':sureDeviceId};
       const login=await sureFetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:email,password,device_id:headers['X-Device-Id']}),signal:AbortSignal.timeout(12000)});
       if(!login.ok)throw Error('Sure Petcare login failed');
       const auth=await login.json(),access=auth.data?.token||auth.token||auth.access_token||auth.data?.access_token;
@@ -532,7 +533,7 @@ const server=http.createServer(async(req,res)=>{
     const email=String(options.sure_email||'').trim(),password=String(options.sure_password||'');
     if(!email||!password)return reply(200,{status:'not_configured',message:'Sure Petcare credentials are not configured.'});
     try{
-      const deviceId=randomUUID();
+      const deviceId=sureDeviceId;
       const headers={'Content-Type':'application/json','Accept':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
       const login=await sureFetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:email,password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
       if(!login.ok)return reply(200,{status:'login_failed',message:'Sure Petcare authentication failed (HTTP '+login.status+').'});
@@ -552,7 +553,7 @@ const server=http.createServer(async(req,res)=>{
         return {surePetId:String(p.id??''),sureTagId:String(p.tag_id??''),name:String(p.name||'Unnamed cat').slice(0,60),matched:!!match,ambiguous:matches.length>1,profile:profile===2?'free_access':profile===3?'indoor_only':profile===0?'keep_current':'unknown',entry_safe_profile_known:profile===2||profile===3};
       });
       return reply(200,{status:'read_only',cats,flap_count:flaps.length,message:'Read-only discovery complete. No flap or pet permissions changed. Physical behaviour and write permissions are not yet verified.'});
-    }catch{return reply(200,{status:'connection_error',message:'Unable to retrieve individual cat permissions from Sure Petcare.'});}
+    }catch(err){return reply(200,{status:'connection_error',message:String(err.message||err).includes('rate limit')?'Sure Petcare rate limit active. Requests are paused; please wait before checking again.':'Unable to retrieve individual cat permissions from Sure Petcare.'});}
   }
   if(url.pathname==='/sure/diagnostic'){
     let options={};
@@ -561,7 +562,7 @@ const server=http.createServer(async(req,res)=>{
     const output=(status,detail)=>{res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({status,detail}));};
     if(!email||!password)return output('not_configured','Add Sure Petcare email and password in the Pet Control app Configuration tab.');
     try{
-      const deviceId=randomUUID();
+      const deviceId=sureDeviceId;
       const baseHeaders={'Content-Type':'application/json','Accept':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
       const login=await sureFetch('https://app.api.surehub.io/api/auth/login',{
         method:'POST',headers:baseHeaders,
@@ -616,7 +617,7 @@ const server=http.createServer(async(req,res)=>{
     const email=String(opts.sure_email||'').trim(),password=String(opts.sure_password||'');
     if(!email||!password)return send('not_configured',{events:[],total:0});
     try{
-      const deviceId=randomUUID();
+      const deviceId=sureDeviceId;
       const headers={'Accept':'application/json','Content-Type':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
       const authRes=await sureFetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:email,password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
       if(!authRes.ok)return send('authentication_error',{events:[],total:0});
@@ -731,7 +732,7 @@ async function archiveBackfill(){
   if(!opts.sure_email||!opts.sure_password)return;
   const file='/data/sure-activity-cache.json',progress='/data/sure-archive-progress.json';
   let page=2;try{const p=JSON.parse(fs.readFileSync(progress,'utf8'));if(p.complete)return;page=Math.max(2,Number(p.nextPage)||2);}catch{}
-  const deviceId=randomUUID(),headers={'Accept':'application/json','Content-Type':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
+  const deviceId=sureDeviceId,headers={'Accept':'application/json','Content-Type':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
   const login=await sureFetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:opts.sure_email,password:opts.sure_password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
   if(!login.ok)return;const auth=await login.json(),access=auth.data?.token||auth.token;if(!access)return;headers.Authorization='Bearer '+access;
   const start=await sureFetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});if(!start.ok)return;

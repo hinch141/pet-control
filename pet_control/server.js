@@ -88,7 +88,7 @@ function petCurfewActive(entry,date=new Date()){
 // All Sure Petcare traffic passes through one process-wide limiter and login cache.
 // Do not create a new remote session on each scheduler/UI poll.
 const sureDeviceId=randomUUID();
-const sureTraffic={next:0,cooldown:0,queue:Promise.resolve(),login:new Map(),dashboard:null};
+const sureTraffic={next:0,cooldown:0,queue:Promise.resolve(),login:new Map(),dashboard:null,permissionRead:null,permissionPending:null};
 const surePause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function sureFetch(url,options={}){
  const endpoint=String(url);
@@ -119,7 +119,7 @@ async function sureFetch(url,options={}){
   if(response.status===401||response.status===403){sureTraffic.login.clear();sureTraffic.dashboard=null;}
   if(login&&response.ok)sureTraffic.login.set(key,{response:response.clone(),expires:Date.now()+10*60*1000});
   if(dashboard&&response.ok)sureTraffic.dashboard={response:response.clone(),expires:Date.now()+2000};
-  if(method!=='GET'&&!login)sureTraffic.dashboard=null;
+  if(method!=='GET'&&!login){sureTraffic.dashboard=null;sureTraffic.permissionRead=null;}
   return response;
  };
  const pending=sureTraffic.queue.then(job,job);
@@ -528,6 +528,7 @@ const server=http.createServer(async(req,res)=>{
   }
   // Read-only discovery of per-cat tag profiles. Never changes any flap or tag.
   if(url.pathname==='/sure/pet-permissions'){
+    if(sureTraffic.permissionRead&&Date.now()<sureTraffic.permissionRead.expires){res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(sureTraffic.permissionRead.body));}
     const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(body));};
     let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
     const email=String(options.sure_email||'').trim(),password=String(options.sure_password||'');
@@ -552,7 +553,7 @@ const server=http.createServer(async(req,res)=>{
         const profile=match?Number(match.tag.profile):null;
         return {surePetId:String(p.id??''),sureTagId:String(p.tag_id??''),name:String(p.name||'Unnamed cat').slice(0,60),matched:!!match,ambiguous:matches.length>1,profile:profile===2?'free_access':profile===3?'indoor_only':profile===0?'keep_current':'unknown',entry_safe_profile_known:profile===2||profile===3};
       });
-      return reply(200,{status:'read_only',cats,flap_count:flaps.length,message:'Read-only discovery complete. No flap or pet permissions changed. Physical behaviour and write permissions are not yet verified.'});
+      const result={status:'read_only',cats,flap_count:flaps.length,message:'Read-only discovery complete. No flap or pet permissions changed. Physical behaviour and write permissions are not yet verified.'};sureTraffic.permissionRead={body:result,expires:Date.now()+20000};return reply(200,result);
     }catch(err){return reply(200,{status:'connection_error',message:String(err.message||err).includes('rate limit')?'Sure Petcare rate limit active. Requests are paused; please wait before checking again.':'Unable to retrieve individual cat permissions from Sure Petcare.'});}
   }
   if(url.pathname==='/sure/diagnostic'){

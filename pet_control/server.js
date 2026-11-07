@@ -84,15 +84,15 @@ const server=http.createServer(async(req,res)=>{
      return reply(200,curfew);
     }
     const validTime=t=>typeof t==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(t);
-    if(body.action!=='enable'||!Array.isArray(body.ranges)||body.ranges.length<1||body.ranges.length>12)return reply(400,{error:'Add between 1 and 12 time ranges.'});
+    if(!['enable','save'].includes(body.action)||!Array.isArray(body.ranges)||body.ranges.length<1||body.ranges.length>12)return reply(400,{error:'Add between 1 and 12 time ranges.'});
     const ranges=body.ranges.map(r=>({start:r.start,end:r.end}));
     if(ranges.some(r=>!validTime(r.start)||!validTime(r.end)||r.start===r.end))return reply(400,{error:'Each range needs different valid start and end times.'});
     const minutes=t=>Number(t.slice(0,2))*60+Number(t.slice(3));
     const spans=ranges.flatMap(r=>{const a=minutes(r.start),b=minutes(r.end);return a<b?[[a,b]]:[[a,1440],[0,b]];}).sort((a,b)=>a[0]-b[0]);
     if(spans.some((x,i)=>i>0&&x[0]<spans[i-1][1]))return reply(400,{error:'Curfew ranges must not overlap.'});
     if(curfew.enabled||curfew.ownsLock)return reply(409,{error:'Turn off the current curfew before changing its ranges.'});
-    curfew={enabled:true,ranges,phase:'waiting',ownsLock:false,lastError:'',override:false};
-    saveCurfew();setImmediate(()=>curfewTick().catch(()=>{}));return reply(200,curfew);
+    curfew={enabled:body.action==='enable',ranges,phase:body.action==='enable'?'waiting':'off',ownsLock:false,lastError:'',override:false};
+    saveCurfew();if(curfew.enabled)setImmediate(()=>curfewTick().catch(()=>{}));return reply(200,curfew);
    }catch(e){return reply(400,{error:'Unable to save curfew: '+e.message});}
   }
   if(url.pathname==='/live/flap/mode'&&req.method==='POST'){

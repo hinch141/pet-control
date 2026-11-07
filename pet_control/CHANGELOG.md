@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.18.68 — 7 November 2026
+- Add a save confirmation when an enabled individual curfew for today has already finished; display the next occurrence next week.
+- Apply the same check to individual-day, same-all-week and copied schedules via the common save path.
+- Provide Save schedule and Edit times options; editing restores the server's last saved schedule before making further changes.
+- Do not warn for future weekdays, active windows or overnight schedules that finish the following day.
+
 ## 2.18.67 — 7 November 2026
 - Match whole-house curfew time editing to individual curfews: editing a start time automatically sets its end one minute later, including midnight wrap.
 - Keep end times editable and preserve previously saved whole-house ranges unless their start is changed.

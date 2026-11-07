@@ -157,6 +157,47 @@ const server=http.createServer(async(req,res)=>{
       return reply(200,{status:'error',stage,cause,writeAttempted,writeHttpStatus,restoreAccepted,restoredConfirmed,restoreError,message});
     }finally{globalThis.petPermissionTestBusy=false;}
   }
+  if(url.pathname==='/sure/locations'&&(req.method==='GET'||req.method==='POST')){
+    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(body));};
+    let body=null;
+    if(req.method==='POST'){
+      if(!String(req.headers['content-type']||'').startsWith('application/json'))return reply(415,{error:'JSON required'});
+      let raw='';try{for await(const chunk of req){raw+=chunk;if(raw.length>512)return reply(413,{error:'Request too large'});}body=JSON.parse(raw);}catch{return reply(400,{error:'Invalid JSON'});}
+      if(!['inside','outside'].includes(body?.location)||!/^\\d+$/.test(String(body?.petId||'')))return reply(400,{error:'Invalid pet or location'});
+    }
+    let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
+    const email=String(options.sure_email||'').trim(),password=String(options.sure_password||'');
+    if(!email||!password)return reply(503,{error:'Sure Petcare credentials not configured'});
+    try{
+      const headers={'Content-Type':'application/json','Accept':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':randomUUID()};
+      const login=await fetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:email,password,device_id:headers['X-Device-Id']}),signal:AbortSignal.timeout(12000)});
+      if(!login.ok)throw Error('Sure Petcare login failed');
+      const auth=await login.json(),access=auth.data?.token||auth.token||auth.access_token||auth.data?.access_token;
+      if(!access)throw Error('Authentication token missing');
+      headers.Authorization='Bearer '+access;
+      const dashboard=await fetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});
+      if(!dashboard.ok)throw Error('Unable to identify pets');
+      const cats=(await dashboard.json()).data?.pets||[];
+      if(!Array.isArray(cats))throw Error('Invalid pet list');
+      if(body){
+        const matches=cats.filter(p=>String(p.id)===String(body.petId));
+        if(matches.length!==1) return reply(404,{error:'Pet not found in Sure Petcare'});
+        const where=body.location==='inside'?1:2;
+        const result=await fetch('https://app.api.surehub.io/api/pet/'+encodeURIComponent(body.petId)+'/position',{method:'POST',headers,body:JSON.stringify({where,since:new Date().toISOString()}),signal:AbortSignal.timeout(12000)});
+        if(!result.ok)return reply(502,{error:'Sure Petcare rejected the location change (HTTP '+result.status+')'});
+        return reply(200,{status:'accepted',petId:String(body.petId),location:body.location,message:'Sure Petcare accepted the change; waiting for a fresh read.'});
+      }
+      const results=await Promise.all(cats.map(async p=>{
+        try{
+          const response=await fetch('https://app.api.surehub.io/api/pet/'+encodeURIComponent(p.id)+'/position',{headers,signal:AbortSignal.timeout(9000)});
+          if(!response.ok)throw Error('Location unavailable');
+          const data=(await response.json()).data||{};
+          return {petId:String(p.id),name:String(p.name||''),location:Number(data.where)===1?'inside':Number(data.where)===2?'outside':'unknown',since:data.since||null};
+        }catch{return {petId:String(p.id),name:String(p.name||''),location:'unknown',since:null};}
+      }));
+      return reply(200,{status:'connected',pets:results,updated:new Date().toISOString()});
+    }catch(e){return reply(502,{error:String(e.message||'Sure Petcare unavailable').slice(0,140)});}
+  }
   if(req.method!=='GET'){res.writeHead(405);return res.end();}
   if(url.pathname==='/live/flap'){
     if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({status:'unavailable'}));}

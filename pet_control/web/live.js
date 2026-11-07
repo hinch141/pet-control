@@ -5,7 +5,7 @@ section.className='card';section.style.cssText='margin-top:14px;background:#fff;
 section.innerHTML='<strong>Live Sure Petcare status</strong><div id="pet-live-list" style="margin-top:8px">Connecting to Home Assistant…</div><small id="pet-live-time"></small>';
 const flapSection=document.createElement('section');
 flapSection.className='card';
-flapSection.style.cssText='margin-top:14px;background:#fff;color:#19312d;width:100%;';
+flapSection.style.cssText='margin-top:14px;margin-bottom:14px;background:#fff;color:#19312d;width:100%;';
 flapSection.innerHTML='<strong>Whole-house flap — live lock status</strong><div id="flap-live-status" style="margin-top:8px">Checking Home Assistant…</div><p class="small" style="margin-bottom:0">This reports the whole-house flap lock, not individual cat curfews. Entry remains permitted.</p>';
 let flapPending=false,flapCommandPending=false,flapConfirmed=null,flapMessage='',flapDesired=null,flapLastSuccess=0,flapRetryTimer=null;
 const flapWait=ms=>new Promise(resolve=>setTimeout(resolve,ms));

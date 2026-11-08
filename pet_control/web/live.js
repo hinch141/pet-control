@@ -299,11 +299,25 @@ window.renderSurePetDetail=function(){
  if(!root||!root.closest('.page.active'))return;
  const p=typeof selectedPetId!=='undefined'?(state.pets||[]).find(x=>x.id===selectedPetId):null;
  if(!p)return;
- const petName=p.name.toLowerCase();
+ const petName=p.name.toLowerCase(),id=escapeHtml(p.id);
  const events=records().filter(e=>e.pet===petName);
  const status=effectivePetStatus(petName);
+ const statusLabel=status==='Home'?'In':status==='Away'?'Out':status;
  const summary=events.slice(0,10).map(e=>rowFor(e,true)).join('')||'<div class="empty">No Sure Petcare activity recorded.</div>';
- root.innerHTML='<div class="card"><div class="detailhero">'+(typeof petAvatar==='function'?petAvatar(p):'')+'<h2>'+escapeHtml(p.name)+'</h2></div><h2 style="display:none">'+escapeHtml(p.name)+'</h2><p><strong>Current status: '+escapeHtml(status)+'</strong></p><div class="row" style="margin:12px 0;gap:8px">'+(status==='Home'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'outside\')">Mark Outside</button>':status==='Away'?'<button class="button secondary" onclick="manualSureLocation(\''+escapeHtml(p.id)+'\',\'inside\')">Mark Inside</button>':'<span class="small">Waiting for a tracked location.</span>')+'</div>'+(manualLocationNotice?'<p class="small" role="status">'+escapeHtml(manualLocationNotice)+'</p>':'')+'<p class="small">Live presence tracked through Home Assistant</p><div class="card" style="margin:12px 0;background:#f4f8f5"><strong>Individual flap access</strong><div class="row between" style="margin-top:8px"><span>'+(petAccessLabel(p.surePetId))+'</span><button class="button secondary" onclick="openPet(\''+escapeHtml(p.id)+'\')">Change setting</button></div></div><div class="row"><button class="button secondary" onclick="showPetTimeline(\''+escapeHtml(p.id)+'\')">View full timeline</button><button class="button secondary" onclick="openPetCurfew(\''+escapeHtml(p.id)+'\')">Curfew settings</button></div></div><div class="card" style="margin-top:12px"><h3>Recent activity</h3>'+summary+'</div>';
+ const imageUrl=typeof petPhoto==='function'?petPhoto(p):p.photo||'';
+ root.innerHTML=
+ '<div class="pet-profile-hero"><div class="pet-profile-photo"><img alt="'+escapeHtml(p.name)+'" src="'+escapeHtml(imageUrl)+'" onerror="this.style.display=\'none\'"></div>'+
+ '<div class="pet-profile-title"><h2>'+escapeHtml(p.name)+'</h2><span class="pill '+(statusLabel==='Out'?'out':'')+'">'+escapeHtml(statusLabel)+'</span><div class="small" style="margin-top:8px">Live status from Home Assistant</div></div></div>'+
+ '<div class="card pet-control-panel"><h3>In / Out</h3><div class="small">Update '+escapeHtml(p.name)+'’s current location</div>'+
+ '<div class="actions">'+(status==='Home'?'<button class="button secondary" onclick="manualSureLocation(\''+id+'\',\'outside\')">Mark Out</button>':status==='Away'?'<button class="button secondary" onclick="manualSureLocation(\''+id+'\',\'inside\')">Mark In</button>':'<span class="small">Waiting for a tracked location.</span>')+'</div>'+
+ (manualLocationNotice?'<p class="small" role="status">'+escapeHtml(manualLocationNotice)+'</p>':'')+'</div>'+
+ '<div class="card pet-control-panel"><h3>Individual access</h3><div class="small">'+escapeHtml(petAccessLabel(p.surePetId))+'</div>'+
+ '<div class="actions"><button class="button secondary" onclick="openPet(\''+id+'\')">Change access settings</button></div></div>'+
+ '<div class="card pet-control-panel"><h3>Individual curfew</h3><div class="small">Review the existing schedule, restrictions and re-entry times for '+escapeHtml(p.name)+'.</div>'+
+ '<div class="actions"><button class="button secondary" onclick="openPetCurfew(\''+id+'\')">View or change curfew</button></div></div>'+
+ '<div class="card pet-control-panel"><h3>Movements</h3><div class="small">View recorded entries and exits for '+escapeHtml(p.name)+'.</div>'+
+ '<div class="actions"><button class="button secondary" onclick="showPetTimeline(\''+id+'\')">Full timeline</button></div></div>'+
+ '<div class="card pet-activity-card"><h3>Recent activity</h3>'+summary+'</div>';
 };
 window.renderSureTimeline=function(){
  const target=document.getElementById('timelineEvents'),count=document.getElementById('eventCount');

@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - development/pet-hq-standalone
+      - main
   workflow_dispatch:
 jobs:
   test:

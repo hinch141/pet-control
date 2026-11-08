@@ -1,6 +1,6 @@
 'use strict';
-// Cloudflare Access JWT verification for the future Pet HQ standalone listener.
-// NOT wired into the live ingress server. Fail closed on every verification error.
+// Cloudflare Access JWT verification for the optional standalone listener.
+// Reject unauthenticated requests; normal Home Assistant ingress remains separate.
 const {createPublicKey, verify} = require('node:crypto');
 
 function decodePart(part) {

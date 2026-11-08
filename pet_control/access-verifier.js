@@ -11,7 +11,7 @@ function createAccessVerifier({teamDomain, audience, allowedEmails, fetchImpl=fe
   const origin = new URL(teamDomain);
   if (origin.protocol !== 'https:' || origin.pathname !== '/' || origin.search || origin.hash)
     throw Error('Access team domain must be an HTTPS origin');
-  if (!/^[a-f0-9]{32}$/i.test(audience)) throw Error('Invalid Access application audience');
+  if (!/^(?:[a-f0-9]{32}|[a-f0-9]{64})$/i.test(audience)) throw Error('Invalid Access application audience');
   const emails = new Set(allowedEmails.map(x=>String(x).trim().toLowerCase()));
   if (!emails.size || emails.has('')) throw Error('Allowed household emails required');
   const issuer = origin.origin;

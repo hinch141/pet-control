@@ -3,10 +3,6 @@ const names=['Jessie','Henry','Rosie','Violet'];
 const section=document.createElement('section');
 section.className='card';section.style.cssText='margin-top:14px;background:#fff;color:#19312d;width:100%;';
 section.innerHTML='<strong>Live Sure Petcare status</strong><div id="pet-live-list" style="margin-top:8px">Connecting to Home Assistant…</div><small id="pet-live-time"></small>';
-const flapSection=document.createElement('section');
-flapSection.className='card';
-flapSection.style.cssText='margin-top:14px;margin-bottom:14px;background:#fff;color:#19312d;width:100%;';
-flapSection.innerHTML='<strong>Whole-house flap setting</strong><div id="flap-live-status" style="margin-top:8px">Checking Home Assistant…</div><p class="small" style="margin-bottom:0">This is the shared flap setting. Individual cat restrictions and curfews may still prevent particular cats from exiting. Entry remains permitted.</p>';
 
 let wholeCurfew=null,curfewActionBusy=false;
 const ukDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')?d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4):'';
@@ -487,7 +483,7 @@ async function refreshCloud(force=false){
  })();
  return pending;
 }
-const mount=()=>{const home=document.getElementById('home');const stats=home?.querySelector('.stats');if(stats)stats.insertAdjacentElement('afterend',section);else if(home)home.prepend(section);else document.body.prepend(section);const toggle=home?.querySelector('#houseIndoorToggle');const houseCard=toggle?.closest('.card');if(houseCard)houseCard.insertAdjacentElement('afterend',flapSection);else section.insertAdjacentElement('afterend',flapSection);};
+const mount=()=>{const home=document.getElementById('home');const stats=home?.querySelector('.stats');if(stats)stats.insertAdjacentElement('afterend',section);else if(home)home.prepend(section);else document.body.prepend(section);};
 let sureLocationPending=false,sureLocationBusy=false,sureLocationLast=0;
 async function refreshSureLocations(force=false){
  if(sureLocationPending||document.hidden||(!force&&Date.now()-sureLocationLast<20000))return;

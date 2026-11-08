@@ -40,7 +40,7 @@ function createAccessVerifier({teamDomain, audience, allowedEmails, fetchImpl=fe
     const valid = verify('RSA-SHA256', Buffer.from(parts[0]+'.'+parts[1]), key, Buffer.from(parts[2],'base64url'));
     if (!valid) throw Error('Invalid Access signature');
     const t = Math.floor(now()/1000);
-    if (claims.iss !== issuer || claims.aud !== audience || typeof claims.exp !== 'number' || claims.exp <= t ||
+    if (claims.iss !== issuer || !(Array.isArray(claims.aud) ? claims.aud.includes(audience) : claims.aud === audience) || typeof claims.exp !== 'number' || claims.exp <= t ||
         typeof claims.iat !== 'number' || claims.iat > t + 60 ||
         (claims.nbf !== undefined && (typeof claims.nbf !== 'number' || claims.nbf > t)))
       throw Error('Access claims rejected');

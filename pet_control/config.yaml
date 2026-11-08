@@ -1,5 +1,5 @@
 name: Pet Control
-version: "2.18.85"
+version: "2.18.86"
 slug: pet_control
 description: Pet Control interface with live Sure Petcare presence
 arch:
@@ -11,11 +11,21 @@ init: false
 ingress: true
 ingress_port: 80
 homeassistant_api: true
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: Pet HQ standalone (requires Cloudflare Access)
 panel_icon: mdi:paw
 panel_title: Pet Control
 options:
   sure_email: ""
   sure_password: ""
+  access_team_domain: ""
+  access_audience: ""
+  access_emails: ""
 schema:
   sure_email: str?
   sure_password: password?
+  access_team_domain: str?
+  access_audience: str?
+  access_emails: str?

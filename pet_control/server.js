@@ -7,6 +7,11 @@ const base='/usr/share/pet-control';
 const pets=['jessie','henry','rosie','violet'];
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8'};
 const token=process.env.SUPERVISOR_TOKEN;
+const {createAccessVerifier}=require('./access-verifier');
+let standaloneOptions={};
+try{standaloneOptions=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
+const standaloneEnabled=!!(standaloneOptions.access_team_domain&&standaloneOptions.access_audience&&standaloneOptions.access_emails);
+const verifyStandalone=standaloneEnabled?createAccessVerifier({teamDomain:standaloneOptions.access_team_domain,audience:standaloneOptions.access_audience,allowedEmails:String(standaloneOptions.access_emails).split(',')}):null;
 let activitySnapshot=null,activityPending=null;
 
 const curfewFile='/data/whole_house_curfew.json';
@@ -235,7 +240,11 @@ setTimeout(()=>petCurfewTick().catch(()=>{}),3500);
 
 const server=http.createServer(async(req,res)=>{
   const peer=(req.socket.remoteAddress||'').replace(/^::ffff:/,'');
-  if(peer!=='172.30.32.2'){res.writeHead(403);return res.end();}
+  if(peer!=='172.30.32.2'){
+    if(!verifyStandalone){res.writeHead(403);return res.end();}
+    try{await verifyStandalone(req.headers['cf-access-jwt-assertion']);}
+    catch{res.writeHead(403,{'Content-Type':'text/plain','Cache-Control':'no-store'});return res.end('Access denied');}
+  }
   const url=new URL(req.url,'http://localhost');
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Cache-Control','no-store');
@@ -798,3 +807,9 @@ async function archiveBackfill(){
 setTimeout(archiveBackfill,60000);
 setInterval(archiveBackfill,900000);
 server.listen(80,'0.0.0.0');
+// The SAME server and scheduler serve both Home Assistant ingress and authenticated
+// standalone requests. There is no second scheduler or duplicate state store.
+if(standaloneEnabled){
+  const standaloneServer=http.createServer((req,res)=>server.emit('request',req,res));
+  standaloneServer.listen(8080,'0.0.0.0');
+}

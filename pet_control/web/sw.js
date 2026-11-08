@@ -1,4 +1,4 @@
-const CACHE='pet-control-v2-18-85';
+const CACHE='pet-control-v2-18-86';
 const APP_FILES=['./','./index.html','./manifest.webmanifest','./live.js'];
 self.addEventListener('install',event=>{
  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(APP_FILES)));

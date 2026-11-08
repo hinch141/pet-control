@@ -17,3 +17,12 @@ test('rejects wrong audience',async()=>{await assert.rejects(verifier(makeToken(
 test('rejects wrong issuer',async()=>{await assert.rejects(verifier(makeToken({...base,iss:'https://attacker.invalid'})));});
 test('rejects altered signature',async()=>{const t=makeToken();await assert.rejects(verifier(t.slice(0,-2)+'xx'));});
 test('rejects missing token',async()=>{await assert.rejects(verifier(''));});
+
+test('accepts a 64-character Cloudflare Access audience tag',async()=>{
+ const longAudience='0123456789abcdef'.repeat(4);
+ const v=createAccessVerifier({teamDomain:'https://example.cloudflareaccess.com',audience:longAudience,allowedEmails:['member@example.com'],now,fetchImpl:async()=>({ok:true,json:async()=>({keys:[jwk]})})});
+ assert.equal((await v(makeToken({...base,aud:[longAudience]}))).email,'member@example.com');
+});
+test('rejects malformed audience tags',()=>{
+ assert.throws(()=>createAccessVerifier({teamDomain:'https://example.cloudflareaccess.com',audience:'invalid',allowedEmails:['member@example.com']}));
+});

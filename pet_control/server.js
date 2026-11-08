@@ -10,8 +10,13 @@ const token=process.env.SUPERVISOR_TOKEN;
 const {createAccessVerifier}=require('./access-verifier');
 let standaloneOptions={};
 try{standaloneOptions=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
-const standaloneEnabled=!!(standaloneOptions.access_team_domain&&standaloneOptions.access_audience&&standaloneOptions.access_emails);
-const verifyStandalone=standaloneEnabled?createAccessVerifier({teamDomain:standaloneOptions.access_team_domain,audience:standaloneOptions.access_audience,allowedEmails:String(standaloneOptions.access_emails).split(',')}):null;
+let verifyStandalone=null;
+try {
+  if(standaloneOptions.access_team_domain&&standaloneOptions.access_audience&&standaloneOptions.access_emails){
+    verifyStandalone=createAccessVerifier({teamDomain:standaloneOptions.access_team_domain,audience:standaloneOptions.access_audience,allowedEmails:String(standaloneOptions.access_emails).split(',')});
+  }
+} catch(error) {console.error('Standalone access disabled: invalid configuration:',error.message);}
+const standaloneEnabled=!!verifyStandalone;
 let activitySnapshot=null,activityPending=null;
 
 const curfewFile='/data/whole_house_curfew.json';

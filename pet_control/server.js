@@ -5,7 +5,7 @@ const path=require('node:path');
 const {randomUUID,createHash}=require('node:crypto');
 const base='/usr/share/pet-control';
 const pets=['jessie','henry','rosie','violet'];
-const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8'};
+const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8','.svg':'image/svg+xml'};
 const token=process.env.SUPERVISOR_TOKEN;
 const {createAccessVerifier}=require('./access-verifier');
 let standaloneOptions={};
@@ -759,7 +759,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     }catch(e){res.writeHead(502,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Unable to read movement history'}));}
   }
   const filename=url.pathname==='/'?'index.html':url.pathname.slice(1);
-  if(!['index.html','manifest.webmanifest','sw.js','live.js'].includes(filename)){res.writeHead(404);return res.end();}
+  if(!['index.html','manifest.webmanifest','sw.js','live.js','icon.svg'].includes(filename)){res.writeHead(404);return res.end();}
   const file=path.join(base,filename);
   fs.readFile(file,(err,body)=>{if(err){res.writeHead(404);return res.end();}res.writeHead(200,{'Content-Type':types[path.extname(file)]||'text/plain'});res.end(body);});
 };

@@ -5,8 +5,18 @@ const path=require('node:path');
 const {randomUUID,createHash}=require('node:crypto');
 const base='/usr/share/pet-control';
 const pets=['jessie','henry','rosie','violet'];
-const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8'};
+const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8','.svg':'image/svg+xml'};
 const token=process.env.SUPERVISOR_TOKEN;
+const {createAccessVerifier}=require('./access-verifier');
+let standaloneOptions={};
+try{standaloneOptions=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
+let verifyStandalone=null;
+try {
+  if(standaloneOptions.access_team_domain&&standaloneOptions.access_audience&&standaloneOptions.access_emails){
+    verifyStandalone=createAccessVerifier({teamDomain:standaloneOptions.access_team_domain,audience:standaloneOptions.access_audience,allowedEmails:String(standaloneOptions.access_emails).split(',')});
+  }
+} catch(error) {console.error('Standalone access disabled: invalid configuration:',error.message);}
+const standaloneEnabled=!!verifyStandalone;
 let activitySnapshot=null,activityPending=null;
 
 const curfewFile='/data/whole_house_curfew.json';
@@ -233,9 +243,13 @@ async function petCurfewTick(){
 setInterval(()=>petCurfewTick().catch(()=>{}),10000);
 setTimeout(()=>petCurfewTick().catch(()=>{}),3500);
 
-const server=http.createServer(async(req,res)=>{
+const handleRequest=async(req,res,standaloneRequest=false)=>{
   const peer=(req.socket.remoteAddress||'').replace(/^::ffff:/,'');
-  if(peer!=='172.30.32.2'){res.writeHead(403);return res.end();}
+  if(standaloneRequest){
+    if(!verifyStandalone){res.writeHead(403);return res.end();}
+    try{await verifyStandalone(req.headers['cf-access-jwt-assertion']);}
+    catch{res.writeHead(403,{'Content-Type':'text/plain','Cache-Control':'no-store'});return res.end('Access denied');}
+  }else if(peer!=='172.30.32.2'){res.writeHead(403);return res.end();}
   const url=new URL(req.url,'http://localhost');
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Cache-Control','no-store');
@@ -745,10 +759,10 @@ const server=http.createServer(async(req,res)=>{
     }catch(e){res.writeHead(502,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Unable to read movement history'}));}
   }
   const filename=url.pathname==='/'?'index.html':url.pathname.slice(1);
-  if(!['index.html','manifest.webmanifest','sw.js','live.js'].includes(filename)){res.writeHead(404);return res.end();}
+  if(!['index.html','manifest.webmanifest','sw.js','live.js','icon.svg'].includes(filename)){res.writeHead(404);return res.end();}
   const file=path.join(base,filename);
   fs.readFile(file,(err,body)=>{if(err){res.writeHead(404);return res.end();}res.writeHead(200,{'Content-Type':types[path.extname(file)]||'text/plain'});res.end(body);});
-});
+};
 // Historical backfill is independent of live polling, capped to three pages per cycle.
 let archiveBusy=false;
 async function archiveBackfill(){
@@ -797,4 +811,11 @@ async function archiveBackfill(){
 }
 setTimeout(archiveBackfill,60000);
 setInterval(archiveBackfill,900000);
+const server=http.createServer((req,res)=>handleRequest(req,res,false));
 server.listen(80,'0.0.0.0');
+// The SAME server and scheduler serve both Home Assistant ingress and authenticated
+// standalone requests. There is no second scheduler or duplicate state store.
+if(standaloneEnabled){
+  const standaloneServer=http.createServer((req,res)=>handleRequest(req,res,true));
+  standaloneServer.listen(8080,'0.0.0.0');
+}

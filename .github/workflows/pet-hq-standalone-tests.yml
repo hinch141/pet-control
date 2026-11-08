@@ -1,0 +1,20 @@
+name: Pet HQ standalone security checks
+on:
+  push:
+    branches:
+      - development/pet-hq-standalone
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check pet_control/server.js
+          node --check pet_control/access-verifier.js
+      - name: Run standalone authentication tests
+        run: node --test pet_control/tests/*.test.js

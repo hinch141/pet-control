@@ -1,17 +1,33 @@
-# Pet Control for Home Assistant Green
+# Pet HQ — Home Assistant Green
 
-Home Assistant add-on repository for the Pet Control v2.4 interface.
+This repository contains the live Pet HQ Home Assistant add-on and an **unreleased** standalone-access upgrade.
 
-## Install from your phone
-1. In Home Assistant open **Settings → Apps → App store**.
-2. Open the top-right menu, choose **Repositories**.
-3. Add `https://github.com/hinch141/pet-control` and close the repository dialogue.
-4. Refresh the app store, open **Pet Control** and select **Install**.
-5. Select **Start**, then **Open Web UI** (via Home Assistant ingress).
+## Release safety
+- The working Home Assistant installation is **v2.18.85**. Do not replace it with development code until a controlled upgrade is agreed.
+- Stable code is preserved on `backup/pet-hq-v2.18.85-2026-11-07`.
+- The experimental upgrade is on `development/pet-hq-standalone`, currently v2.18.86.
+- The default branch is **not** the standalone upgrade. Adding this repository in the Home Assistant app store does not deploy the development branch.
+- Never install a second active copy of Pet HQ: both copies would run curfew schedulers against the same flap.
 
-This version is served through Home Assistant's authenticated ingress. It does not open a separate unauthenticated port on the local network.
+## Planned standalone connection
+- Cloudflare tunnel: `pet-hq` (healthy, no routes configured).
+- Home Assistant Green LAN address: `192.168.1.11`.
+- Planned Cloudflare published hostname: `hinchliffepethq.co.uk`.
+- Planned tunnel service: `http://192.168.1.11:18080` (NOT Home Assistant port 8123).
+- Internal add-on port 8080 maps to host port 18080.
+- Cloudflare Access must authenticate the two approved household email addresses and be configured **before** publishing the hostname.
+- The origin independently verifies Cloudflare Access JWT signatures, issuer, application audience, expiry and email allowlist. With incomplete settings, the standalone listener stays disabled.
+- HA ingress on port 80 is retained for existing users.
 
-## Current limits
-The v2.4 interface is an offline prototype: its pet activity and settings are browser-local. It does **not** yet communicate with the Sure Petcare cat flap, provide a separate user-login system, or send real family invitations. Do not expose it directly to the public internet. Continue using Home Assistant's existing login and Nabu Casa remote access for access to this interface.
+## Controlled deployment prerequisites
+1. Verify the full Home Assistant backup and add-on data backup are accessible.
+2. Confirm that the selected update method replaces the **same add-on slug** `pet_control` and preserves `/data`, rather than starting a duplicate.
+3. Set up the Cloudflare Access self-hosted application for `hinchliffepethq.co.uk` and capture its team domain and application AUD tag. Restrict access to the two household email addresses. Do not expose the public route yet.
+4. Make sure the add-on's new configuration fields contain the team domain, AUD tag and comma-separated authorised emails. Preserve existing Sure Petcare credentials.
+5. Deploy the verified v2.18.86 build via a controlled update path, and test existing HA ingress plus curfew state first.
+6. Verify that the standalone port rejects requests without a valid Access JWT. A plain browser request to `http://192.168.1.11:18080` should be denied.
+7. Only then publish the tunnel hostname to `http://192.168.1.11:18080` and test both household accounts and Android installation.
+8. If anything fails, remove the Cloudflare published route first, then roll back the add-on and restore data if required.
 
-The installation should not require changes to existing Tailscale or Nabu Casa configuration.
+## Testing limitations
+GitHub Actions runs JavaScript syntax checks and unit/static tests. They do **not** establish a live connection to Home Assistant, Cloudflare, or the physical Sure Petcare flap. Those checks must be performed during the controlled deployment.

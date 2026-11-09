@@ -10,10 +10,21 @@ const token=process.env.SUPERVISOR_TOKEN;
 const {createAccessVerifier}=require('./access-verifier');
 let standaloneOptions={};
 try{standaloneOptions=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
+const familyFile='/data/pet-hq-family.json';
+const initialFamilyEmails=String(standaloneOptions.access_emails||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+let family={version:1,members:initialFamilyEmails.map(email=>({email,name:email.split('@')[0],primary:true,addedAt:new Date().toISOString()}))};
+try{
+ const saved=JSON.parse(fs.readFileSync(familyFile,'utf8'));
+ if(saved?.version===1&&Array.isArray(saved.members)&&saved.members.length)family=saved;
+}catch(e){if(e.code!=='ENOENT')console.error('Family registry read failed:',e.message);}
+function saveFamily(){
+ const tmp=familyFile+'.tmp';fs.writeFileSync(tmp,JSON.stringify(family,null,2),{mode:0o600});fs.renameSync(tmp,familyFile);
+}
+const emailAllowed=email=>family.members.some(m=>m.email===email);
 let verifyStandalone=null;
 try {
   if(standaloneOptions.access_team_domain&&standaloneOptions.access_audience&&standaloneOptions.access_emails){
-    verifyStandalone=createAccessVerifier({teamDomain:standaloneOptions.access_team_domain,audience:standaloneOptions.access_audience,allowedEmails:String(standaloneOptions.access_emails).split(',')});
+    verifyStandalone=createAccessVerifier({teamDomain:standaloneOptions.access_team_domain,audience:standaloneOptions.access_audience,allowedEmails:String(standaloneOptions.access_emails).split(','),isEmailAllowed:emailAllowed});
   }
 } catch(error) {console.error('Standalone access disabled: invalid configuration:',error.message);}
 const standaloneEnabled=!!verifyStandalone;
@@ -257,15 +268,39 @@ setTimeout(()=>petCurfewTick().catch(()=>{}),3500);
 
 const handleRequest=async(req,res,standaloneRequest=false)=>{
   const peer=(req.socket.remoteAddress||'').replace(/^::ffff:/,'');
+  let verifiedEmail=null;
   if(standaloneRequest){
     if(!verifyStandalone){res.writeHead(403);return res.end();}
-    try{await verifyStandalone(req.headers['cf-access-jwt-assertion']);}
+    try{verifiedEmail=(await verifyStandalone(req.headers['cf-access-jwt-assertion'])).email;}
     catch{res.writeHead(403,{'Content-Type':'text/plain','Cache-Control':'no-store'});return res.end('Access denied');}
   }else if(peer!=='172.30.32.2'){res.writeHead(403);return res.end();}
   const url=new URL(req.url,'http://localhost');
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Cache-Control','no-store');
 
+  if(url.pathname==='/pet-hq/family'&&(req.method==='GET'||req.method==='POST')){
+   const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+   if(!standaloneRequest)return reply(403,{error:'Manage family members through the signed-in Pet HQ app'});
+   if(!verifiedEmail||!emailAllowed(verifiedEmail))return reply(403,{error:'Not authorised'});
+   if(req.method==='GET')return reply(200,{members:family.members,viewer:verifiedEmail});
+   try{
+    let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>4096)return reply(413,{error:'Request too large'});}
+    const body=JSON.parse(raw),email=String(body.email||'').trim().toLowerCase(),name=String(body.name||'').trim();
+    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)||email.length>120)return reply(400,{error:'Valid email required'});
+    if(body.action==='add'){
+     if(!name||name.length>60)return reply(400,{error:'Name required'});
+     if(family.members.some(m=>m.email===email))return reply(409,{error:'Email already registered'});
+     family.members.push({email,name,primary:false,addedAt:new Date().toISOString()});
+    }else if(body.action==='remove'){
+     const existing=family.members.find(m=>m.email===email);
+     if(!existing)return reply(404,{error:'Member not found'});
+     if(existing.primary)return reply(403,{error:'Primary household members are protected'});
+     if(family.members.length<=1)return reply(409,{error:'Cannot remove last member'});
+     family.members=family.members.filter(m=>m.email!==email);
+    }else return reply(400,{error:'Invalid action'});
+    saveFamily();return reply(200,{members:family.members,viewer:verifiedEmail});
+   }catch(e){return reply(500,{error:'Family update failed: '+e.message});}
+  }
   if(url.pathname==='/pet-hq/archive'&&(req.method==='GET'||req.method==='POST')){
    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(body));};
    if(req.method==='GET')return reply(200,{version:1,pets:petArchive.pets});

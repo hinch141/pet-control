@@ -4,7 +4,7 @@
 **Release source:** `main` (never replace it wholesale with an older branch)  
 **Protected reference:** `backup/pet-hq-v2.18.85-2026-11-07`  
 **Existing development branch:** `development/pet-hq-standalone`  
-**Current release at latest checklist update:** v2.18.113 (09/11/2026).
+**Current release at latest checklist update:** v2.18.114 (09/11/2026).
 
 ## Non-negotiable change procedure
 
@@ -59,6 +59,8 @@
 - [ ] **Upcoming pet archive:** Archive without Sure Petcare deletion, preserve history and stable Sure Petcare IDs, prevent re-import on sync; no implementation yet.
 - [ ] **Upcoming household users:** Equal full access, invitation email and authenticated access; no permission tiers; no implementation yet.
 
+- [ ] **v2.18.114 Save times only:** With curfew off, Enable → remove extra ranges → Save times only; verify saved range list is reduced and curfew remains Off. Enable again and confirm ranges persist. Set curfew should still enable; Cancel should not save changes.
+
 ## Release record
 
 | Release | Summary | Verification |
@@ -83,3 +85,5 @@
 - **2.18.112 (09/11/2026):** Whole-house Enable → set time range(s) → Set curfew flow; clarified curfew and Indoor Only wording; JS syntax validated, Android/HA end-to-end tests pending.
 
 - **2.18.113 (09/11/2026):** Removed redundant whole-house View or edit times button; inline JS syntax passed, phone retest pending.
+
+- **2.18.114 (09/11/2026):** Added Save times only button to whole-house curfew setup for saving removed ranges without activating; JS syntax passed, phone test pending.

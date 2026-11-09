@@ -182,11 +182,11 @@ function direction(e){
 }
 function records(){return [...activity,...archiveEvents.filter(e=>!activity.some(a=>a.id===e.id))].filter(e=>e.type===0).flatMap(e=>(e.pets||[]).filter(p=>names.some(n=>n.toLowerCase()===p)).map(p=>({...e,pet:p,direction:direction(e)}))).sort((a,b)=>new Date(b.at)-new Date(a.at));}
 function iconFor(e){return e.direction==='In'?'↙':e.direction==='Out'?'↗':'↔';}
-function labelFor(e){return e.direction==='In'?'Entered':e.direction==='Out'?'Left':'Activity recorded';}
+function labelFor(e){return e.direction==='In'?'Entered':e.direction==='Out'?'Left':'Is looking outside';}
 function rowFor(e,fullDate=false,homeStyle=false){
  const name=names.find(n=>n.toLowerCase()===e.pet)||e.pet;
  const time=new Date(e.at).toLocaleString('en-GB',{timeZone:'Europe/London',...(fullDate?{day:'numeric',month:'short'}:{}),hour:'2-digit',minute:'2-digit'});
- return '<div class="listrow"><div class="row"><div class="eventicon" aria-label="'+(homeStyle?(e.direction==='In'?'In':e.direction==='Out'?'Out':'Activity recorded'):labelFor(e))+'">'+iconFor(e)+'</div><div><strong>'+escapeHtml(name)+'</strong><div class="small">'+(homeStyle?(e.direction==='In'?'In':e.direction==='Out'?'Out':'Activity recorded'):labelFor(e))+'</div></div></div><span class="small">'+time+'</span></div>';
+ return '<div class="listrow"><div class="row"><div class="eventicon" aria-label="'+(homeStyle?(e.direction==='In'?'In':e.direction==='Out'?'Out':'Is looking outside'):labelFor(e))+'">'+iconFor(e)+'</div><div><strong>'+escapeHtml(name)+'</strong><div class="small">'+(homeStyle?(e.direction==='In'?'In':e.direction==='Out'?'Out':'Is looking outside'):labelFor(e))+'</div></div></div><span class="small">'+time+'</span></div>';
 }
 function refreshTodayEntryBadges(){
  const today=ukDay(new Date());

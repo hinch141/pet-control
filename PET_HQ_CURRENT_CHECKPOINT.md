@@ -6,7 +6,7 @@
 
 - Repository: `hinch141/pet-control`
 - Current release branch: `main`
-- Version confirmed in `pet_control/config.yaml`: **2.18.116**
+- Version confirmed in `pet_control/config.yaml`: **2.18.117**
 - Permanent release and regression rules: [PET_HQ_RELEASE_CHECKLIST.md](PET_HQ_RELEASE_CHECKLIST.md)
 - Protected reference branch: `backup/pet-hq-v2.18.85-2026-11-07`
 - Existing development branch: `development/pet-hq-standalone`
@@ -117,3 +117,5 @@ These are outstanding verification/work items, **not** instructions to change al
 - **2.18.116 (09/11/2026):** User noticed archived cats still appeared in **Live Sure Petcare status** card. `web/live.js` status card now filters its fixed name list against `activePets()` so archived cats disappear from the card, while live cloud data and historical timeline are unchanged. JS syntax checked; user verification pending.
 
 - **09/11/2026 — user confirmed v2.18.116 live status:** Archiving a cat correctly removes it from the Live Sure Petcare status card; user said “that works now”. Preserve this behaviour in future releases.
+
+- **09/11/2026 v2.18.117 FAMILY ACCESS PILOT:** Added persistent `/data/pet-hq-family.json` household list; standalone Cloudflare JWT verification now checks membership on every request, including immediate server-side revocation. Initial authorised emails from `access_emails` are imported as protected founding members, retaining current access. New `GET/POST /pet-hq/family` endpoints require verified standalone email, never exposed through HA ingress. Family screen now lists actual server members, adds/removes full-access accounts, opens a mailto invitation composer. **Cloudflare Access policy is separate and is NOT automatically edited; newly added email must be permitted by Cloudflare policy before sign-in. Email is not sent automatically.** No live HA/Cloudflare test yet. Test existing accounts first, then add a disposable test email and update Cloudflare policy before sign-in; remove and verify 403 on subsequent requests. Preserve existing pet archive and curfews.

@@ -183,17 +183,37 @@ function showPage(page){if(page!=='curfews')curfewFromProfile=false;if(page==='c
 }
 function petAvatar(p){return '<div class="avatar"><img alt="'+esc(p?.name||'Cat')+'" src="'+petPhoto(p)+'" loading="lazy" onerror="this.style.display=\'none\'"></div>'}
 
+let petArchiveRegistry=null;
+async function loadPetArchive(){
+ const r=await fetch('./pet-hq/archive',{cache:'no-store',signal:AbortSignal.timeout(10000)});
+ if(!r.ok)throw Error('Pet archive unavailable');
+ const data=await r.json();
+ if(!data||!data.pets||typeof data.pets!=='object')throw Error('Invalid archive response');
+ petArchiveRegistry=data.pets;
+ // Keep archive state consistent even if this device has older browser data.
+ let changed=false;
+ for(const p of state.pets){if(p.surePetId&&petArchiveRegistry[String(p.surePetId)]&&!p.archived){p.archived=true;changed=true;}}
+ if(changed)save();
+ return petArchiveRegistry;
+}
+async function updatePetArchive(action,p){
+ const body={action,surePetId:String(p.surePetId),profile:p,events:state.events.filter(e=>e.petId===p.id)};
+ const r=await fetch('./pet-hq/archive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
+ const data=await r.json();if(!r.ok)throw Error(data.error||'Could not save pet archive');
+ petArchiveRegistry=data.pets;
+}
 let surePetSyncCandidates=[];
 async function syncSurePets(){
  const target=el('petSyncResult');target.textContent='Checking Sure Petcare…';
  try{
-  const response=await fetch('./sure/pet-permissions',{cache:'no-store',signal:AbortSignal.timeout(32000)});
+  await loadPetArchive();
+ const response=await fetch('./sure/pet-permissions',{cache:'no-store',signal:AbortSignal.timeout(32000)});
   if(!response.ok)throw Error('Connection failed');
   const result=await response.json();
   if(result.status!=='read_only')throw Error(result.message||'Could not read cats');
   const cats=(result.cats||[]).filter(c=>c.surePetId&&c.sureTagId);
   const knownIds=new Set(state.pets.map(p=>String(p.surePetId||'')).filter(Boolean));
-  surePetSyncCandidates=cats.filter(c=>!knownIds.has(c.surePetId));
+  surePetSyncCandidates=cats.filter(c=>!knownIds.has(String(c.surePetId))&&!petArchiveRegistry[String(c.surePetId)]);
   if(!surePetSyncCandidates.length){target.textContent='No new cats found. '+cats.length+' registered cat(s) checked.';return;}
   target.innerHTML='<strong>'+surePetSyncCandidates.length+' unlinked cat(s) found</strong>'+surePetSyncCandidates.map((c,i)=>{
    const existing=state.pets.filter(p=>!p.surePetId&&p.name.toLowerCase()===c.name.toLowerCase());
@@ -205,7 +225,7 @@ function confirmSurePetSync(){
  const selected=[...document.querySelectorAll('.sync-pet-check:checked')].map(x=>surePetSyncCandidates[Number(x.value)]).filter(Boolean);
  let added=0,linked=0;
  for(const c of selected){
-  if(state.pets.some(p=>p.surePetId===c.surePetId))continue;
+  if(state.pets.some(p=>String(p.surePetId)===String(c.surePetId))||petArchiveRegistry?.[String(c.surePetId)])continue;
   const existing=state.pets.filter(p=>!p.surePetId&&p.name.toLowerCase()===c.name.toLowerCase());
   if(existing.length===1){existing[0].surePetId=c.surePetId;existing[0].sureTagId=c.sureTagId;linked++;continue;}
   state.pets.push({id:'sure-'+c.surePetId,name:c.name,surePetId:c.surePetId,sureTagId:c.sureTagId,indoorMode:'normal',enabled:false,start:'21:00',end:'07:00',weekend:false,archived:false});added++;
@@ -496,7 +516,19 @@ async function setPetAccess(id,mode){
  try{const r=await fetch('./sure/pet-access',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({petId:p.surePetId,mode}),signal:AbortSignal.timeout(35000)});const d=await r.json();if(!r.ok)throw Error(d.error||'Update failed');toast(d.status==='confirmed'?'Permission confirmed by Sure Petcare':'Change sent; confirmation pending');closeModal();openPet(id);if(typeof window.refreshPetPermissionDisplay==='function')window.refreshPetPermissionDisplay(true);}
  catch(e){toast(e.message||'Unable to update permission');if(button){button.disabled=false;button.textContent='Retry';}}
 }
-function toggleArchive(id){let p=pet(id);if(!p)return;const apply=()=>{p.archived=!p.archived;save();toast(p.archived?'Pet archived':'Pet restored')};if(p.archived){apply();return;}petHQConfirm('Archive '+p.name+'?','The profile will be hidden from active pets. Movement history will be retained.','Archive pet',apply,{danger:true})}function openUser(id){let u=id?state.users.find(x=>x.id===id):null;let role=u?.primary?'full':(u?.role||'full');modal(`<h3>${u?'Edit family member':'Invite family member'}</h3><div class="stack"><label class="field">Full name *<input id="userName" maxlength="60" value="${esc(u?.name||'')}" placeholder="Family member's name" required></label><label class="field">Email address *<input id="userEmail" type="email" inputmode="email" autocomplete="email" maxlength="120" value="${esc(u?.email||'')}" placeholder="name@example.com" required></label><label class="field">Permissions<select id="userRole" ${u?.primary?'disabled':''}><option value="full" ${role==='full'?'selected':''}>Full access — all controls and user management</option><option value="view" ${role==='view'?'selected':''}>View only — activity and schedules</option></select></label><div class="small">${u?.primary?'Primary users always have full access. Add their email address to complete their profile.':'Email is mandatory for registration. Saving creates a pending invitation in this preview; it does NOT send an email.'}</div><div id="userFormError" class="small" style="color:#ad3030" role="alert"></div></div><div class="row"><button class="button wide" onclick="saveUser('${id||''}')">${u?'Save details':'Create invitation (demo)'}</button><button class="button outline" onclick="closeModal()">Cancel</button></div>`)}
+async function toggleArchive(id){
+ const p=pet(id);if(!p)return;
+ const apply=async()=>{
+  try{
+   if(!p.surePetId)throw Error('Link this pet to Sure Petcare before archiving, so future sync can identify it safely.');
+   await loadPetArchive();
+   await updatePetArchive(p.archived?'restore':'archive',p);
+   p.archived=!p.archived;save();toast(p.archived?'Pet archived — history retained':'Pet restored');
+  }catch(e){toast(e.message||'Archive failed. No changes made.');}
+ };
+ if(p.archived){await apply();return;}
+ petHQConfirm('Archive '+p.name+'?','This removes the cat from active Pet HQ views, retains its profile and history, and prevents Sync Pets adding it back. Sure Petcare is unchanged.','Archive pet',apply,{danger:true});
+}function openUser(id){let u=id?state.users.find(x=>x.id===id):null;let role=u?.primary?'full':(u?.role||'full');modal(`<h3>${u?'Edit family member':'Invite family member'}</h3><div class="stack"><label class="field">Full name *<input id="userName" maxlength="60" value="${esc(u?.name||'')}" placeholder="Family member's name" required></label><label class="field">Email address *<input id="userEmail" type="email" inputmode="email" autocomplete="email" maxlength="120" value="${esc(u?.email||'')}" placeholder="name@example.com" required></label><label class="field">Permissions<select id="userRole" ${u?.primary?'disabled':''}><option value="full" ${role==='full'?'selected':''}>Full access — all controls and user management</option><option value="view" ${role==='view'?'selected':''}>View only — activity and schedules</option></select></label><div class="small">${u?.primary?'Primary users always have full access. Add their email address to complete their profile.':'Email is mandatory for registration. Saving creates a pending invitation in this preview; it does NOT send an email.'}</div><div id="userFormError" class="small" style="color:#ad3030" role="alert"></div></div><div class="row"><button class="button wide" onclick="saveUser('${id||''}')">${u?'Save details':'Create invitation (demo)'}</button><button class="button outline" onclick="closeModal()">Cancel</button></div>`)}
 function userError(message){el('userFormError').textContent=message;el('userEmail').focus()}
 function saveUser(id){let name=el('userName').value.trim(),email=el('userEmail').value.trim(),role=el('userRole').value;if(!name){el('userFormError').textContent='Enter a full name.';el('userName').focus();return}if(!email){userError('Email address is required to register a family member.');return}if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){userError('Enter a valid email address.');return}if(state.users.some(u=>u.id!==id&&(u.email||'').toLowerCase()===email.toLowerCase())){userError('This email is already registered.');return}if(state.users.some(u=>u.id!==id&&u.name.toLowerCase()===name.toLowerCase())){el('userFormError').textContent='This name already exists.';return}if(id){let u=state.users.find(u=>u.id===id);let changedEmail=(u.email||'').toLowerCase()!==email.toLowerCase();Object.assign(u,{name,email,role:u.primary?'full':role});if(changedEmail&&!u.primary){u.status='Pending invitation';u.invitedAt=new Date().toISOString()}}else state.users.push({id:'u'+Date.now(),name,email,role,primary:false,status:'Pending invitation',invitedAt:new Date().toISOString()});closeModal();save();toast(id?'User details saved (demo)':'Invitation created (demo only — no email sent)')}
 function resendInvite(id){let u=state.users.find(x=>x.id===id);if(!u||u.primary||!u.email)return;u.status='Pending invitation';u.invitedAt=new Date().toISOString();save();toast('Invitation refreshed in demo — no email sent')}

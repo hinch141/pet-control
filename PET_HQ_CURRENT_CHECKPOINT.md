@@ -6,13 +6,15 @@
 
 - Repository: `hinch141/pet-control`
 - Current release branch: `main`
-- Version confirmed in `pet_control/config.yaml`: **2.18.103**
+- Version confirmed in `pet_control/config.yaml`: **2.18.104**
 - Permanent release and regression rules: [PET_HQ_RELEASE_CHECKLIST.md](PET_HQ_RELEASE_CHECKLIST.md)
 - Protected reference branch: `backup/pet-hq-v2.18.85-2026-11-07`
 - Existing development branch: `development/pet-hq-standalone`
 - Do **not** restore an older branch over `main`, create unnecessary branches, or replace complete working files for a narrow change.
 
 ## Last completed code changes
+
+- **2.18.104 (09/11/2026):** Home pet cards and Home live-status labels now show **In/Out** instead of Home/Away; Home page Recent activity list now shows **In/Out**. The separate Timeline tab continues to use **Entered/Left**. Internal status values and history are unchanged. Updated the visible version, add-on version and service-worker cache marker. Source-code changes committed; **live Android/Home Assistant verification pending**.
 
 - **2.18.101:** Simplified whole-house control UI; actual locking operation was **not** verified.
 - **2.18.102:** Added automatic UK-day rollover for preset graph end date. Manually selected historical ranges should remain unchanged; phone verification pending.
@@ -24,22 +26,18 @@
 
 - Earlier whole-house interface appearance looked acceptable, but popup wording may need changing.
 - User subsequently reported that the app still displayed **2.18.99** and that Rosie remained in live status and Pets tab **before** the 2.18.103 source correction.
-- **No confirmation yet** that 2.18.103 is installed on the user's Home Assistant/mobile app or that these two corrections display properly.
+- **No confirmation yet** that 2.18.104 is installed on the user's Home Assistant/mobile app or that these two corrections display properly.
 - Do not mistake source-code edits for live end-to-end verification.
 
-## Newly requested change — 09/11/2026 (recorded; not implemented)
+## Completed wording change — 09/11/2026
 
-**Home screen wording only:**
-- On individual pet cards, replace displayed location labels **Home** / **Away** with **In** / **Out**.
-- On the movement timeline/list embedded on the **Home page**, use **In** / **Out** consistently.
-- On the **separate Timeline tab**, deliberately **retain** movement descriptions **Left** / **Entered**; do not apply the Home page wording change there.
-- Preserve underlying movement direction data, Home Assistant/Sure Petcare mapping, sorting, history, curfews and all other working functionality. This is a presentation-only change.
-- Before implementing, inspect current `main` rendering code for each of the three locations, apply narrowly targeted edits and verify each separately.
-- **Status: requirement recorded only; no application code changed or tested.**
+- **Implemented in v2.18.104:** Pet cards and Home-page live status show **In/Out**; Home-page Recent activity rows show **In/Out**.
+- **Intentionally unchanged:** The separate Timeline tab uses **Entered/Left**. Stored movement values, status mapping and historical records are unchanged.
+- **Verification:** Code inspected and committed; phone/HA display not yet confirmed by user.
 
 ## Open issues and next agreed work
 
-1. **First confirm installed version and visible app version** against the actual latest `main` release; investigate stale app/service-worker cache if mismatched. Do not blindly bump versions.
+1. **First confirm installed version and visible app version (2.18.104)** against the actual latest `main` release; investigate stale app/service-worker cache if mismatched. Do not blindly bump versions.
 2. **Confirm Rosie is absent from active Home, Pets and live-status views**, while her historical movement records remain available.
 3. **Review whole-house popup wording and confirmation buttons** with the user, preserving manual override and individual-curfew rules.
 4. **Investigate and verify whole-house Keep Indoors behaviour** through actual HA/Sure Petcare integration. UI simplification alone did not prove functionality.

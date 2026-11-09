@@ -412,7 +412,7 @@ window.petGraphCalendarOpen=function(which){
    btn.disabled=date>max||(!!min&&date<min);
    if(btn.disabled){btn.style.opacity='.25';btn.style.background='#eee';btn.style.cursor='not-allowed'}
    if(date===selected){btn.style.background='#d9efe8';btn.style.fontWeight='700'}
-   btn.onclick=()=>{(which==='from'?from:to).value=date;if(which==='from'){window.petGraphFromChanged();pendingGraphFrom=from.value;pendingGraphTo=to.value;}else{window.petGraphToChanged();pendingGraphTo=to.value;}window.petGraphCalendarLabels();shade.remove()};
+   btn.onclick=()=>{const currentFrom=document.getElementById('graph-from'),currentTo=document.getElementById('graph-to');if(!currentFrom||!currentTo)return;(which==='from'?currentFrom:currentTo).value=date;if(which==='from'){window.petGraphFromChanged();pendingGraphFrom=currentFrom.value;pendingGraphTo=currentTo.value;}else{window.petGraphToChanged();pendingGraphTo=currentTo.value;}window.petGraphCalendarLabels();shade.remove()};
    grid.append(btn);
   }
   panel.append(grid);

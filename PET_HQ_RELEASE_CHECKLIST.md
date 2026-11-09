@@ -4,7 +4,7 @@
 **Release source:** `main` (never replace it wholesale with an older branch)  
 **Protected reference:** `backup/pet-hq-v2.18.85-2026-11-07`  
 **Existing development branch:** `development/pet-hq-standalone`  
-**Current release at latest checklist update:** v2.18.106 (09/11/2026).
+**Current release at latest checklist update:** v2.18.107 (09/11/2026).
 
 ## Non-negotiable change procedure
 
@@ -28,7 +28,7 @@
 - [ ] **Curfew time inputs:** Changing a start time automatically displays and saves end time +1 minute, including midnight rollover; verify daily, weekly-copy and whole-house editors on Android.
 - [ ] **Curfew execution:** Correct application and release of schedules; no stale lock after expiry; appropriate next-day handling for passed times.
 - [ ] **Timeline:** Date picker and graph **To** date default to the current UK date, including after midnight when the app remains open; manually chosen historical ranges stay intact.
-- [ ] **Graphs:** 7-day/28-day and custom ranges, per-pet filters, drill-down popups and CSV export still work.
+- [ ] **Graphs:** 7-day/28-day and custom ranges, per-pet filters, drill-down popups and CSV export still work. Date picker From and To cannot exceed today; To cannot precede From; changing From adjusts To as needed; same-day range is allowed.
 - [ ] **Pet management:** Sync cats, archive/remove active pet, individual profile controls and photos do not regress.
 - [ ] **Family access:** Equal permissions, email required for invitations, protect last active user; do not claim invitation emails were sent unless backend confirms.
 - [ ] **Home Assistant/PWA:** HA integration, cloud status, mobile layout and existing standalone sign-in are preserved; avoid introducing an HA-login dependency for spouse.
@@ -53,6 +53,7 @@
 | 2.18.103 | Correct visible version literal and exclude Rosie from active Pets/live lists | Source changed; phone not verified |
 | 2.18.104 | Home pet cards and Home Recent activity use In/Out; Timeline tab keeps Entered/Left | **FAILED:** JS syntax error disabled live status and graphs |
 | 2.18.105 | Correct missing quote in live.js and validate JavaScript syntax | Syntax validated; phone retest pending |
-| 2.18.106 | Experimental Is looking outside label for unconfirmed movement events | JavaScript syntax validated; phone retest pending |
+| 2.18.106 | Experimental Is looking outside label for unconfirmed movement events | JavaScript syntax validated; user confirmed Henry timestamps match Sure Petcare |
+| 2.18.107 | Restrict Timeline activity From/To dates to today and ordered range | JavaScript syntax validated; Android calendar retest pending |
 
 **Important:** Never describe a code edit as a verified functional repair unless the relevant integration/device test has passed.

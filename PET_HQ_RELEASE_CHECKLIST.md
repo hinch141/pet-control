@@ -92,3 +92,5 @@
 - **2.18.114 (09/11/2026):** Added Save times only button to whole-house curfew setup for saving removed ranges without activating; JS syntax passed, phone test pending.
 
 - **2.18.115 (09/11/2026):** Added persistent pet archive registry and archive/restore + sync suppression. JS syntax passed, real HA integration test pending.
+
+- **09/11/2026 — USER CONFIRMED:** v2.18.115 archive → Sync Pets exclusion → restore works on their Home Assistant installation. Keep future regression check; independent long-term history backup not yet verified.

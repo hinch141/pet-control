@@ -286,7 +286,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
    try{
     let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>4096)return reply(413,{error:'Request too large'});}
     const body=JSON.parse(raw),email=String(body.email||'').trim().toLowerCase(),name=String(body.name||'').trim();
-    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)||email.length>120)return reply(400,{error:'Valid email required'});
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>120)return reply(400,{error:'Valid email required'});
     if(body.action==='add'){
      if(!name||name.length>60)return reply(400,{error:'Name required'});
      if(family.members.some(m=>m.email===email))return reply(409,{error:'Email already registered'});

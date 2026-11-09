@@ -468,7 +468,7 @@ function graphDayTrips(day,pet){
 function graphDuration(ms){const mins=Math.round(ms/60000);return Math.floor(mins/60)+'h '+String(mins%60).padStart(2,'0')+'m';}
 let graphRange=7,graphPet='all',graphSelected='',graphMetric='move';
 window.petGraphMetric=function(v){graphMetric=v==='time'?'time':'move';renderGraphs();};
-window.petGraphRange=function(n){graphRange=n===28?28:7;graphEnd=graphToday();graphStart=shiftDay(graphEnd,1-graphRange);loadGraphRange();};
+window.petGraphRange=function(n){pendingGraphFrom=null;pendingGraphTo=null;graphRange=n===28?28:7;graphEnd=graphToday();graphStart=shiftDay(graphEnd,1-graphRange);loadGraphRange();};
 window.petGraphPet=function(v){graphPet=v;renderGraphs();};
 let graphSelectedDirection='all';
 window.petGraphDay=function(v,direction='all'){graphSelected=v;graphSelectedDirection=direction;showGraphPopup(v);};

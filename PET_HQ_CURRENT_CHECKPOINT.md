@@ -6,11 +6,17 @@
 
 - Repository: `hinch141/pet-control`
 - Current release branch: `main`
-- Version confirmed in `pet_control/config.yaml`: **2.18.118**
+- Version confirmed in `pet_control/config.yaml`: **2.18.119**
 - Permanent release and regression rules: [PET_HQ_RELEASE_CHECKLIST.md](PET_HQ_RELEASE_CHECKLIST.md)
 - Protected reference branch: `backup/pet-hq-v2.18.85-2026-11-07`
 - Existing development branch: `development/pet-hq-standalone`
 - Do **not** restore an older branch over `main`, create unnecessary branches, or replace complete working files for a narrow change.
+
+## Latest UI trial — 2.18.119 (09/11/2026)
+
+- Protected rollback branch: `backup/pet-hq-v2.18.118-before-card-refresh` (snapshot of original main).
+- Read-only badge added to each home pet card based on the existing confirmed Sure Petcare access state: Keep indoors, Free access, or Access not confirmed; a configured curfew is indicated when the local pet schedule is enabled. Kept existing Access, Curfew & times, Movements, and detailed-settings buttons and all access/curfew handlers unchanged.
+- Red gradient header, lighter page background, blue raised access buttons. No backend changes. Release needs real-device visual and access-status validation; do not assume a badge proves which mechanism caused a restriction.
 
 ## Last completed code changes
 

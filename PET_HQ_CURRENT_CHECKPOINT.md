@@ -27,6 +27,16 @@
 - **No confirmation yet** that 2.18.103 is installed on the user's Home Assistant/mobile app or that these two corrections display properly.
 - Do not mistake source-code edits for live end-to-end verification.
 
+## Newly requested change — 09/11/2026 (recorded; not implemented)
+
+**Home screen wording only:**
+- On individual pet cards, replace displayed location labels **Home** / **Away** with **In** / **Out**.
+- On the movement timeline/list embedded on the **Home page**, use **In** / **Out** consistently.
+- On the **separate Timeline tab**, deliberately **retain** movement descriptions **Left** / **Entered**; do not apply the Home page wording change there.
+- Preserve underlying movement direction data, Home Assistant/Sure Petcare mapping, sorting, history, curfews and all other working functionality. This is a presentation-only change.
+- Before implementing, inspect current `main` rendering code for each of the three locations, apply narrowly targeted edits and verify each separately.
+- **Status: requirement recorded only; no application code changed or tested.**
+
 ## Open issues and next agreed work
 
 1. **First confirm installed version and visible app version** against the actual latest `main` release; investigate stale app/service-worker cache if mismatched. Do not blindly bump versions.

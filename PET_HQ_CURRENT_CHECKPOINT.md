@@ -6,13 +6,16 @@
 
 - Repository: `hinch141/pet-control`
 - Current release branch: `main`
-- Version confirmed in `pet_control/config.yaml`: **2.18.113**
+- Version confirmed in `pet_control/config.yaml`: **2.18.114**
 - Permanent release and regression rules: [PET_HQ_RELEASE_CHECKLIST.md](PET_HQ_RELEASE_CHECKLIST.md)
 - Protected reference branch: `backup/pet-hq-v2.18.85-2026-11-07`
 - Existing development branch: `development/pet-hq-standalone`
 - Do **not** restore an older branch over `main`, create unnecessary branches, or replace complete working files for a narrow change.
 
 ## Last completed code changes
+
+- **2.18.114 (09/11/2026):** User found that deleting saved multiple whole-house curfew time ranges during Enable setup had no way to save removals without enabling. Added **Save times only** to setup popup. This posts existing backend `save` action with edited ranges and keeps whole-house curfew off; **Set curfew** continues to post `enable` and activates. Both paths use existing time validation and past-time warning. No backend scheduler changes. `live.js` syntax checked; phone verification pending. At least one range must remain, as existing backend requires 1–12.
+
 
 - **2.18.113 (09/11/2026):** User confirmed v2.18.112 whole-house curfew setup works. Removed redundant **View or edit times** button: the **Enable** switch alone opens time-range setup, with a short explanation that active times require disabling first; saved ranges remain. No curfew backend or timing changes. Inline JavaScript syntax checked; phone UI verification pending.
 - **Next agreed design (not implemented):** Pet HQ removal must archive pet and preserve all existing historical records, leave Sure Petcare registration untouched, and suppress re-import on subsequent Sync Pets using stable Sure Petcare pet ID; plan explicit restore later. Family users all equal full access; add/remove with email invitation and one-time sign-in, without HA login. Investigate existing authentication/hosting and data retention before coding invitations. User does not want permission levels.

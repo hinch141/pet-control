@@ -272,7 +272,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
    try{
     let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>100000)return reply(413,{error:'Archive request too large'});}
     const body=JSON.parse(raw),id=String(body.surePetId||'');
-    if(!/^\\d{1,20}$/.test(id))return reply(400,{error:'A valid Sure Petcare pet ID is required'});
+    if(!/^\d{1,20}$/.test(id))return reply(400,{error:'A valid Sure Petcare pet ID is required'});
     if(body.action==='archive'){
      const profile=body.profile;
      if(!profile||String(profile.surePetId)!==id||typeof profile.name!=='string'||profile.name.length>100)return reply(400,{error:'Valid pet profile required'});

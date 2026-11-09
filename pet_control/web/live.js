@@ -440,6 +440,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElement
 function renderGraphs(){
  const page=document.getElementById('timeline');
  if(!page?.classList.contains('active'))return;
+ // Keep preset graph ranges anchored to the current UK day, including after midnight.
+ if(graphRange!==0&&graphEnd!==graphToday()){graphEnd=graphToday();graphStart=shiftDay(graphEnd,1-graphRange);loadGraphRange();return;}
  if(!rangeInitialized){rangeInitialized=true;rangeLoading=false;}
  let root=document.getElementById('pet-graphs');
  if(!root){root=document.createElement('div');root.id='pet-graphs';page.querySelector('.sectionhead')?.after(root);}root.classList.add('card');root.style.margin='0 0 12px';

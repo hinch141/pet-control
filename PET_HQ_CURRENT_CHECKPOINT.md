@@ -6,13 +6,17 @@
 
 - Repository: `hinch141/pet-control`
 - Current release branch: `main`
-- Version confirmed in `pet_control/config.yaml`: **2.18.112**
+- Version confirmed in `pet_control/config.yaml`: **2.18.113**
 - Permanent release and regression rules: [PET_HQ_RELEASE_CHECKLIST.md](PET_HQ_RELEASE_CHECKLIST.md)
 - Protected reference branch: `backup/pet-hq-v2.18.85-2026-11-07`
 - Existing development branch: `development/pet-hq-standalone`
 - Do **not** restore an older branch over `main`, create unnecessary branches, or replace complete working files for a narrow change.
 
 ## Last completed code changes
+
+- **2.18.113 (09/11/2026):** User confirmed v2.18.112 whole-house curfew setup works. Removed redundant **View or edit times** button: the **Enable** switch alone opens time-range setup, with a short explanation that active times require disabling first; saved ranges remain. No curfew backend or timing changes. Inline JavaScript syntax checked; phone UI verification pending.
+- **Next agreed design (not implemented):** Pet HQ removal must archive pet and preserve all existing historical records, leave Sure Petcare registration untouched, and suppress re-import on subsequent Sync Pets using stable Sure Petcare pet ID; plan explicit restore later. Family users all equal full access; add/remove with email invitation and one-time sign-in, without HA login. Investigate existing authentication/hosting and data retention before coding invitations. User does not want permission levels.
+
 
 - **2.18.112 (09/11/2026):** Whole-house curfew Enable now opens the existing multi-range time editor (up to 12 daily ranges) **before** activation. Confirm **Set curfew** submits the `enable` action with selected ranges in one request; Cancel leaves curfew off. Existing disabled-curfew editor now uses **Save changes** (save-only). Updated wording: **Set curfew for all cats**, **Stay indoors from**, **Until**, **Add another time range**, and explanation that cats can always enter. Start time still auto-sets end +1 minute; overnight ranges supported. Preserve draft and action when returning from already-passed-time warning. Whole-house Indoor Only confirmation now uses **Set all cats to Indoor Only?** / **Restore normal access for all cats?**, with specific buttons and explanation that individual settings remain. Curfew disable confirmation explains that stored times are kept. No backend schedule/locking algorithm changed. JS syntax checks passed for live.js and all inline scripts; Home Assistant/mobile functional tests **pending**. Editing an *enabled* whole-house curfew still requires switching it off first because the existing backend rejects range changes while active.
 

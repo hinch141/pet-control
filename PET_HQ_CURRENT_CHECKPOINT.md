@@ -55,6 +55,9 @@
 
 ## What the user has actually confirmed
 
+- **09/11/2026 — user verified v2.18.114:** Whole-house curfew **Save times only** successfully saves removal of unwanted time ranges without enabling the curfew. User explicitly confirmed **“that works”** and authorised moving to pet management. Mark this behaviour as working; retain the implementation.
+
+
 - **09/11/2026 — user confirmed v2.18.112 fix works on Android:** Selecting a From date on the first attempt when Timeline opens now retains and displays the selected date. The detached-input/calendar-redraw correction is verified by the user. No further change required.
 
 

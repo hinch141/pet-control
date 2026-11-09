@@ -6,7 +6,7 @@
 
 - Repository: `hinch141/pet-control`
 - Current release branch: `main`
-- Version confirmed in `pet_control/config.yaml`: **2.18.117**
+- Version confirmed in `pet_control/config.yaml`: **2.18.118**
 - Permanent release and regression rules: [PET_HQ_RELEASE_CHECKLIST.md](PET_HQ_RELEASE_CHECKLIST.md)
 - Protected reference branch: `backup/pet-hq-v2.18.85-2026-11-07`
 - Existing development branch: `development/pet-hq-standalone`
@@ -119,3 +119,5 @@ These are outstanding verification/work items, **not** instructions to change al
 - **09/11/2026 — user confirmed v2.18.116 live status:** Archiving a cat correctly removes it from the Live Sure Petcare status card; user said “that works now”. Preserve this behaviour in future releases.
 
 - **09/11/2026 v2.18.117 FAMILY ACCESS PILOT:** Added persistent `/data/pet-hq-family.json` household list; standalone Cloudflare JWT verification now checks membership on every request, including immediate server-side revocation. Initial authorised emails from `access_emails` are imported as protected founding members, retaining current access. New `GET/POST /pet-hq/family` endpoints require verified standalone email, never exposed through HA ingress. Family screen now lists actual server members, adds/removes full-access accounts, opens a mailto invitation composer. **Cloudflare Access policy is separate and is NOT automatically edited; newly added email must be permitted by Cloudflare policy before sign-in. Email is not sent automatically.** No live HA/Cloudflare test yet. Test existing accounts first, then add a disposable test email and update Cloudflare policy before sign-in; remove and verify 403 on subsequent requests. Preserve existing pet archive and curfews.
+
+- **09/11/2026 v2.18.118:** User screenshot showed imported protected family names `hinchi1` and `nicky.hinchliffe`. Added migration to display **John** and **Nicky** for their exact verified primary email addresses without changing account authorisation or existing data. Removed obsolete device-local/demo security explanation; replaced with accurate Cloudflare policy caveat. Syntax checked; user display verification pending.

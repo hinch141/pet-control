@@ -421,7 +421,7 @@ window.petGraphCalendarOpen=function(which){
 };
 window.petGraphCalendarLabels=function(){
  for(const which of ['from','to']){const input=document.getElementById('graph-'+which),button=document.getElementById('graph-'+which+'-button');if(!input||!button)continue;
- const v=input.value;button.textContent=v&&/^\\d{4}-\\d{2}-\\d{2}$/.test(v)?v.slice(8,10)+'/'+v.slice(5,7)+'/'+v.slice(0,4):'Select date';
+ const v=input.value;button.textContent=v&&v.length===10&&v.charAt(4)==='-'&&v.charAt(7)==='-'?v.slice(8,10)+'/'+v.slice(5,7)+'/'+v.slice(0,4):'Select date';
  }
 };
 window.petGraphFromChanged=function(){

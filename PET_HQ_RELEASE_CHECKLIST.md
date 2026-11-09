@@ -4,7 +4,7 @@
 **Release source:** `main` (never replace it wholesale with an older branch)  
 **Protected reference:** `backup/pet-hq-v2.18.85-2026-11-07`  
 **Existing development branch:** `development/pet-hq-standalone`  
-**Current release at latest checklist update:** v2.18.111 (09/11/2026).
+**Current release at latest checklist update:** v2.18.112 (09/11/2026).
 
 ## Non-negotiable change procedure
 
@@ -52,6 +52,9 @@
 
 - [ ] **Calendar during redraw:** Open Timeline, immediately open From calendar while data refreshes, tap a date once; confirm displayed date persists and Show dates uses it. Repeat for To and after switching tabs.
 
+- [ ] **Whole-house setup v2.18.112:** Enabling opens multi-range editor but does not activate until Set curfew; Cancel keeps off; time validation, +1-minute end, overnight ranges and max 12 continue to work; saving while disabled stays disabled. Test enabled state and schedule with Sure Petcare. Disabling retains ranges and individual settings. Editing an enabled curfew requires disabling first.
+- [ ] **Indoor Only confirmations:** Check enable/disable titles, action buttons and preservation of individual cat settings on phone; do not assume actual flap operation verified.
+
 ## Release record
 
 | Release | Summary | Verification |
@@ -63,12 +66,14 @@
 | 2.18.105 | Correct missing quote in live.js and validate JavaScript syntax | Syntax validated; phone retest pending |
 | 2.18.106 | Experimental Is looking outside label for unconfirmed movement events | JavaScript syntax validated; user confirmed Henry timestamps match Sure Petcare |
 | 2.18.107 | Restrict Timeline activity From/To dates to today and ordered range | User reported Android native picker still showed future dates selectable |
-| 2.18.111 | Replace activity date inputs with controlled calendar that visibly disables invalid days | JavaScript syntax validated; Android visual retest pending |
+| 2.18.112 | Replace activity date inputs with controlled calendar that visibly disables invalid days | JavaScript syntax validated; Android visual retest pending |
 
 **Important:** Never describe a code edit as a verified functional repair unless the relevant integration/device test has passed.
 
-- **2.18.111 (09/11/2026):** Fixed calendar label formatter showing “Select date”; mock DOM date display tests and JavaScript syntax passed. Android verification pending.
+- **2.18.112 (09/11/2026):** Fixed calendar label formatter showing “Select date”; mock DOM date display tests and JavaScript syntax passed. Android verification pending.
 
-- **2.18.111 (09/11/2026):** Preserve pending From/To date selections across asynchronous Timeline redraws. JavaScript syntax passed; Android first-selection retest pending.
+- **2.18.112 (09/11/2026):** Preserve pending From/To date selections across asynchronous Timeline redraws. JavaScript syntax passed; Android first-selection retest pending.
 
-- **2.18.111 (09/11/2026):** Fixed calendar day tap updating detached hidden date inputs after async Timeline redraw. JavaScript syntax passed; Android first-selection test pending.
+- **2.18.112 (09/11/2026):** Fixed calendar day tap updating detached hidden date inputs after async Timeline redraw. JavaScript syntax passed; Android first-selection test pending.
+
+- **2.18.112 (09/11/2026):** Whole-house Enable → set time range(s) → Set curfew flow; clarified curfew and Indoor Only wording; JS syntax validated, Android/HA end-to-end tests pending.

@@ -4,7 +4,7 @@
 **Release source:** `main` (never replace it wholesale with an older branch)  
 **Protected reference:** `backup/pet-hq-v2.18.85-2026-11-07`  
 **Existing development branch:** `development/pet-hq-standalone`  
-**Current release at latest checklist update:** v2.18.112 (09/11/2026).
+**Current release at latest checklist update:** v2.18.113 (09/11/2026).
 
 ## Non-negotiable change procedure
 
@@ -55,6 +55,10 @@
 - [ ] **Whole-house setup v2.18.112:** Enabling opens multi-range editor but does not activate until Set curfew; Cancel keeps off; time validation, +1-minute end, overnight ranges and max 12 continue to work; saving while disabled stays disabled. Test enabled state and schedule with Sure Petcare. Disabling retains ranges and individual settings. Editing an enabled curfew requires disabling first.
 - [ ] **Indoor Only confirmations:** Check enable/disable titles, action buttons and preservation of individual cat settings on phone; do not assume actual flap operation verified.
 
+- [ ] **v2.18.113 whole-house UI:** Only the Enable switch opens the time editor; no duplicate View or edit times button; switching off retains schedule and can re-enable/edit it.
+- [ ] **Upcoming pet archive:** Archive without Sure Petcare deletion, preserve history and stable Sure Petcare IDs, prevent re-import on sync; no implementation yet.
+- [ ] **Upcoming household users:** Equal full access, invitation email and authenticated access; no permission tiers; no implementation yet.
+
 ## Release record
 
 | Release | Summary | Verification |
@@ -77,3 +81,5 @@
 - **2.18.112 (09/11/2026):** Fixed calendar day tap updating detached hidden date inputs after async Timeline redraw. JavaScript syntax passed; Android first-selection test pending.
 
 - **2.18.112 (09/11/2026):** Whole-house Enable → set time range(s) → Set curfew flow; clarified curfew and Indoor Only wording; JS syntax validated, Android/HA end-to-end tests pending.
+
+- **2.18.113 (09/11/2026):** Removed redundant whole-house View or edit times button; inline JS syntax passed, phone retest pending.

@@ -19,6 +19,18 @@ try {
 const standaloneEnabled=!!verifyStandalone;
 let activitySnapshot=null,activityPending=null;
 
+// Durable pet archive: stored in Home Assistant add-on /data, not browser storage.
+const petArchiveFile='/data/pet-hq-archived-pets.json';
+let petArchive={version:1,pets:{}};
+try{
+ const saved=JSON.parse(fs.readFileSync(petArchiveFile,'utf8'));
+ if(saved&&saved.version===1&&saved.pets&&typeof saved.pets==='object'&&!Array.isArray(saved.pets))petArchive=saved;
+}catch(e){if(e.code!=='ENOENT')console.error('Pet archive could not be read:',e.message);}
+function writePetArchive(){
+ const tmp=petArchiveFile+'.tmp';
+ fs.writeFileSync(tmp,JSON.stringify(petArchive,null,2),{mode:0o600});
+ fs.renameSync(tmp,petArchiveFile);
+}
 const curfewFile='/data/whole_house_curfew.json';
 let curfew={enabled:false,ranges:[{start:'10:00',end:'10:01'}],phase:'off',ownsLock:false,lastError:'',override:false};
 try{const saved=JSON.parse(fs.readFileSync(curfewFile,'utf8'));curfew={...curfew,...saved};if(!Array.isArray(saved.ranges))curfew.ranges=[{start:saved.start||'10:00',end:saved.end||'10:01'}];if(saved.enabled&&saved.date){curfew.enabled=!!saved.ownsLock;curfew.phase=saved.ownsLock?'active':'off';curfew.lastError='Previous one-off schedule was migrated. Review the new daily time ranges.';}}catch{}
@@ -254,6 +266,26 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Cache-Control','no-store');
 
+  if(url.pathname==='/pet-hq/archive'&&(req.method==='GET'||req.method==='POST')){
+   const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(body));};
+   if(req.method==='GET')return reply(200,{version:1,pets:petArchive.pets});
+   try{
+    let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>100000)return reply(413,{error:'Archive request too large'});}
+    const body=JSON.parse(raw),id=String(body.surePetId||'');
+    if(!/^\\d{1,20}$/.test(id))return reply(400,{error:'A valid Sure Petcare pet ID is required'});
+    if(body.action==='archive'){
+     const profile=body.profile;
+     if(!profile||String(profile.surePetId)!==id||typeof profile.name!=='string'||profile.name.length>100)return reply(400,{error:'Valid pet profile required'});
+     const previous=petArchive.pets[id];
+     petArchive.pets[id]={...previous,surePetId:id,name:profile.name,profile,events:Array.isArray(body.events)?body.events.slice(0,3000):previous?.events||[],archivedAt:new Date().toISOString()};
+    }else if(body.action==='restore'){
+     if(!petArchive.pets[id])return reply(404,{error:'Archived cat not found'});
+     delete petArchive.pets[id];
+    }else return reply(400,{error:'Unknown archive action'});
+    writePetArchive();
+    return reply(200,{version:1,pets:petArchive.pets});
+   }catch(e){return reply(500,{error:'Could not save archive: '+e.message});}
+  }
   if(url.pathname==='/live/flap/curfew'&&(req.method==='GET'||req.method==='POST')){
    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
    if(req.method==='GET')return reply(200,{...curfew,now:londonDateTime()});

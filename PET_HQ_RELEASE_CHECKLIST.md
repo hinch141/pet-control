@@ -4,7 +4,7 @@
 **Release source:** `main` (never replace it wholesale with an older branch)  
 **Protected reference:** `backup/pet-hq-v2.18.85-2026-11-07`  
 **Existing development branch:** `development/pet-hq-standalone`  
-**Current release at latest checklist update:** v2.18.116 (09/11/2026).
+**Current release at latest checklist update:** v2.18.117 (09/11/2026).
 
 ## Non-negotiable change procedure
 
@@ -98,3 +98,5 @@
 - [ ] **v2.18.116 live status card:** Archive one linked cat, confirm it disappears from Live Sure Petcare status card; Restore and confirm it returns after next status refresh. Check historical timeline unaffected. JS syntax passed; phone test pending.
 
 - **09/11/2026 — user confirmed v2.18.116 live status:** Archiving a cat correctly removes it from the Live Sure Petcare status card; user said “that works now”. Preserve this behaviour in future releases.
+
+- **09/11/2026 v2.18.117 FAMILY ACCESS PILOT:** Added persistent `/data/pet-hq-family.json` household list; standalone Cloudflare JWT verification now checks membership on every request, including immediate server-side revocation. Initial authorised emails from `access_emails` are imported as protected founding members, retaining current access. New `GET/POST /pet-hq/family` endpoints require verified standalone email, never exposed through HA ingress. Family screen now lists actual server members, adds/removes full-access accounts, opens a mailto invitation composer. **Cloudflare Access policy is separate and is NOT automatically edited; newly added email must be permitted by Cloudflare policy before sign-in. Email is not sent automatically.** No live HA/Cloudflare test yet. Test existing accounts first, then add a disposable test email and update Cloudflare policy before sign-in; remove and verify 403 on subsequent requests. Preserve existing pet archive and curfews.

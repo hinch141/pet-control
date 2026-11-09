@@ -30,6 +30,9 @@
 
 ## What the user has actually confirmed
 
+- **09/11/2026 — user-verified observation:** Henry's **“Is looking outside”** event timestamps in Pet HQ align with the corresponding **“looked through the cat flap”** timestamps in the official Sure Petcare app. User considers the new wording a good change. This validates timestamp agreement for observed Henry events, **not** a general proof of sensor-side position or all event types. Preserve this wording unless new evidence or user feedback warrants a change.
+
+
 - User supplied screenshots from v2.18.104 showing **Unknown** pet status, no activity and no Timeline graphs. Root cause identified as syntax error in `live.js`. Fixed in source v2.18.106; **not yet device-verified**.
 
 - Earlier whole-house interface appearance looked acceptable, but popup wording may need changing.

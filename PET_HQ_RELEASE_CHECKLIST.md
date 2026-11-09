@@ -4,14 +4,14 @@
 **Release source:** `main` (never replace it wholesale with an older branch)  
 **Protected reference:** `backup/pet-hq-v2.18.85-2026-11-07`  
 **Existing development branch:** `development/pet-hq-standalone`  
-**Current release at latest checklist update:** v2.18.104 (09/11/2026).
+**Current release at latest checklist update:** v2.18.105 (09/11/2026).
 
 ## Non-negotiable change procedure
 
 1. Fetch and inspect the latest `main` files **before** editing; compare with the previous release and identify the exact functions/files to change.
 2. Preserve all unrelated existing code and behaviour. Never copy an older full file over a newer release to fix one feature.
 3. Make the smallest targeted change. Check the complete diff for unintended removals, stale literals and duplicated controls.
-4. Check the tests below against actual code paths. A source inspection is **not** an end-to-end test.
+4. **MANDATORY:** Parse/compile-check every modified JavaScript file and inline HTML script before release. A syntax failure blocks release. Check the tests below against actual code paths. A source inspection is **not** an end-to-end test.
 5. Keep `pet_control/config.yaml` version, visible app version, service-worker cache version and any other release labels consistent. Check there are no older hard-coded version labels in UI.
 6. Check mobile/Android behaviour and service-worker caching. If Home Assistant or a real device is unavailable, clearly mark live checks as **not verified**.
 7. Publish only after checks are complete. Provide a short list of changes and honest verification status, with a Home Assistant update link (not a commit link). Do not provide unready packages.
@@ -49,6 +49,7 @@
 | 2.18.101 | Simplified whole-house controls UI | UI source changed; live control not verified |
 | 2.18.102 | Refresh graph preset date when day changes | Source changed; phone not verified |
 | 2.18.103 | Correct visible version literal and exclude Rosie from active Pets/live lists | Source changed; phone not verified |
-| 2.18.104 | Home pet cards and Home Recent activity use In/Out; Timeline tab keeps Entered/Left | Source changed; phone not verified |
+| 2.18.104 | Home pet cards and Home Recent activity use In/Out; Timeline tab keeps Entered/Left | **FAILED:** JS syntax error disabled live status and graphs |
+| 2.18.105 | Correct missing quote in live.js and validate JavaScript syntax | Syntax validated; phone retest pending |
 
 **Important:** Never describe a code edit as a verified functional repair unless the relevant integration/device test has passed.

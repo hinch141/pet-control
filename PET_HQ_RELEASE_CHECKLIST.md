@@ -4,7 +4,7 @@
 **Release source:** `main` (never replace it wholesale with an older branch)  
 **Protected reference:** `backup/pet-hq-v2.18.85-2026-11-07`  
 **Existing development branch:** `development/pet-hq-standalone`  
-**Current release at latest checklist update:** v2.18.107 (09/11/2026).
+**Current release at latest checklist update:** v2.18.108 (09/11/2026).
 
 ## Non-negotiable change procedure
 
@@ -44,6 +44,8 @@
 
 - [ ] **Unconfirmed events:** Display **“Is looking outside”** experimentally when movement direction is unknown; do not infer a confirmed crossing or sensor-side location from that wording. Confirmed In/Out and Entered/Left labels remain unchanged.
 
+- [ ] **Android calendar display:** Future dates are visibly disabled in the custom From/To activity calendar, not merely rejected after selection; To also disables dates before From. Confirm previous-month navigation, same-day range and graph rendering.
+
 ## Release record
 
 | Release | Summary | Verification |
@@ -54,6 +56,7 @@
 | 2.18.104 | Home pet cards and Home Recent activity use In/Out; Timeline tab keeps Entered/Left | **FAILED:** JS syntax error disabled live status and graphs |
 | 2.18.105 | Correct missing quote in live.js and validate JavaScript syntax | Syntax validated; phone retest pending |
 | 2.18.106 | Experimental Is looking outside label for unconfirmed movement events | JavaScript syntax validated; user confirmed Henry timestamps match Sure Petcare |
-| 2.18.107 | Restrict Timeline activity From/To dates to today and ordered range | JavaScript syntax validated; Android calendar retest pending |
+| 2.18.107 | Restrict Timeline activity From/To dates to today and ordered range | User reported Android native picker still showed future dates selectable |
+| 2.18.108 | Replace activity date inputs with controlled calendar that visibly disables invalid days | JavaScript syntax validated; Android visual retest pending |
 
 **Important:** Never describe a code edit as a verified functional repair unless the relevant integration/device test has passed.

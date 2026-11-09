@@ -269,6 +269,7 @@ async function requestHouseSetting(kind,enabled){
  if(kind==='mode'&&typeof window.syncLiveFlapUI==='function')window.syncLiveFlapUI();
  const cats=await houseReviewCandidates();
  houseReview={kind,enabled,cats,index:0};
+ if(kind==='curfew'&&!enabled){showHouseReviewFinal();return;}
  if(!cats.length){showHouseReviewFinal();return;}
  const turningOff=!enabled;
  const heading=turningOff?'Individual cat settings will remain active':'Individual cat settings will stay as they are';
@@ -301,8 +302,11 @@ function reviewHouseCatAccess(){const c=houseReview?.cats[houseReview.index];if(
 function reviewHouseCatCurfew(){const c=houseReview?.cats[houseReview.index];if(!c)return;closeModal();openPetCurfew(c.id);const target=el('curfewCards');if(target)target.insertAdjacentHTML('afterbegin','<div class="card"><strong>Whole-house settings review</strong><p class="small">Cat '+(houseReview.index+1)+' of '+houseReview.cats.length+'</p><button class="button" onclick="showHouseReviewCat()">Return to review</button></div>');}
 function showHouseReviewFinal(){
  const flow=houseReview;if(!flow)return;
- const action=flow.kind==='mode'?(flow.enabled?'Switch on Whole-house Indoor Only':'Switch off Whole-house Indoor Only'):(flow.enabled?'Enable whole-house curfew':'Disable whole-house curfew');
- modal('<h3>Confirm whole-house change</h3><p>'+action+'?</p><p class="small">All individual cat settings will be preserved. A whole-house restriction may temporarily prevent exits for every cat.</p><div class="row"><button class="button" onclick="applyHouseReview()">Confirm change</button><button class="button outline" onclick="cancelHouseReview()">Cancel</button></div>');
+ const isMode=flow.kind==='mode';
+ const title=isMode?(flow.enabled?'Set all cats to Indoor Only?':'Restore normal access for all cats?'):'Turn off whole-house curfew?';
+ const detail=isMode?(flow.enabled?'This will keep all cats indoors until you turn this setting off. Individual cat settings and curfews will be preserved.':'This will turn off the whole-house Indoor Only setting. Individual Indoor Only settings and curfews will remain in place.'):'All cats will return to their individual access settings. Your whole-house curfew times will be saved for next time.';
+ const confirm=isMode?(flow.enabled?'Set all cats indoors':'Restore normal access'):'Turn off curfew';
+ modal('<h3>'+title+'</h3><p>'+detail+'</p><div class="row"><button class="button" onclick="applyHouseReview()">'+confirm+'</button><button class="button outline" onclick="cancelHouseReview()">Cancel</button></div>');
 }
 async function applyHouseReview(){const flow=houseReview;if(!flow)return;houseReview=null;closeModal();if(flow.kind==='mode'){await window.setLiveFlapMode(flow.enabled);}else if(typeof window.applyWholeCurfew==='function'){await window.applyWholeCurfew(flow.enabled);}else toast('Whole-house curfew control unavailable');}
 function toggleHouseIndoor(enabled){requestHouseSetting('mode',enabled);}

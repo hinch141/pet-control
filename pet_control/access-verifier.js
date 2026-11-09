@@ -7,7 +7,7 @@ function decodePart(part) {
   if (!/^[A-Za-z0-9_-]+$/.test(part)) throw Error('Invalid token encoding');
   return JSON.parse(Buffer.from(part, 'base64url').toString('utf8'));
 }
-function createAccessVerifier({teamDomain, audience, allowedEmails, fetchImpl=fetch, now=()=>Date.now()}) {
+function createAccessVerifier({teamDomain, audience, allowedEmails, isEmailAllowed, fetchImpl=fetch, now=()=>Date.now()}) {
   const origin = new URL(teamDomain);
   if (origin.protocol !== 'https:' || origin.pathname !== '/' || origin.search || origin.hash)
     throw Error('Access team domain must be an HTTPS origin');
@@ -45,7 +45,7 @@ function createAccessVerifier({teamDomain, audience, allowedEmails, fetchImpl=fe
         (claims.nbf !== undefined && (typeof claims.nbf !== 'number' || claims.nbf > t)))
       throw Error('Access claims rejected');
     const email = String(claims.email || '').trim().toLowerCase();
-    if (!emails.has(email)) throw Error('Household account not authorised');
+    if (!(typeof isEmailAllowed==='function' ? isEmailAllowed(email) : emails.has(email))) throw Error('Household account not authorised');
     return {email,subject:claims.sub};
   };
 }

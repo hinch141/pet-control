@@ -4,7 +4,7 @@
 **Release source:** `main` (never replace it wholesale with an older branch)  
 **Protected reference:** `backup/pet-hq-v2.18.85-2026-11-07`  
 **Existing development branch:** `development/pet-hq-standalone`  
-**Current release at latest checklist update:** v2.18.110 (09/11/2026).
+**Current release at latest checklist update:** v2.18.111 (09/11/2026).
 
 ## Non-negotiable change procedure
 
@@ -50,6 +50,8 @@
 
 - [ ] **First selection on Timeline:** Immediately after opening Timeline, select From once; date must persist through background graph refresh, then select To and Show dates. Test again after switching tabs and after 7/28-day preset.
 
+- [ ] **Calendar during redraw:** Open Timeline, immediately open From calendar while data refreshes, tap a date once; confirm displayed date persists and Show dates uses it. Repeat for To and after switching tabs.
+
 ## Release record
 
 | Release | Summary | Verification |
@@ -61,10 +63,12 @@
 | 2.18.105 | Correct missing quote in live.js and validate JavaScript syntax | Syntax validated; phone retest pending |
 | 2.18.106 | Experimental Is looking outside label for unconfirmed movement events | JavaScript syntax validated; user confirmed Henry timestamps match Sure Petcare |
 | 2.18.107 | Restrict Timeline activity From/To dates to today and ordered range | User reported Android native picker still showed future dates selectable |
-| 2.18.110 | Replace activity date inputs with controlled calendar that visibly disables invalid days | JavaScript syntax validated; Android visual retest pending |
+| 2.18.111 | Replace activity date inputs with controlled calendar that visibly disables invalid days | JavaScript syntax validated; Android visual retest pending |
 
 **Important:** Never describe a code edit as a verified functional repair unless the relevant integration/device test has passed.
 
-- **2.18.110 (09/11/2026):** Fixed calendar label formatter showing “Select date”; mock DOM date display tests and JavaScript syntax passed. Android verification pending.
+- **2.18.111 (09/11/2026):** Fixed calendar label formatter showing “Select date”; mock DOM date display tests and JavaScript syntax passed. Android verification pending.
 
-- **2.18.110 (09/11/2026):** Preserve pending From/To date selections across asynchronous Timeline redraws. JavaScript syntax passed; Android first-selection retest pending.
+- **2.18.111 (09/11/2026):** Preserve pending From/To date selections across asynchronous Timeline redraws. JavaScript syntax passed; Android first-selection retest pending.
+
+- **2.18.111 (09/11/2026):** Fixed calendar day tap updating detached hidden date inputs after async Timeline redraw. JavaScript syntax passed; Android first-selection test pending.

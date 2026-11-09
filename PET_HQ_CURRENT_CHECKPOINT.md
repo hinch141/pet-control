@@ -111,3 +111,5 @@ These are outstanding verification/work items, **not** instructions to change al
 **After each release or completed session:** Update this file with (a) actual version from `config.yaml`, (b) exact completed changes, (c) what was genuinely tested, (d) user-reported results, (e) remaining issues, and (f) the next agreed task. Commit the updated checkpoint to `main` even when only documentation changes. Keep this file current; remove stale claims rather than accumulating contradictory status notes.
 
 **New-chat handover:** “Continue Pet HQ from the latest GitHub `main`. Read `PET_HQ_RELEASE_CHECKLIST.md` and `PET_HQ_CURRENT_CHECKPOINT.md`, verify the latest version, and resume the recorded next task without rebuilding or regressing existing features.”
+
+- **09/11/2026 — user verified v2.18.115:** Archive, Sync Pets exclusion and Restore tested successfully by user with a living cat. Preserve this behaviour. Sure Petcare remains registered; long-term independent history backup and cross-device state are not yet verified.

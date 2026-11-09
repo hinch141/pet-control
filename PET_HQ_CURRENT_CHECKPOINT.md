@@ -6,7 +6,7 @@
 
 - Repository: `hinch141/pet-control`
 - Current release branch: `main`
-- Version confirmed in `pet_control/config.yaml`: **2.18.105**
+- Version confirmed in `pet_control/config.yaml`: **2.18.106**
 - Permanent release and regression rules: [PET_HQ_RELEASE_CHECKLIST.md](PET_HQ_RELEASE_CHECKLIST.md)
 - Protected reference branch: `backup/pet-hq-v2.18.85-2026-11-07`
 - Existing development branch: `development/pet-hq-standalone`
@@ -14,10 +14,13 @@
 
 ## Last completed code changes
 
-- **2.18.105 (09/11/2026): CRITICAL FIX.** v2.18.104 introduced a JavaScript syntax error in `pet_control/web/live.js` during Home In/Out wording edits (missing closing quote in live-status row HTML). This stopped the script and caused Unknown status, empty activity and missing graphs. Corrected the quote and **validated the complete `live.js` with JavaScript parser (`new Function`) successfully**. No curfew or history logic changed. Bumped app-visible, add-on and service-worker versions. **User device retest still required.**
+- **2.18.106 (09/11/2026):** User requested experimental display wording **“Is looking outside”** instead of **“Activity recorded”** for movement events whose direction is unconfirmed. Replaced only the three fallback display strings in `pet_control/web/live.js` (Home Recent activity, Timeline list and accessibility labels); confirmed In/Out and Entered/Left labels remain. No event classification, stored data or sensors were changed. `live.js` JavaScript parser check passed. Home Assistant/mobile display **not yet verified**. This wording is a user-selected interpretation, not proof of looking through the opening; review after observation.
+
+
+- **2.18.106 (09/11/2026): CRITICAL FIX.** v2.18.104 introduced a JavaScript syntax error in `pet_control/web/live.js` during Home In/Out wording edits (missing closing quote in live-status row HTML). This stopped the script and caused Unknown status, empty activity and missing graphs. Corrected the quote and **validated the complete `live.js` with JavaScript parser (`new Function`) successfully**. No curfew or history logic changed. Bumped app-visible, add-on and service-worker versions. **User device retest still required.**
 - **MANDATORY NEW GATE:** Run JavaScript syntax validation for every changed JS file and all inline JS in HTML **before publishing**, in addition to inspecting the diff. A documentation checklist alone does not prevent errors.
 
-- **2.18.105 (09/11/2026):** Home pet cards and Home live-status labels now show **In/Out** instead of Home/Away; Home page Recent activity list now shows **In/Out**. The separate Timeline tab continues to use **Entered/Left**. Internal status values and history are unchanged. Updated the visible version, add-on version and service-worker cache marker. Source-code changes committed; **live Android/Home Assistant verification pending**.
+- **2.18.106 (09/11/2026):** Home pet cards and Home live-status labels now show **In/Out** instead of Home/Away; Home page Recent activity list now shows **In/Out**. The separate Timeline tab continues to use **Entered/Left**. Internal status values and history are unchanged. Updated the visible version, add-on version and service-worker cache marker. Source-code changes committed; **live Android/Home Assistant verification pending**.
 
 - **2.18.101:** Simplified whole-house control UI; actual locking operation was **not** verified.
 - **2.18.102:** Added automatic UK-day rollover for preset graph end date. Manually selected historical ranges should remain unchanged; phone verification pending.
@@ -27,22 +30,22 @@
 
 ## What the user has actually confirmed
 
-- User supplied screenshots from v2.18.104 showing **Unknown** pet status, no activity and no Timeline graphs. Root cause identified as syntax error in `live.js`. Fixed in source v2.18.105; **not yet device-verified**.
+- User supplied screenshots from v2.18.104 showing **Unknown** pet status, no activity and no Timeline graphs. Root cause identified as syntax error in `live.js`. Fixed in source v2.18.106; **not yet device-verified**.
 
 - Earlier whole-house interface appearance looked acceptable, but popup wording may need changing.
 - User subsequently reported that the app still displayed **2.18.99** and that Rosie remained in live status and Pets tab **before** the 2.18.103 source correction.
-- **No confirmation yet** that 2.18.105 is installed on the user's Home Assistant/mobile app or that these two corrections display properly.
+- **No confirmation yet** that 2.18.106 is installed on the user's Home Assistant/mobile app or that these two corrections display properly.
 - Do not mistake source-code edits for live end-to-end verification.
 
 ## Completed wording change — 09/11/2026
 
-- **Implemented in v2.18.105:** Pet cards and Home-page live status show **In/Out**; Home-page Recent activity rows show **In/Out**.
+- **Implemented in v2.18.106:** Pet cards and Home-page live status show **In/Out**; Home-page Recent activity rows show **In/Out**.
 - **Intentionally unchanged:** The separate Timeline tab uses **Entered/Left**. Stored movement values, status mapping and historical records are unchanged.
 - **Verification:** Code inspected and committed; phone/HA display not yet confirmed by user.
 
 ## Open issues and next agreed work
 
-1. **First confirm installed version and visible app version (2.18.105)** against the actual latest `main` release; investigate stale app/service-worker cache if mismatched. Do not blindly bump versions.
+1. **First confirm installed version and visible app version (2.18.106)** against the actual latest `main` release; investigate stale app/service-worker cache if mismatched. Do not blindly bump versions.
 2. **Confirm Rosie is absent from active Home, Pets and live-status views**, while her historical movement records remain available.
 3. **Review whole-house popup wording and confirmation buttons** with the user, preserving manual override and individual-curfew rules.
 4. **Investigate and verify whole-house Keep Indoors behaviour** through actual HA/Sure Petcare integration. UI simplification alone did not prove functionality.

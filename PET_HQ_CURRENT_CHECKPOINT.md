@@ -115,3 +115,5 @@ These are outstanding verification/work items, **not** instructions to change al
 - **09/11/2026 — user verified v2.18.115:** Archive, Sync Pets exclusion and Restore tested successfully by user with a living cat. Preserve this behaviour. Sure Petcare remains registered; long-term independent history backup and cross-device state are not yet verified.
 
 - **2.18.116 (09/11/2026):** User noticed archived cats still appeared in **Live Sure Petcare status** card. `web/live.js` status card now filters its fixed name list against `activePets()` so archived cats disappear from the card, while live cloud data and historical timeline are unchanged. JS syntax checked; user verification pending.
+
+- **09/11/2026 — user confirmed v2.18.116 live status:** Archiving a cat correctly removes it from the Live Sure Petcare status card; user said “that works now”. Preserve this behaviour in future releases.

@@ -6,7 +6,7 @@
 
 - Repository: `hinch141/pet-control`
 - Current release branch: `main`
-- Version confirmed in `pet_control/config.yaml`: **2.18.115**
+- Version confirmed in `pet_control/config.yaml`: **2.18.116**
 - Permanent release and regression rules: [PET_HQ_RELEASE_CHECKLIST.md](PET_HQ_RELEASE_CHECKLIST.md)
 - Protected reference branch: `backup/pet-hq-v2.18.85-2026-11-07`
 - Existing development branch: `development/pet-hq-standalone`
@@ -113,3 +113,5 @@ These are outstanding verification/work items, **not** instructions to change al
 **New-chat handover:** “Continue Pet HQ from the latest GitHub `main`. Read `PET_HQ_RELEASE_CHECKLIST.md` and `PET_HQ_CURRENT_CHECKPOINT.md`, verify the latest version, and resume the recorded next task without rebuilding or regressing existing features.”
 
 - **09/11/2026 — user verified v2.18.115:** Archive, Sync Pets exclusion and Restore tested successfully by user with a living cat. Preserve this behaviour. Sure Petcare remains registered; long-term independent history backup and cross-device state are not yet verified.
+
+- **2.18.116 (09/11/2026):** User noticed archived cats still appeared in **Live Sure Petcare status** card. `web/live.js` status card now filters its fixed name list against `activePets()` so archived cats disappear from the card, while live cloud data and historical timeline are unchanged. JS syntax checked; user verification pending.

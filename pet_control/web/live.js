@@ -379,6 +379,51 @@ async function loadGraphRange(){
  rangeError=failures?failures+' day(s) could not be loaded. Totals may be incomplete.':'';
  refreshRangeFromCache(dates);
 }
+
+window.petGraphCalendarOpen=function(which){
+ const from=document.getElementById('graph-from'),to=document.getElementById('graph-to');if(!from||!to)return;
+ const min=which==='to'?from.value:'',max=graphToday(),selected=which==='to'?to.value:from.value;
+ let month=(selected&&selected<=max?selected:max).slice(0,7);
+ document.getElementById('pet-graph-calendar')?.remove();
+ const shade=document.createElement('div');shade.id='pet-graph-calendar';
+ shade.style.cssText='position:fixed;inset:0;z-index:99999;background:#0008;display:flex;align-items:center;justify-content:center;padding:16px';
+ shade.onclick=e=>{if(e.target===shade)shade.remove()};
+ const panel=document.createElement('div');panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');
+ panel.style.cssText='background:#fff;color:#19312d;border-radius:18px;padding:18px;width:min(100%,360px);box-shadow:0 10px 35px #0004';
+ shade.append(panel);document.body.append(shade);
+ function draw(){
+  const [year,mo]=month.split('-').map(Number);
+  const first=new Date(Date.UTC(year,mo-1,1)),last=new Date(Date.UTC(year,mo,0)).getUTCDate();
+  const start=(first.getUTCDay()+6)%7,prev=shiftDay(month+'-01',-1).slice(0,7),next=shiftDay(month+'-'+String(last).padStart(2,'0'),1).slice(0,7);
+  panel.innerHTML='';
+  const header=document.createElement('div');header.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px';
+  const back=document.createElement('button');back.type='button';back.textContent='‹';back.setAttribute('aria-label','Previous month');
+  const forward=document.createElement('button');forward.type='button';forward.textContent='›';forward.setAttribute('aria-label','Next month');forward.disabled=next>max.slice(0,7);
+  const heading=document.createElement('strong');heading.textContent=first.toLocaleDateString('en-GB',{timeZone:'UTC',month:'long',year:'numeric'});
+  back.onclick=()=>{month=prev;draw()};forward.onclick=()=>{if(!forward.disabled){month=next;draw()}};
+  header.append(back,heading,forward);panel.append(header);
+  const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;text-align:center';
+  for(const d of ['M','T','W','T','F','S','S']){const h=document.createElement('span');h.textContent=d;h.style.cssText='font-weight:700;padding:8px 0';grid.append(h)}
+  for(let i=0;i<start;i++)grid.append(document.createElement('span'));
+  for(let day=1;day<=last;day++){
+   const date=month+'-'+String(day).padStart(2,'0'),btn=document.createElement('button');btn.type='button';btn.textContent=String(day);
+   btn.style.cssText='padding:9px 0;border-radius:8px;min-width:0;border:1px solid #d6e2df;background:#fff;color:#19312d';
+   btn.disabled=date>max||(!!min&&date<min);
+   if(btn.disabled){btn.style.opacity='.25';btn.style.background='#eee';btn.style.cursor='not-allowed'}
+   if(date===selected){btn.style.background='#d9efe8';btn.style.fontWeight='700'}
+   btn.onclick=()=>{(which==='from'?from:to).value=date;if(which==='from')window.petGraphFromChanged();else window.petGraphToChanged();window.petGraphCalendarLabels();shade.remove()};
+   grid.append(btn);
+  }
+  panel.append(grid);
+  const close=document.createElement('button');close.type='button';close.textContent='Close';close.style.cssText='margin-top:14px;width:100%;padding:10px';close.onclick=()=>shade.remove();panel.append(close);
+ }
+ draw();
+};
+window.petGraphCalendarLabels=function(){
+ for(const which of ['from','to']){const input=document.getElementById('graph-'+which),button=document.getElementById('graph-'+which+'-button');if(!input||!button)continue;
+ const v=input.value;button.textContent=v&&/^\\d{4}-\\d{2}-\\d{2}$/.test(v)?v.slice(8,10)+'/'+v.slice(5,7)+'/'+v.slice(0,4):'Select date';
+ }
+};
 window.petGraphFromChanged=function(){
  const from=document.getElementById('graph-from'),to=document.getElementById('graph-to');if(!from||!to)return;
  const today=graphToday();from.max=today;to.max=today;
@@ -483,7 +528,7 @@ function renderGraphs(){
 
  const selected=byDay.get(graphSelected)||days[days.length-1];
  const opts=['all',...names.map(n=>n.toLowerCase())].map(n=>'<option value="'+escapeHtml(n)+'"'+(graphPet===n?' selected':'')+'>'+(n==='all'?'All cats':escapeHtml(n.charAt(0).toUpperCase()+n.slice(1)))+'</option>').join('');
- root.innerHTML='<h3 style="margin-top:0">Cat activity</h3><div class="row" style="gap:8px;flex-wrap:wrap"><label>View <select aria-label="Graph metric" onchange="petGraphMetric(this.value)"><option value="move"'+(graphMetric==='move'?' selected':'')+'>Entries and exits</option><option value="time"'+(graphMetric==='time'?' selected':'')+'>Time outside</option></select></label><label>Cat <select onchange="petGraphPet(this.value)">'+opts+'</select></label><button class="button secondary" onclick="petGraphRange(7)" '+(graphRange===7?'aria-pressed="true"':'')+'>7 days</button><button class="button secondary" onclick="petGraphRange(28)" '+(graphRange===28?'aria-pressed="true"':'')+'>28 days</button></div><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px"><label>From <input id="graph-from" type="date" value="'+graphStart+'" max="'+today+'" onchange="petGraphFromChanged()"></label><label>To <input id="graph-to" type="date" value="'+graphEnd+'" min="'+graphStart+'" max="'+today+'" onchange="petGraphToChanged()"></label><button class="button secondary" onclick="petGraphDates()">Show dates</button></div><p class="small">Select dates using the calendar (day/month/year). Showing '+days.length+' days.</p>'+(graphMetric==='move'?'Entries and exits':'Time spent outside')+'</h4><p class="small" style="font-weight:700">'+escapeHtml(rangeHeading)+'</p>'+bars(graphMetric)+'<p class="small">'+(graphMetric==='move'?'Blue: entries · Orange: exits':'Blue: minutes outside between confirmed exit and return')+'</p><p class="small">Daily average outside: '+graphDuration(avgMinutes*60000)+' · Average completed trips/day: '+avgTrips.toFixed(1)+' · Longest trip: '+graphDuration(longestTrip)+'</p><div class="small">'+escapeHtml(ukLong(days[0].day))+' to '+escapeHtml(ukLong(graphEnd))+'</div><p class="small">Tap a bar for '+(graphMetric==='move'?'movement times':'individual trip durations')+'. '+(rangeLoading?'Loading older records in the background — graph updates as they arrive…':rangeError?escapeHtml(rangeError):'Showing retrieved confirmed movements for the selected dates.')+'</p>';
+ root.innerHTML='<h3 style="margin-top:0">Cat activity</h3><div class="row" style="gap:8px;flex-wrap:wrap"><label>View <select aria-label="Graph metric" onchange="petGraphMetric(this.value)"><option value="move"'+(graphMetric==='move'?' selected':'')+'>Entries and exits</option><option value="time"'+(graphMetric==='time'?' selected':'')+'>Time outside</option></select></label><label>Cat <select onchange="petGraphPet(this.value)">'+opts+'</select></label><button class="button secondary" onclick="petGraphRange(7)" '+(graphRange===7?'aria-pressed="true"':'')+'>7 days</button><button class="button secondary" onclick="petGraphRange(28)" '+(graphRange===28?'aria-pressed="true"':'')+'>28 days</button></div><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px"><label>From <input id="graph-from" type="hidden" value="'+graphStart+'"><button type="button" class="button secondary" id="graph-from-button" onclick="petGraphCalendarOpen(&quot;from&quot;)">'+graphStart.slice(8,10)+'/'+graphStart.slice(5,7)+'/'+graphStart.slice(0,4)+'</button></label><label>To <input id="graph-to" type="hidden" value="'+graphEnd+'"><button type="button" class="button secondary" id="graph-to-button" onclick="petGraphCalendarOpen(&quot;to&quot;)">'+graphEnd.slice(8,10)+'/'+graphEnd.slice(5,7)+'/'+graphEnd.slice(0,4)+'</button></label><button class="button secondary" onclick="petGraphDates()">Show dates</button></div><p class="small">Select dates using the calendar (day/month/year). Showing '+days.length+' days.</p>'+(graphMetric==='move'?'Entries and exits':'Time spent outside')+'</h4><p class="small" style="font-weight:700">'+escapeHtml(rangeHeading)+'</p>'+bars(graphMetric)+'<p class="small">'+(graphMetric==='move'?'Blue: entries · Orange: exits':'Blue: minutes outside between confirmed exit and return')+'</p><p class="small">Daily average outside: '+graphDuration(avgMinutes*60000)+' · Average completed trips/day: '+avgTrips.toFixed(1)+' · Longest trip: '+graphDuration(longestTrip)+'</p><div class="small">'+escapeHtml(ukLong(days[0].day))+' to '+escapeHtml(ukLong(graphEnd))+'</div><p class="small">Tap a bar for '+(graphMetric==='move'?'movement times':'individual trip durations')+'. '+(rangeLoading?'Loading older records in the background — graph updates as they arrive…':rangeError?escapeHtml(rangeError):'Showing retrieved confirmed movements for the selected dates.')+'</p>';
 }
 
 async function refreshCloud(force=false){

@@ -68,6 +68,12 @@ window.openWholeCurfewEditor=function(action='save'){
  modal('<h3>Set curfew for all cats</h3><p class="small">Choose the times when all cats should stay indoors. You can add more than one time range.</p><p class="small">Cats can always come back inside during a curfew.</p><div id="curfewRangeRows"></div><button class="button secondary" type="button" onclick="addCurfewRange()">+ Add another time range</button><p class="small">Changing a start time sets the end one minute later. You can adjust either time afterwards.</p><div class="row" style="margin-top:18px"><button class="button" type="button" onclick="saveCurfewEditor()">'+buttonText+'</button><button class="button outline" type="button" onclick="closeModal();showWholeCurfew()">Cancel</button></div>');
  drawCurfewRows();
 };
+window.returnToWholeCurfewEditor=function(){
+ const draft=curfewDraft.map(r=>({...r})),action=curfewEditorAction;
+ window.openWholeCurfewEditor(action);
+ curfewDraft=draft;
+ drawCurfewRows();
+};
 window.saveCurfewEditor=async function(){
  collectCurfewRows();
  const invalid=curfewDraft.some(r=>!r.start||!r.end||r.start===r.end);
@@ -76,7 +82,7 @@ window.saveCurfewEditor=async function(){
  const passed=curfewDraft.filter(r=>r.start<r.end&&r.end<=now);
  if(passed.length){
   const detail=passed.map(r=>r.start+'–'+r.end).join(', ');
-  modal('<h3>Time range already passed today</h3><p>The range '+escapeHtml(detail)+' has already ended today. As this is a daily curfew, it will next run tomorrow.</p><div class="row"><button class="button" id="confirmPastCurfew">'+(curfewEditorAction==='enable'?'Set curfew for tomorrow':'Save for tomorrow')+'</button><button class="button outline" onclick="openWholeCurfewEditor()">Edit times</button></div>');
+  modal('<h3>Time range already passed today</h3><p>The range '+escapeHtml(detail)+' has already ended today. As this is a daily curfew, it will next run tomorrow.</p><div class="row"><button class="button" id="confirmPastCurfew">'+(curfewEditorAction==='enable'?'Set curfew for tomorrow':'Save for tomorrow')+'</button><button class="button outline" onclick="returnToWholeCurfewEditor()">Edit times</button></div>');
   document.getElementById('confirmPastCurfew').onclick=async()=>{const good=await saveWholeCurfew(curfewEditorAction,curfewDraft);if(good)closeModal();};
   return;
  }

@@ -4,7 +4,7 @@
 **Release source:** `main` (never replace it wholesale with an older branch)  
 **Protected reference:** `backup/pet-hq-v2.18.85-2026-11-07`  
 **Existing development branch:** `development/pet-hq-standalone`  
-**Last known published release when this checklist was written:** v2.18.103 (09/11/2026).
+**Current release at latest checklist update:** v2.18.104 (09/11/2026).
 
 ## Non-negotiable change procedure
 
@@ -22,7 +22,7 @@
 - [ ] **Version:** Installed add-on version, displayed Pet HQ version and service-worker cache marker agree; no stale v2.18.99 UI text.
 - [ ] **Active pets:** Jessie, Henry and Violet appear in active Home/Pets/live-status views. Rosie does **not** appear as active anywhere.
 - [ ] **History:** Rosie’s historical movements and stored records are retained; never delete history just to hide an inactive pet.
-- [ ] **Status:** In/Out states come from Sure Petcare/Home Assistant as appropriate; display the confirmed state, not an unconfirmed success.
+- [ ] **Status:** Home pet cards, Home live-status and Home Recent activity use **In/Out**; the separate Timeline tab retains **Entered/Left**. States come from Sure Petcare/Home Assistant as appropriate; display the confirmed state, not an unconfirmed success.
 - [ ] **Manual household access:** Keep all cats indoors overrides individual and whole-house curfews and persists until explicit Restore Free Access; incoming cats are not blocked.
 - [ ] **Individual curfews:** Schedules survive whole-house changes and are not silently cleared. Review/confirmation popups clearly state the effect.
 - [ ] **Curfew time inputs:** Changing a start time automatically displays and saves end time +1 minute, including midnight rollover; verify daily, weekly-copy and whole-house editors on Android.
@@ -49,5 +49,6 @@
 | 2.18.101 | Simplified whole-house controls UI | UI source changed; live control not verified |
 | 2.18.102 | Refresh graph preset date when day changes | Source changed; phone not verified |
 | 2.18.103 | Correct visible version literal and exclude Rosie from active Pets/live lists | Source changed; phone not verified |
+| 2.18.104 | Home pet cards and Home Recent activity use In/Out; Timeline tab keeps Entered/Left | Source changed; phone not verified |
 
 **Important:** Never describe a code edit as a verified functional repair unless the relevant integration/device test has passed.

@@ -4,7 +4,7 @@
 **Release source:** `main` (never replace it wholesale with an older branch)  
 **Protected reference:** `backup/pet-hq-v2.18.85-2026-11-07`  
 **Existing development branch:** `development/pet-hq-standalone`  
-**Current release at latest checklist update:** v2.18.115 (09/11/2026).
+**Current release at latest checklist update:** v2.18.116 (09/11/2026).
 
 ## Non-negotiable change procedure
 
@@ -94,3 +94,5 @@
 - **2.18.115 (09/11/2026):** Added persistent pet archive registry and archive/restore + sync suppression. JS syntax passed, real HA integration test pending.
 
 - **09/11/2026 — USER CONFIRMED:** v2.18.115 archive → Sync Pets exclusion → restore works on their Home Assistant installation. Keep future regression check; independent long-term history backup not yet verified.
+
+- [ ] **v2.18.116 live status card:** Archive one linked cat, confirm it disappears from Live Sure Petcare status card; Restore and confirm it returns after next status refresh. Check historical timeline unaffected. JS syntax passed; phone test pending.

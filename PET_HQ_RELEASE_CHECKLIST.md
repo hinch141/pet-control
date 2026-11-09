@@ -4,7 +4,7 @@
 **Release source:** `main` (never replace it wholesale with an older branch)  
 **Protected reference:** `backup/pet-hq-v2.18.85-2026-11-07`  
 **Existing development branch:** `development/pet-hq-standalone`  
-**Current release at latest checklist update:** v2.18.105 (09/11/2026).
+**Current release at latest checklist update:** v2.18.106 (09/11/2026).
 
 ## Non-negotiable change procedure
 
@@ -42,6 +42,8 @@
 - Verify v2.18.103 on the user's installed Home Assistant/mobile app, including visible version and Rosie removal.
 - Verify graph To date after UK midnight with the app kept open.
 
+- [ ] **Unconfirmed events:** Display **“Is looking outside”** experimentally when movement direction is unknown; do not infer a confirmed crossing or sensor-side location from that wording. Confirmed In/Out and Entered/Left labels remain unchanged.
+
 ## Release record
 
 | Release | Summary | Verification |
@@ -51,5 +53,6 @@
 | 2.18.103 | Correct visible version literal and exclude Rosie from active Pets/live lists | Source changed; phone not verified |
 | 2.18.104 | Home pet cards and Home Recent activity use In/Out; Timeline tab keeps Entered/Left | **FAILED:** JS syntax error disabled live status and graphs |
 | 2.18.105 | Correct missing quote in live.js and validate JavaScript syntax | Syntax validated; phone retest pending |
+| 2.18.106 | Experimental Is looking outside label for unconfirmed movement events | JavaScript syntax validated; phone retest pending |
 
 **Important:** Never describe a code edit as a verified functional repair unless the relevant integration/device test has passed.

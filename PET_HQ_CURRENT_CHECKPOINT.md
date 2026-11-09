@@ -6,7 +6,7 @@
 
 - Repository: `hinch141/pet-control`
 - Current release branch: `main`
-- Version confirmed in `pet_control/config.yaml`: **2.18.110**
+- Version confirmed in `pet_control/config.yaml`: **2.18.111**
 - Permanent release and regression rules: [PET_HQ_RELEASE_CHECKLIST.md](PET_HQ_RELEASE_CHECKLIST.md)
 - Protected reference branch: `backup/pet-hq-v2.18.85-2026-11-07`
 - Existing development branch: `development/pet-hq-standalone`
@@ -14,25 +14,28 @@
 
 ## Last completed code changes
 
-- **2.18.110 (09/11/2026):** User reports first selection of From date on initial Timeline open is lost and must be repeated. Likely cause: async graph refresh re-renders the date controls from committed graphStart/graphEnd, discarding unsaved selected dates. Added `pendingGraphFrom` and `pendingGraphTo` to persist date picks across redraws; clear on Show dates or 7/28-day preset. JavaScript syntax checked. Actual Android first-selection regression test **pending**; no graph calculations or curfew schedules changed.
+- **2.18.111 (09/11/2026):** User confirmed first From date selection still disappears on Android in 2.18.110. Root cause identified in controlled calendar: on opening it captured references to hidden date inputs, but async Timeline graph redraw can replace those DOM elements before day tap. Date click then updates detached input and not visible button. Fix: resolve live `graph-from`/`graph-to` elements at day-click time, then persist pending selections and update current labels. JS syntax check passed; first-selection on Android **pending verification**.
 
 
-- **2.18.110 (09/11/2026):** User screenshot showed **“Select date”** on From/To after selecting dates in v2.18.108. Root cause: calendar label formatter used incorrectly escaped regex (`/\\\\d/` instead of `/\\d/`), so valid ISO dates failed its check. Replaced fragile regex with explicit ISO date separator/length check. Tested label rendering with mock DOM for 01/11/2026, 09/11/2026 and 25/10/2026; passed. Full live.js JavaScript syntax check passed. Android device verification pending. No graph or curfew logic changed.
+- **2.18.111 (09/11/2026):** User reports first selection of From date on initial Timeline open is lost and must be repeated. Likely cause: async graph refresh re-renders the date controls from committed graphStart/graphEnd, discarding unsaved selected dates. Added `pendingGraphFrom` and `pendingGraphTo` to persist date picks across redraws; clear on Show dates or 7/28-day preset. JavaScript syntax checked. Actual Android first-selection regression test **pending**; no graph calculations or curfew schedules changed.
 
 
-- **2.18.110 (09/11/2026):** User confirmed native Android date dialog in v2.18.107 still visually allowed future days even though selection was rejected. Replaced the Timeline graph From/To native date widgets with a controlled, UK-formatted calendar popup that visibly disables dates after today and, for To, dates before From. Retained graph range validation, 90-day maximum and historical records. `live.js` passed JavaScript parser check; Android visual/function verification **pending**. No curfew schedule logic changed.
+- **2.18.111 (09/11/2026):** User screenshot showed **“Select date”** on From/To after selecting dates in v2.18.108. Root cause: calendar label formatter used incorrectly escaped regex (`/\\\\d/` instead of `/\\d/`), so valid ISO dates failed its check. Replaced fragile regex with explicit ISO date separator/length check. Tested label rendering with mock DOM for 01/11/2026, 09/11/2026 and 25/10/2026; passed. Full live.js JavaScript syntax check passed. Android device verification pending. No graph or curfew logic changed.
 
 
-- **2.18.110 (09/11/2026):** Timeline tab activity graphs **From/To** date filters: both dates max at current UK date; To date min follows From date; changing From automatically raises To if necessary, and changing To clamps it within From–today. Existing same-day selection remains allowed; 90-day range limit unchanged. This is **not a curfew scheduling change**. Full `live.js` JavaScript syntax check passed; real Android calendar widget behaviour not yet tested. Visible/add-on/service-worker versions updated.
+- **2.18.111 (09/11/2026):** User confirmed native Android date dialog in v2.18.107 still visually allowed future days even though selection was rejected. Replaced the Timeline graph From/To native date widgets with a controlled, UK-formatted calendar popup that visibly disables dates after today and, for To, dates before From. Retained graph range validation, 90-day maximum and historical records. `live.js` passed JavaScript parser check; Android visual/function verification **pending**. No curfew schedule logic changed.
 
 
-- **2.18.110 (09/11/2026):** User requested experimental display wording **“Is looking outside”** instead of **“Activity recorded”** for movement events whose direction is unconfirmed. Replaced only the three fallback display strings in `pet_control/web/live.js` (Home Recent activity, Timeline list and accessibility labels); confirmed In/Out and Entered/Left labels remain. No event classification, stored data or sensors were changed. `live.js` JavaScript parser check passed. Home Assistant/mobile display **not yet verified**. This wording is a user-selected interpretation, not proof of looking through the opening; review after observation.
+- **2.18.111 (09/11/2026):** Timeline tab activity graphs **From/To** date filters: both dates max at current UK date; To date min follows From date; changing From automatically raises To if necessary, and changing To clamps it within From–today. Existing same-day selection remains allowed; 90-day range limit unchanged. This is **not a curfew scheduling change**. Full `live.js` JavaScript syntax check passed; real Android calendar widget behaviour not yet tested. Visible/add-on/service-worker versions updated.
 
 
-- **2.18.110 (09/11/2026): CRITICAL FIX.** v2.18.104 introduced a JavaScript syntax error in `pet_control/web/live.js` during Home In/Out wording edits (missing closing quote in live-status row HTML). This stopped the script and caused Unknown status, empty activity and missing graphs. Corrected the quote and **validated the complete `live.js` with JavaScript parser (`new Function`) successfully**. No curfew or history logic changed. Bumped app-visible, add-on and service-worker versions. **User device retest still required.**
+- **2.18.111 (09/11/2026):** User requested experimental display wording **“Is looking outside”** instead of **“Activity recorded”** for movement events whose direction is unconfirmed. Replaced only the three fallback display strings in `pet_control/web/live.js` (Home Recent activity, Timeline list and accessibility labels); confirmed In/Out and Entered/Left labels remain. No event classification, stored data or sensors were changed. `live.js` JavaScript parser check passed. Home Assistant/mobile display **not yet verified**. This wording is a user-selected interpretation, not proof of looking through the opening; review after observation.
+
+
+- **2.18.111 (09/11/2026): CRITICAL FIX.** v2.18.104 introduced a JavaScript syntax error in `pet_control/web/live.js` during Home In/Out wording edits (missing closing quote in live-status row HTML). This stopped the script and caused Unknown status, empty activity and missing graphs. Corrected the quote and **validated the complete `live.js` with JavaScript parser (`new Function`) successfully**. No curfew or history logic changed. Bumped app-visible, add-on and service-worker versions. **User device retest still required.**
 - **MANDATORY NEW GATE:** Run JavaScript syntax validation for every changed JS file and all inline JS in HTML **before publishing**, in addition to inspecting the diff. A documentation checklist alone does not prevent errors.
 
-- **2.18.110 (09/11/2026):** Home pet cards and Home live-status labels now show **In/Out** instead of Home/Away; Home page Recent activity list now shows **In/Out**. The separate Timeline tab continues to use **Entered/Left**. Internal status values and history are unchanged. Updated the visible version, add-on version and service-worker cache marker. Source-code changes committed; **live Android/Home Assistant verification pending**.
+- **2.18.111 (09/11/2026):** Home pet cards and Home live-status labels now show **In/Out** instead of Home/Away; Home page Recent activity list now shows **In/Out**. The separate Timeline tab continues to use **Entered/Left**. Internal status values and history are unchanged. Updated the visible version, add-on version and service-worker cache marker. Source-code changes committed; **live Android/Home Assistant verification pending**.
 
 - **2.18.101:** Simplified whole-house control UI; actual locking operation was **not** verified.
 - **2.18.102:** Added automatic UK-day rollover for preset graph end date. Manually selected historical ranges should remain unchanged; phone verification pending.
@@ -45,22 +48,22 @@
 - **09/11/2026 — user-verified observation:** Henry's **“Is looking outside”** event timestamps in Pet HQ align with the corresponding **“looked through the cat flap”** timestamps in the official Sure Petcare app. User considers the new wording a good change. This validates timestamp agreement for observed Henry events, **not** a general proof of sensor-side position or all event types. Preserve this wording unless new evidence or user feedback warrants a change.
 
 
-- User supplied screenshots from v2.18.104 showing **Unknown** pet status, no activity and no Timeline graphs. Root cause identified as syntax error in `live.js`. Fixed in source v2.18.110; **not yet device-verified**.
+- User supplied screenshots from v2.18.104 showing **Unknown** pet status, no activity and no Timeline graphs. Root cause identified as syntax error in `live.js`. Fixed in source v2.18.111; **not yet device-verified**.
 
 - Earlier whole-house interface appearance looked acceptable, but popup wording may need changing.
 - User subsequently reported that the app still displayed **2.18.99** and that Rosie remained in live status and Pets tab **before** the 2.18.103 source correction.
-- **No confirmation yet** that 2.18.110 is installed on the user's Home Assistant/mobile app or that these two corrections display properly.
+- **No confirmation yet** that 2.18.111 is installed on the user's Home Assistant/mobile app or that these two corrections display properly.
 - Do not mistake source-code edits for live end-to-end verification.
 
 ## Completed wording change — 09/11/2026
 
-- **Implemented in v2.18.110:** Pet cards and Home-page live status show **In/Out**; Home-page Recent activity rows show **In/Out**.
+- **Implemented in v2.18.111:** Pet cards and Home-page live status show **In/Out**; Home-page Recent activity rows show **In/Out**.
 - **Intentionally unchanged:** The separate Timeline tab uses **Entered/Left**. Stored movement values, status mapping and historical records are unchanged.
 - **Verification:** Code inspected and committed; phone/HA display not yet confirmed by user.
 
 ## Open issues and next agreed work
 
-1. **First confirm installed version and visible app version (2.18.110)** against the actual latest `main` release; investigate stale app/service-worker cache if mismatched. Do not blindly bump versions.
+1. **First confirm installed version and visible app version (2.18.111)** against the actual latest `main` release; investigate stale app/service-worker cache if mismatched. Do not blindly bump versions.
 2. **Confirm Rosie is absent from active Home, Pets and live-status views**, while her historical movement records remain available.
 3. **Review whole-house popup wording and confirmation buttons** with the user, preserving manual override and individual-curfew rules.
 4. **Investigate and verify whole-house Keep Indoors behaviour** through actual HA/Sure Petcare integration. UI simplification alone did not prove functionality.

@@ -34,8 +34,8 @@ async function saveWholeCurfew(action,ranges){
 }
 window.applyWholeCurfew=async function(enabled){if(curfewActionBusy)return;await saveWholeCurfew(enabled?'enable':'disable',wholeCurfew?.ranges||[{start:'10:00',end:'10:01'}]);};
 window.refreshWholeCurfew=refreshWholeCurfew;
-window.toggleWholeCurfew=function(enabled){if(curfewActionBusy)return;showWholeCurfew();if(typeof requestHouseSetting==='function')requestHouseSetting('curfew',enabled);};
-let curfewDraft=[];
+window.toggleWholeCurfew=function(enabled){if(curfewActionBusy)return;showWholeCurfew();if(enabled){window.openWholeCurfewEditor('enable');return;}if(typeof requestHouseSetting==='function')requestHouseSetting('curfew',false);};
+let curfewDraft=[],curfewEditorAction='save';
 function wholeCurfewMinuteAfter(time){
  const parts=String(time||'').split(':').map(Number);
  if(parts.length!==2||!Number.isInteger(parts[0])||!Number.isInteger(parts[1])||parts[0]<0||parts[0]>23||parts[1]<0||parts[1]>59)return null;
@@ -52,7 +52,7 @@ window.wholeCurfewStartChanged=function(input){
 };
 function drawCurfewRows(){
  const target=document.getElementById('curfewRangeRows');if(!target)return;
- target.innerHTML=curfewDraft.map((r,i)=>'<div class="row" style="gap:8px;align-items:end;margin:10px 0;flex-wrap:wrap"><label class="small">No exit<input type="time" aria-label="No exit start time '+(i+1)+'" value="'+r.start+'" data-curfew-start="'+i+'" oninput="wholeCurfewStartChanged(this)" onchange="wholeCurfewStartChanged(this)" style="display:block;max-width:125px;padding:9px;border:1px solid #b9c8be;border-radius:8px"></label><label class="small">Enter / End<input type="time" aria-label="Enter or end time '+(i+1)+'" value="'+r.end+'" data-curfew-end="'+i+'" style="display:block;max-width:125px;padding:9px;border:1px solid #b9c8be;border-radius:8px"></label><button class="button secondary" type="button" onclick="removeCurfewRange('+i+')" '+(curfewDraft.length===1?'disabled':'')+'>Remove</button></div>').join('');
+ target.innerHTML=curfewDraft.map((r,i)=>'<div class="row" style="gap:8px;align-items:end;margin:10px 0;flex-wrap:wrap"><label class="small">Stay indoors from<input type="time" aria-label="Stay indoors start time '+(i+1)+'" value="'+r.start+'" data-curfew-start="'+i+'" oninput="wholeCurfewStartChanged(this)" onchange="wholeCurfewStartChanged(this)" style="display:block;max-width:125px;padding:9px;border:1px solid #b9c8be;border-radius:8px"></label><label class="small">Until<input type="time" aria-label="Curfew end time '+(i+1)+'" value="'+r.end+'" data-curfew-end="'+i+'" style="display:block;max-width:125px;padding:9px;border:1px solid #b9c8be;border-radius:8px"></label><button class="button secondary" type="button" onclick="removeCurfewRange('+i+')" '+(curfewDraft.length===1?'disabled':'')+'>Remove</button></div>').join('');
 }
 function collectCurfewRows(){
  document.querySelectorAll('[data-curfew-start]').forEach(el=>{curfewDraft[Number(el.dataset.curfewStart)].start=el.value;});
@@ -60,10 +60,12 @@ function collectCurfewRows(){
 }
 window.addCurfewRange=function(){collectCurfewRows();if(curfewDraft.length>=12){toast('Maximum 12 ranges');return;}curfewDraft.push({start:'22:00',end:'22:01'});drawCurfewRows();};
 window.removeCurfewRange=function(i){collectCurfewRows();if(curfewDraft.length<=1)return;curfewDraft.splice(i,1);drawCurfewRows();};
-window.openWholeCurfewEditor=function(){
+window.openWholeCurfewEditor=function(action='save'){
  if(wholeCurfew?.enabled){toast('Switch the curfew off before editing its times.');return;}
- curfewDraft=(wholeCurfew?.ranges||[{start:'10:00',end:'10:01'}]).map(r=>({...r}));
- modal('<h3>Whole-house curfew times</h3><p class="small">Add up to 12 daily time ranges. Changing a start time sets the end one minute later; you can then adjust it. Overnight ranges are allowed. All cats can still enter.</p><div id="curfewRangeRows"></div><button class="button secondary" type="button" onclick="addCurfewRange()">+ Add another range</button><div class="row" style="margin-top:18px"><button class="button" type="button" onclick="saveCurfewEditor()">Save times</button><button class="button outline" type="button" onclick="closeModal()">Cancel</button></div>');
+ curfewEditorAction=action==='enable'?'enable':'save';
+ curfewDraft=(wholeCurfew?.ranges?.length?wholeCurfew.ranges:[{start:'10:00',end:'10:01'}]).map(r=>({...r}));
+ const buttonText=curfewEditorAction==='enable'?'Set curfew':'Save changes';
+ modal('<h3>Set curfew for all cats</h3><p class="small">Choose the times when all cats should stay indoors. You can add more than one time range.</p><p class="small">Cats can always come back inside during a curfew.</p><div id="curfewRangeRows"></div><button class="button secondary" type="button" onclick="addCurfewRange()">+ Add another time range</button><p class="small">Changing a start time sets the end one minute later. You can adjust either time afterwards.</p><div class="row" style="margin-top:18px"><button class="button" type="button" onclick="saveCurfewEditor()">'+buttonText+'</button><button class="button outline" type="button" onclick="closeModal();showWholeCurfew()">Cancel</button></div>');
  drawCurfewRows();
 };
 window.saveCurfewEditor=async function(){
@@ -74,11 +76,11 @@ window.saveCurfewEditor=async function(){
  const passed=curfewDraft.filter(r=>r.start<r.end&&r.end<=now);
  if(passed.length){
   const detail=passed.map(r=>r.start+'–'+r.end).join(', ');
-  modal('<h3>Time range already passed today</h3><p>The range '+escapeHtml(detail)+' has already ended today. As this is a daily curfew, it will next run tomorrow.</p><div class="row"><button class="button" id="confirmPastCurfew">Save for tomorrow</button><button class="button outline" onclick="openWholeCurfewEditor()">Edit times</button></div>');
-  document.getElementById('confirmPastCurfew').onclick=async()=>{const good=await saveWholeCurfew('save',curfewDraft);if(good)closeModal();};
+  modal('<h3>Time range already passed today</h3><p>The range '+escapeHtml(detail)+' has already ended today. As this is a daily curfew, it will next run tomorrow.</p><div class="row"><button class="button" id="confirmPastCurfew">'+(curfewEditorAction==='enable'?'Set curfew for tomorrow':'Save for tomorrow')+'</button><button class="button outline" onclick="openWholeCurfewEditor()">Edit times</button></div>');
+  document.getElementById('confirmPastCurfew').onclick=async()=>{const good=await saveWholeCurfew(curfewEditorAction,curfewDraft);if(good)closeModal();};
   return;
  }
- const good=await saveWholeCurfew('save',curfewDraft);
+ const good=await saveWholeCurfew(curfewEditorAction,curfewDraft);
  if(good)closeModal();
 };
 let flapPending=false,flapCommandPending=false,flapConfirmed=null,flapMessage='',flapDesired=null,flapLastSuccess=0,flapRetryTimer=null;

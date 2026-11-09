@@ -6,13 +6,16 @@
 
 - Repository: `hinch141/pet-control`
 - Current release branch: `main`
-- Version confirmed in `pet_control/config.yaml`: **2.18.114**
+- Version confirmed in `pet_control/config.yaml`: **2.18.115**
 - Permanent release and regression rules: [PET_HQ_RELEASE_CHECKLIST.md](PET_HQ_RELEASE_CHECKLIST.md)
 - Protected reference branch: `backup/pet-hq-v2.18.85-2026-11-07`
 - Existing development branch: `development/pet-hq-standalone`
 - Do **not** restore an older branch over `main`, create unnecessary branches, or replace complete working files for a narrow change.
 
 ## Last completed code changes
+
+- **2.18.115 (09/11/2026): PET ARCHIVE PILOT.** Added `/pet-hq/archive` GET/POST endpoints with durable atomic `/data/pet-hq-archived-pets.json` registry (Sure Petcare ID, name, profile snapshot, local sample events, archived timestamp). Archive/Restore in Pets now calls backend first, then changes local state only on success. Sync Pets loads server registry and excludes archived Sure IDs, preventing automatic re-add. Archived status is reapplied to locally known pets when syncing. No Sure Petcare delete or flap/curfew API change. All JS source and inline script syntax passed. **Not yet tested on live HA or with real Sure IDs.** IMPORTANT: browser-local event history is not a full Sure Petcare cloud archive; the existing server activity cache is independent. Need live test using a noncritical linked cat, then verify sync suppression and restore. Server /data persists across add-on updates but should be included in HA backups; fresh installation without restoring /data loses the registry. Local pet profiles on other browsers are not yet fully replicated.
+
 
 - **2.18.114 (09/11/2026):** User found that deleting saved multiple whole-house curfew time ranges during Enable setup had no way to save removals without enabling. Added **Save times only** to setup popup. This posts existing backend `save` action with edited ranges and keeps whole-house curfew off; **Set curfew** continues to post `enable` and activates. Both paths use existing time validation and past-time warning. No backend scheduler changes. `live.js` syntax checked; phone verification pending. At least one range must remain, as existing backend requires 1–12.
 

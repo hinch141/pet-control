@@ -17,10 +17,16 @@ try{
  const saved=JSON.parse(fs.readFileSync(familyFile,'utf8'));
  if(saved?.version===1&&Array.isArray(saved.members)&&saved.members.length)family=saved;
 }catch(e){if(e.code!=='ENOENT')console.error('Family registry read failed:',e.message);}
+// Name migration for existing household accounts; preserve IDs, permissions and additions.
+for(const member of family.members){
+ if(member.email==='hinchi1@gmail.com'&&member.primary&&member.name==='hinchi1')member.name='John';
+ if(member.email==='nicky.hinchliffe@gmail.com'&&member.primary&&member.name==='nicky.hinchliffe')member.name='Nicky';
+}
 function saveFamily(){
  const tmp=familyFile+'.tmp';fs.writeFileSync(tmp,JSON.stringify(family,null,2),{mode:0o600});fs.renameSync(tmp,familyFile);
 }
 const emailAllowed=email=>family.members.some(m=>m.email===email);
+try{if(family.members.some(m=>(m.email==='hinchi1@gmail.com'&&m.name==='John')||(m.email==='nicky.hinchliffe@gmail.com'&&m.name==='Nicky')))saveFamily();}catch(e){console.error('Family name update failed:',e.message);}
 let verifyStandalone=null;
 try {
   if(standaloneOptions.access_team_domain&&standaloneOptions.access_audience&&standaloneOptions.access_emails){

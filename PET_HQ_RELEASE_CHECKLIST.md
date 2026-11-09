@@ -4,7 +4,7 @@
 **Release source:** `main` (never replace it wholesale with an older branch)  
 **Protected reference:** `backup/pet-hq-v2.18.85-2026-11-07`  
 **Existing development branch:** `development/pet-hq-standalone`  
-**Current release at latest checklist update:** v2.18.114 (09/11/2026).
+**Current release at latest checklist update:** v2.18.115 (09/11/2026).
 
 ## Non-negotiable change procedure
 
@@ -61,6 +61,9 @@
 
 - [ ] **v2.18.114 Save times only:** With curfew off, Enable → remove extra ranges → Save times only; verify saved range list is reduced and curfew remains Off. Enable again and confirm ranges persist. Set curfew should still enable; Cancel should not save changes.
 
+- [ ] **v2.18.115 pet archive pilot:** Test on a Sure-linked pet: archive, verify removed from active view; Sync Pets should not re-add; reload/restart and re-sync; Restore and verify active again. Confirm Sure Petcare unchanged and history still visible. Inspect `/data/pet-hq-archived-pets.json` through add-on backup, not public UI. No live test yet.
+- [ ] **Data protection follow-up:** Home Assistant backups must include /data; full historical Sure Petcare archive and cross-device profile sync need separate verification. Avoid deleting pets in Sure Petcare.
+
 ## Release record
 
 | Release | Summary | Verification |
@@ -87,3 +90,5 @@
 - **2.18.113 (09/11/2026):** Removed redundant whole-house View or edit times button; inline JS syntax passed, phone retest pending.
 
 - **2.18.114 (09/11/2026):** Added Save times only button to whole-house curfew setup for saving removed ranges without activating; JS syntax passed, phone test pending.
+
+- **2.18.115 (09/11/2026):** Added persistent pet archive registry and archive/restore + sync suppression. JS syntax passed, real HA integration test pending.

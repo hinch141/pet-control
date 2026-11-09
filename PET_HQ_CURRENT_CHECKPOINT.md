@@ -129,3 +129,13 @@ These are outstanding verification/work items, **not** instructions to change al
 - **09/11/2026 v2.18.118:** User screenshot showed imported protected family names `hinchi1` and `nicky.hinchliffe`. Added migration to display **John** and **Nicky** for their exact verified primary email addresses without changing account authorisation or existing data. Removed obsolete device-local/demo security explanation; replaced with accurate Cloudflare policy caveat. Syntax checked; user display verification pending.
 
 - **09/11/2026 — user confirmed v2.18.118:** Primary family display names John and Nicky now show correctly. Next test: add an additional email, confirm Cloudflare policy permits sign-in, then remove and verify Pet HQ server denies subsequent requests. No further code changes yet.
+
+## Session reconciliation — 09/11/2026 (latest main verified)
+
+- **Actual main version: 2.18.129**, verified directly from `pet_control/config.yaml`; latest release commit `b25c49f937f708944374e37f569f981ac2fbcce2`. The older 2.18.119 heading above is historical and **must not** be treated as current.
+- Commits since the older checkpoint include raised/3D pet cards (2.18.125), larger portraits (2.18.126), clearer access/curfew states (2.18.127), expansive uncropped cat watermark photos (2.18.128), and left-aligned entries-today/access-status row (2.18.129).
+- This session performed source and release-history inspection only. **No app code was changed, and no HA/Android or spouse-device test was performed.** The installed device version is not yet independently confirmed.
+- Preserve existing working features, especially Sure Petcare and HA connections, standalone Cloudflare PWA access, per-device photos, pet archive/restore and sync suppression, historical activity, family access, individual/whole-house curfews and manual override, graphs, UK dates and In/Out terminology.
+- **Next task from latest conversation:** investigate changing the installed PWA/home-screen icon (user reports inability to change the desktop icon); first inspect the current web manifest, service worker, app icons and Android installation path. Do not assume an app code change is needed before examining these. Also arrange spouse's independent PWA installation/usability test without requiring HA login.
+- Prior family-member revocation and full historical archive/backup verification remain open. Do not assume they passed.
+- Maintain narrow edits, full JavaScript syntax checks, release/version consistency, and user-confirmed real-device testing as specified in the release checklist.

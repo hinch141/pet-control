@@ -96,3 +96,5 @@
 - **09/11/2026 — USER CONFIRMED:** v2.18.115 archive → Sync Pets exclusion → restore works on their Home Assistant installation. Keep future regression check; independent long-term history backup not yet verified.
 
 - [ ] **v2.18.116 live status card:** Archive one linked cat, confirm it disappears from Live Sure Petcare status card; Restore and confirm it returns after next status refresh. Check historical timeline unaffected. JS syntax passed; phone test pending.
+
+- **09/11/2026 — user confirmed v2.18.116 live status:** Archiving a cat correctly removes it from the Live Sure Petcare status card; user said “that works now”. Preserve this behaviour in future releases.

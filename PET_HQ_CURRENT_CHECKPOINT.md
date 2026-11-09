@@ -45,6 +45,9 @@
 
 ## What the user has actually confirmed
 
+- **09/11/2026 — user confirmed v2.18.111 fix works on Android:** Selecting a From date on the first attempt when Timeline opens now retains and displays the selected date. The detached-input/calendar-redraw correction is verified by the user. No further change required.
+
+
 - **09/11/2026 — user-verified observation:** Henry's **“Is looking outside”** event timestamps in Pet HQ align with the corresponding **“looked through the cat flap”** timestamps in the official Sure Petcare app. User considers the new wording a good change. This validates timestamp agreement for observed Henry events, **not** a general proof of sensor-side position or all event types. Preserve this wording unless new evidence or user feedback warrants a change.
 
 

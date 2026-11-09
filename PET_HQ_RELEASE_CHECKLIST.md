@@ -4,7 +4,7 @@
 **Release source:** `main` (never replace it wholesale with an older branch)  
 **Protected reference:** `backup/pet-hq-v2.18.85-2026-11-07`  
 **Existing development branch:** `development/pet-hq-standalone`  
-**Current release at latest checklist update:** v2.18.108 (09/11/2026).
+**Current release at latest checklist update:** v2.18.109 (09/11/2026).
 
 ## Non-negotiable change procedure
 
@@ -46,6 +46,8 @@
 
 - [ ] **Android calendar display:** Future dates are visibly disabled in the custom From/To activity calendar, not merely rejected after selection; To also disables dates before From. Confirm previous-month navigation, same-day range and graph rendering.
 
+- [ ] **Date selection labels:** After choosing a date, From/To buttons show DD/MM/YYYY, not “Select date”. Verify changing From updates To if required, then Show dates renders the requested period.
+
 ## Release record
 
 | Release | Summary | Verification |
@@ -57,6 +59,8 @@
 | 2.18.105 | Correct missing quote in live.js and validate JavaScript syntax | Syntax validated; phone retest pending |
 | 2.18.106 | Experimental Is looking outside label for unconfirmed movement events | JavaScript syntax validated; user confirmed Henry timestamps match Sure Petcare |
 | 2.18.107 | Restrict Timeline activity From/To dates to today and ordered range | User reported Android native picker still showed future dates selectable |
-| 2.18.108 | Replace activity date inputs with controlled calendar that visibly disables invalid days | JavaScript syntax validated; Android visual retest pending |
+| 2.18.109 | Replace activity date inputs with controlled calendar that visibly disables invalid days | JavaScript syntax validated; Android visual retest pending |
 
 **Important:** Never describe a code edit as a verified functional repair unless the relevant integration/device test has passed.
+
+- **2.18.109 (09/11/2026):** Fixed calendar label formatter showing “Select date”; mock DOM date display tests and JavaScript syntax passed. Android verification pending.

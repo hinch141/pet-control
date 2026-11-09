@@ -183,10 +183,10 @@ function direction(e){
 function records(){return [...activity,...archiveEvents.filter(e=>!activity.some(a=>a.id===e.id))].filter(e=>e.type===0).flatMap(e=>(e.pets||[]).filter(p=>names.some(n=>n.toLowerCase()===p)).map(p=>({...e,pet:p,direction:direction(e)}))).sort((a,b)=>new Date(b.at)-new Date(a.at));}
 function iconFor(e){return e.direction==='In'?'↙':e.direction==='Out'?'↗':'↔';}
 function labelFor(e){return e.direction==='In'?'Entered':e.direction==='Out'?'Left':'Activity recorded';}
-function rowFor(e,fullDate=false){
+function rowFor(e,fullDate=false,homeStyle=false){
  const name=names.find(n=>n.toLowerCase()===e.pet)||e.pet;
  const time=new Date(e.at).toLocaleString('en-GB',{timeZone:'Europe/London',...(fullDate?{day:'numeric',month:'short'}:{}),hour:'2-digit',minute:'2-digit'});
- return '<div class="listrow"><div class="row"><div class="eventicon" aria-label="'+labelFor(e)+'">'+iconFor(e)+'</div><div><strong>'+escapeHtml(name)+'</strong><div class="small">'+labelFor(e)+'</div></div></div><span class="small">'+time+'</span></div>';
+ return '<div class="listrow"><div class="row"><div class="eventicon" aria-label="'+(homeStyle?(e.direction==='In'?'In':e.direction==='Out'?'Out':'Activity recorded'):labelFor(e))+'">'+iconFor(e)+'</div><div><strong>'+escapeHtml(name)+'</strong><div class="small">'+(homeStyle?(e.direction==='In'?'In':e.direction==='Out'?'Out':'Activity recorded'):labelFor(e))+'</div></div></div><span class="small">'+time+'</span></div>';
 }
 function refreshTodayEntryBadges(){
  const today=ukDay(new Date());
@@ -209,7 +209,7 @@ function paint(){
   const today=ukDay(new Date()),todayEvents=records().filter(e=>ukDay(new Date(e.at))===today);
   count.textContent=loaded?String(todayEvents.filter(e=>e.direction!=='Unknown').length):'–';
   box.style.maxHeight='330px';box.style.overflowY='auto';box.style.overscrollBehavior='contain';
-  if(loaded)box.innerHTML=todayEvents.length?todayEvents.slice(0,35).map(e=>rowFor(e)).join(''):'<div class="empty">No activity recorded today.</div>';
+  if(loaded)box.innerHTML=todayEvents.length?todayEvents.slice(0,35).map(e=>rowFor(e,false,true)).join(''):'<div class="empty">No activity recorded today.</div>';
  }
  if(document.getElementById('timeline')?.classList.contains('active')&&typeof window.renderSureTimeline==='function')window.renderSureTimeline();
  if(document.getElementById('petDetailContent')?.closest('.page.active')&&typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
@@ -505,9 +505,9 @@ async function refreshSureLocations(force=false){
 function paintSureLocations(){
  const locations=window.surePetLocations;if(!locations)return;
  const list=document.getElementById('pet-live-list');
- if(list)list.innerHTML=names.map(n=>{const p=locations[n.toLowerCase()];return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+escapeHtml(n)+'</span><strong>'+(p?.location==='inside'?'Home':p?.location==='outside'?'Away':'Unknown')+'</strong></div>';}).join('');
+ if(list)list.innerHTML=names.map(n=>{const p=locations[n.toLowerCase()];return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+escapeHtml(n)+'</span><strong>'+(p?.location==='inside'?'In':p?.location==='outside'?'Out':'Unknown')+'</strong></div>';}).join('');
  const stamp=document.getElementById('pet-live-time');if(stamp)stamp.textContent='Sure Petcare checked '+new Date().toLocaleTimeString('en-GB');
- document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim()?.toLowerCase();const p=locations[name];if(!p)return;const pill=card.querySelector('.pill');if(pill){pill.textContent=p.location==='inside'?'Home':p.location==='outside'?'Away':'Unknown';pill.classList.toggle('out',p.location==='outside');}});
+ document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim()?.toLowerCase();const p=locations[name];if(!p)return;const pill=card.querySelector('.pill');if(pill){pill.textContent=p.location==='inside'?'In':p.location==='outside'?'Out':'Unknown';pill.classList.toggle('out',p.location==='outside');}});
  if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
 }
 let manualLocationNotice='';
@@ -541,9 +541,9 @@ if(statusPending||document.hidden)return;
 statusPending=true;
 try{const r=await fetch('./live/status',{cache:'no-store',signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('unavailable');const d=await r.json();
 window.sureLiveStates=Object.fromEntries(d.pets.map(p=>[p.name,p.state==='on'?'Home':p.state==='off'?'Away':'Unknown']));
-document.getElementById('pet-live-list').innerHTML=names.map(n=>{const p=d.pets.find(x=>x.name===n.toLowerCase());const status=effectivePetStatus(n);return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+n+'</span><strong>'+status+'</strong></div>'}).join('');
+document.getElementById('pet-live-list').innerHTML=names.map(n=>{const p=d.pets.find(x=>x.name===n.toLowerCase());const status=effectivePetStatus(n);return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+n+'</span><strong>'+(status==='Home'?'In':status==='Away'?'Out':status)+'</strong></div>}).join('');
 document.getElementById('pet-live-time').textContent='Updated '+new Date(d.updated).toLocaleTimeString('en-GB');
-document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim();const p=d.pets.find(x=>x.name===name?.toLowerCase());if(!p)return;const pill=card.querySelector('.pill');const detail=card.querySelector('.small');const status=effectivePetStatus(name);if(pill){pill.textContent=status;pill.classList.toggle('out',status==='Away');}if(detail){detail.innerHTML=detail.innerHTML.replace(/Sample status only|Awaiting live status/g,'Live status from Sure Petcare');}});
+document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim();const p=d.pets.find(x=>x.name===name?.toLowerCase());if(!p)return;const pill=card.querySelector('.pill');const detail=card.querySelector('.small');const status=effectivePetStatus(name);if(pill){pill.textContent=status==='Home'?'In':status==='Away'?'Out':status;pill.classList.toggle('out',status==='Away');}if(detail){detail.innerHTML=detail.innerHTML.replace(/Sample status only|Awaiting live status/g,'Live status from Sure Petcare');}});
 }catch(e){if(!window.sureLiveStates)document.getElementById('pet-live-list').textContent='Live status unavailable. Check Home Assistant app logs.';}
 finally{statusPending=false;if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();}
 }

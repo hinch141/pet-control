@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.18.138 — 10 November 2026
+- Suppress repeated Sure Petcare individual-position GET calls for 30 minutes after HTTP 405, preventing unsupported reads from filling the cloud request queue. Manual location writes remain unchanged.
+- Refresh visible Activity every 20 seconds and reduce the server-side Activity cache lifetime from 120 to 30 seconds.
+- Preserve locking, curfews, diagnostics and USB archive operation.
+
+
 ## v2.18.137 — 10 November 2026
 - Display USB archive connection and last successful copy/check automatically when Settings opens and refresh it every minute while Settings is visible.
 - Retain manual Refresh USB status control; no new Sure Petcare cloud polling and no change to archive storage or access controls.

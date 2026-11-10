@@ -1,5 +1,5 @@
 name: Pet Control
-version: "2.18.135"
+version: "2.18.136"
 slug: pet_control
 description: Pet Control interface with live Sure Petcare presence
 arch:
@@ -11,6 +11,9 @@ init: false
 ingress: true
 ingress_port: 80
 homeassistant_api: true
+map:
+  - type: share
+    read_only: false
 ports:
   8080/tcp: 18080
 ports_description:

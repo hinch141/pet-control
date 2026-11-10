@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.18.132 — 10 November 2026
+- Fix a silent Reliability Check button by using a direct click handler in the main Pet HQ page rather than relying on a separate script file loading.
+- Display a loading message immediately, and always display either results, an empty-state message or a clear error.
+- No changes to cat access, curfews, cloud polling or retained history.
+
 ## v2.18.131 — 10 November 2026
 - Fix app startup: include reliability-diagnostics.js in the Docker image. The previous v2.18.130 release imported this module but did not copy it into the image, causing a Node.js MODULE_NOT_FOUND error.
 - Preserve all existing app data, settings, curfews and history; no changes to the locking algorithms.

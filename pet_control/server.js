@@ -8,6 +8,8 @@ const pets=['jessie','henry','rosie','violet'];
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8','.png':'image/png','.svg':'image/svg+xml'};
 const token=process.env.SUPERVISOR_TOKEN;
 const {createAccessVerifier}=require('./access-verifier');
+const {createReliabilityDiagnostics}=require('./reliability-diagnostics');
+const reliabilityDiagnostics=createReliabilityDiagnostics();
 let standaloneOptions={};
 try{standaloneOptions=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
 const familyFile='/data/pet-hq-family.json';
@@ -327,6 +329,11 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     return reply(200,{version:1,pets:petArchive.pets});
    }catch(e){return reply(500,{error:'Could not save archive: '+e.message});}
   }
+  // Read-only local timings; no new cloud calls and no credentials or pet identifiers.
+  if(url.pathname==='/pet-hq/reliability'&&req.method==='GET'){
+   res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});
+   return res.end(JSON.stringify(reliabilityDiagnostics.snapshot()));
+  }
   if(url.pathname==='/live/flap/curfew'&&(req.method==='GET'||req.method==='POST')){
    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
    if(req.method==='GET')return reply(200,{...curfew,now:londonDateTime()});
@@ -359,9 +366,10 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
    }catch(e){return reply(400,{error:'Unable to save curfew: '+e.message});}
   }
   if(url.pathname==='/live/flap/mode'&&req.method==='POST'){
+    const commandDiagnosticStart=Date.now();
     if(curfew.enabled)return (res.writeHead(409,{'Content-Type':'application/json'}),res.end(JSON.stringify({error:'Disable the scheduled curfew before using manual control.'})));
     if(!curfew.enabled&&curfew.ownsLock){curfew.ownsLock=false;saveCurfew();}
-    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+    const reply=(code,body)=>{reliabilityDiagnostics.record('home_assistant','house_lock_command',commandDiagnosticStart,{ok:code===200&&body?.status==='confirmed',status:code,error:code===200&&body?.status==='confirmed'?null:'not_confirmed'});res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
     if(!token)return reply(503,{error:'Home Assistant connection unavailable'});
     if(!String(req.headers['content-type']||'').startsWith('application/json'))return reply(415,{error:'JSON required'});
     try{
@@ -427,8 +435,9 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
    }catch(err){return reply(400,{error:String(err.message||err)});}
   }
   if(url.pathname==='/sure/pet-access'&&req.method==='POST'){
+   const commandDiagnosticStart=Date.now();
    sureTraffic.lastInteractive=Date.now();
-   const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+   const reply=(code,body)=>{reliabilityDiagnostics.record('sure_cloud','individual_access_command',commandDiagnosticStart,{ok:code>=200&&code<300,status:code,error:code>=200&&code<300?null:'not_confirmed'});res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
    try{
     let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>512)return reply(413,{error:'Request too large'});}
     const body=JSON.parse(raw);
@@ -580,6 +589,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     }finally{globalThis.petPermissionTestBusy=false;}
   }
   if(url.pathname==='/sure/locations'&&(req.method==='GET'||req.method==='POST')){
+    const diagnosticStart=Date.now();
     const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(body));};
     let body=null;
     if(req.method==='POST'){
@@ -617,11 +627,13 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
           return {petId:String(p.id),name:String(p.name||''),location:Number(data.where)===1?'inside':Number(data.where)===2?'outside':'unknown',since:data.since||null};
         }catch{return {petId:String(p.id),name:String(p.name||''),location:'unknown',since:null};}
       }));
+      reliabilityDiagnostics.record('sure_cloud','positions',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:results.map(p=>p.since).filter(Boolean).sort().at(-1)||null});
       return reply(200,{status:'connected',pets:results,updated:new Date().toISOString()});
-    }catch(e){return reply(502,{error:String(e.message||'Sure Petcare unavailable').slice(0,140)});}
+    }catch(e){reliabilityDiagnostics.record('sure_cloud','positions',diagnosticStart,{ok:false,status:502,error:'request_failed'});return reply(502,{error:String(e.message||'Sure Petcare unavailable').slice(0,140)});}
   }
   if(req.method!=='GET'){res.writeHead(405);return res.end();}
   if(url.pathname==='/live/flap'){
+    const diagnosticStart=Date.now();
     if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({status:'unavailable'}));}
     try{
       const response=await fetch('http://supervisor/core/api/states/lock.my_flap_locked_out',{
@@ -630,9 +642,11 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       const data=await response.json();
       const state=String(data.state||'unknown');
       const status=state==='locked'?'indoor_only':state==='unlocked'?'normal':'unknown';
+      reliabilityDiagnostics.record('home_assistant','flap_state',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:data.last_updated});
       res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});
       return res.end(JSON.stringify({entity_id:'lock.my_flap_locked_out',state,status,updated:data.last_updated||null}));
     }catch{
+      reliabilityDiagnostics.record('home_assistant','flap_state',diagnosticStart,{ok:false,status:502,error:'read_failed'});
       res.writeHead(502,{'Content-Type':'application/json; charset=utf-8'});
       return res.end(JSON.stringify({status:'unavailable'}));
     }
@@ -724,7 +738,8 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     return res.end(JSON.stringify({events,total:events.length}));
   }
   if(url.pathname==='/sure/activity'){
-    const send=(status,detail)=>{res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({status,...detail}));};
+    const diagnosticStart=Date.now();
+    const send=(status,detail)=>{reliabilityDiagnostics.record('sure_cloud','activity',diagnosticStart,{ok:status==='connected'||status==='connected_no_cache',status:200,sourceUpdatedAt:detail.events?.[0]?.at||null,error:status.startsWith('connected')?null:status});res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({status,...detail}));};
     if(activitySnapshot&&Date.now()-activitySnapshot.at<120000)return send(activitySnapshot.status,activitySnapshot.detail);
     let opts={};try{opts=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
     const email=String(opts.sure_email||'').trim(),password=String(opts.sure_password||'');
@@ -783,6 +798,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     }catch{return send('connection_error',{events:[],total:0});}
   }
   if(url.pathname==='/live/status'){
+    const diagnosticStart=Date.now();
     if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Home Assistant access unavailable'}));}
     try{
       const result=await Promise.all(pets.map(async p=>{
@@ -791,8 +807,9 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
         const data=await response.json();
         return {name:p,state:data.state,changed:data.last_changed};
       }));
+      reliabilityDiagnostics.record('home_assistant','pet_presence',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:result.map(p=>p.changed).filter(Boolean).sort().at(-1)||null});
       res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({pets:result,updated:new Date().toISOString()}));
-    }catch(e){res.writeHead(502,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Unable to read pet status'}));}
+    }catch(e){reliabilityDiagnostics.record('home_assistant','pet_presence',diagnosticStart,{ok:false,status:502,error:'read_failed'});res.writeHead(502,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Unable to read pet status'}));}
   }
   if(url.pathname==='/live/history'){
     if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Home Assistant access unavailable'}));}

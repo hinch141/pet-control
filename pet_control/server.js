@@ -38,6 +38,8 @@ try {
 const standaloneEnabled=!!verifyStandalone;
 let activitySnapshot=null,activityPending=null;
 let lastMovementObservedAt=0;
+const observedMovementIds=new Set();
+const lastPetStates=new Map();
 
 // Durable pet archive: stored in Home Assistant add-on /data, not browser storage.
 const petArchiveFile='/data/pet-hq-archived-pets.json';

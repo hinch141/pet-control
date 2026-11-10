@@ -37,6 +37,7 @@ try {
 } catch(error) {console.error('Standalone access disabled: invalid configuration:',error.message);}
 const standaloneEnabled=!!verifyStandalone;
 let activitySnapshot=null,activityPending=null;
+let lastMovementObservedAt=0;
 
 // Durable pet archive: stored in Home Assistant add-on /data, not browser storage.
 const petArchiveFile='/data/pet-hq-archived-pets.json';
@@ -341,8 +342,13 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
   }
   // Read-only local timings; no new cloud calls and no credentials or pet identifiers.
   if(url.pathname==='/pet-hq/reliability'&&req.method==='GET'){
+   const snapshot=reliabilityDiagnostics.snapshot();
+   if(url.searchParams.get('download')==='1'){
+    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Content-Disposition':'attachment; filename="pet-hq-reliability.json"'});
+    return res.end(JSON.stringify(snapshot));
+   }
    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});
-   return res.end(JSON.stringify(reliabilityDiagnostics.snapshot()));
+   return res.end(JSON.stringify(snapshot));
   }
   if(url.pathname==='/live/flap/curfew'&&(req.method==='GET'||req.method==='POST')){
    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
@@ -796,6 +802,12 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
         })()
       })).filter(e=>Number.isFinite(new Date(e.at).getTime()));
       events.sort((a,b)=>new Date(b.at)-new Date(a.at));
+      // First observed movement event per session: age is NOT physical-to-screen latency.
+      const newest=events.find(e=>e.type===0&&Number.isFinite(Date.parse(e.at)));
+      if(newest&&Date.parse(newest.at)>lastMovementObservedAt){
+       lastMovementObservedAt=Date.parse(newest.at);
+       reliabilityDiagnostics.record('sure_cloud','movement_observed',Date.now(),{ok:true,sourceUpdatedAt:newest.at});
+      }
       try{
         const file='/data/sure-activity-cache.json';let saved=[];try{saved=JSON.parse(fs.readFileSync(file,'utf8'));if(!Array.isArray(saved))saved=[];}catch{}
         const map=new Map(saved.map(e=>[e.id,e]));for(const e of events)if(e.id)map.set(e.id,e);

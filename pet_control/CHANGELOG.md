@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.18.135 — 10 November 2026
+- Make View diagnostics a toggle: tap once to open, again to collapse, matching other expandable controls.
+- Keep independent diagnostic download and existing background collection unchanged.
+
+
 ## v2.18.134 — 10 November 2026
 - Show a single View diagnostics button and a separate Download diagnostic report button; downloading never requires opening the diagnostics view or making new Sure Petcare requests.
 - Collect cat-specific In/Out movement observations from existing activity fetches and Home Assistant status transitions in the background, with observed timestamps and source event times.

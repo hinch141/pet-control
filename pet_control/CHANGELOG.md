@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.18.134 — 10 November 2026
+- Show a single View diagnostics button and a separate Download diagnostic report button; downloading never requires opening the diagnostics view or making new Sure Petcare requests.
+- Collect cat-specific In/Out movement observations from existing activity fetches and Home Assistant status transitions in the background, with observed timestamps and source event times.
+- Keep existing request timing and error details, bounded persistence and unchanged access controls. Cat-specific records identify only known household pets; no credentials or raw cloud payloads are logged.
+- First observed events and status changes are not proof of exact physical-to-screen latency; no extra cloud polling is introduced.
+
+
 ## v2.18.133 — 10 November 2026
 - Measure Sure Petcare queue wait separately from actual network response time using existing requests only.
 - Classify cloud failures as timeout, network, HTTP, authentication or rate limiting without exposing credentials.

@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.18.131 — 10 November 2026
+- Fix app startup: include reliability-diagnostics.js in the Docker image. The previous v2.18.130 release imported this module but did not copy it into the image, causing a Node.js MODULE_NOT_FOUND error.
+- Preserve all existing app data, settings, curfews and history; no changes to the locking algorithms.
+- Retain the v2.18.129 backup branch for rollback.
+
+## v2.18.130 — 10 November 2026
+- Added a read-only reliability check in Settings, with bounded timing and error records from existing Home Assistant and Sure Petcare requests.
+- Added response-time records for existing lock and individual access commands without sending extra requests.
+- No new cloud polling or changes to curfew and lock behaviour.
+
 ## v2.18.85
 - Added a user-controlled PWA update notification and refresh mechanism for future Android home-screen installs.
 - Service worker now precaches the app shell and live.js, checks for updates when the app is reopened or focused, and activates a new version only after confirmation.

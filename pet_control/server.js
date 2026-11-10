@@ -342,8 +342,9 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
   }
   // Read-only local timings; no new cloud calls and no credentials or pet identifiers.
   if(url.pathname==='/pet-hq/reliability'&&req.method==='GET'){
-   const snapshot=reliabilityDiagnostics.snapshot();
-   if(url.searchParams.get('download')==='1'){
+   const download=url.searchParams.get('download')==='1';
+   const snapshot=reliabilityDiagnostics.snapshot(download);
+   if(download){
     res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Content-Disposition':'attachment; filename="pet-hq-reliability.json"'});
     return res.end(JSON.stringify(snapshot));
    }

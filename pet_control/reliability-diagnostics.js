@@ -31,7 +31,7 @@ function createReliabilityDiagnostics({clock=()=>Date.now(),limit=240,file='/dat
   if(now-lastSaved>=15000)save();
   return item;
  }
- const snapshot=()=>({generatedAt:new Date(clock()).toISOString(),sampleCount:entries.length,recent:entries.slice(-60).reverse(),retention:{maxRecords:limit,storage:'bounded local file',persisted:persist}});
+ const snapshot=(full=false)=>({generatedAt:new Date(clock()).toISOString(),sampleCount:entries.length,recent:entries.slice(full?-limit:-60).reverse(),retention:{maxRecords:limit,storage:'bounded local file',persisted:persist}});
  return {record,snapshot,flush:save};
 }
 module.exports={createReliabilityDiagnostics};

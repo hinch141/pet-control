@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.18.137 — 10 November 2026
+- Display USB archive connection and last successful copy/check automatically when Settings opens and refresh it every minute while Settings is visible.
+- Retain manual Refresh USB status control; no new Sure Petcare cloud polling and no change to archive storage or access controls.
+
+
 ## v2.18.136 — 10 November 2026
 - Add read/write access to the Home Assistant shared storage folder for optional Pet_HQ_Logs USB archiving.
 - Copy existing Sure Petcare movement history, archive progress and bounded reliability diagnostics to Pet_HQ_Logs/Pet_HQ_Archive once per minute, without changing the live internal source files.

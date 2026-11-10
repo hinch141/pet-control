@@ -8,6 +8,8 @@ const pets=['jessie','henry','rosie','violet'];
 const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8','.png':'image/png','.svg':'image/svg+xml'};
 const token=process.env.SUPERVISOR_TOKEN;
 const {createAccessVerifier}=require('./access-verifier');
+const {createReliabilityDiagnostics}=require('./reliability-diagnostics');
+const reliabilityDiagnostics=createReliabilityDiagnostics();
 let standaloneOptions={};
 try{standaloneOptions=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
 const familyFile='/data/pet-hq-family.json';
@@ -327,6 +329,11 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     return reply(200,{version:1,pets:petArchive.pets});
    }catch(e){return reply(500,{error:'Could not save archive: '+e.message});}
   }
+  // Read-only local timings; no new cloud calls and no credentials or pet identifiers.
+  if(url.pathname==='/pet-hq/reliability'&&req.method==='GET'){
+   res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});
+   return res.end(JSON.stringify(reliabilityDiagnostics.snapshot()));
+  }
   if(url.pathname==='/live/flap/curfew'&&(req.method==='GET'||req.method==='POST')){
    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
    if(req.method==='GET')return reply(200,{...curfew,now:londonDateTime()});
@@ -622,6 +629,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
   }
   if(req.method!=='GET'){res.writeHead(405);return res.end();}
   if(url.pathname==='/live/flap'){
+    const diagnosticStart=Date.now();
     if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({status:'unavailable'}));}
     try{
       const response=await fetch('http://supervisor/core/api/states/lock.my_flap_locked_out',{
@@ -630,9 +638,11 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       const data=await response.json();
       const state=String(data.state||'unknown');
       const status=state==='locked'?'indoor_only':state==='unlocked'?'normal':'unknown';
+      reliabilityDiagnostics.record('home_assistant','flap_state',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:data.last_updated});
       res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});
       return res.end(JSON.stringify({entity_id:'lock.my_flap_locked_out',state,status,updated:data.last_updated||null}));
     }catch{
+      reliabilityDiagnostics.record('home_assistant','flap_state',diagnosticStart,{ok:false,status:502,error:'read_failed'});
       res.writeHead(502,{'Content-Type':'application/json; charset=utf-8'});
       return res.end(JSON.stringify({status:'unavailable'}));
     }

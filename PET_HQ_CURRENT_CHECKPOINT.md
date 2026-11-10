@@ -156,3 +156,11 @@ These are outstanding verification/work items, **not** instructions to change al
 - Branch adds `pet_control/reliability-diagnostics.js` (bounded, read-only timing records) and instruments existing `/live/flap` Home Assistant lock-state reads. New read-only `GET /pet-hq/reliability` returns the last 30 timing records. No new cloud polling, locking writes, UI changes, or curfew logic changes.
 - JavaScript parsing checked for the two modified/new JS files; both passed. No runtime/HA tests or integration tests have been performed; branch **must not be merged or released** until those checks and the complete diagnostics interface are ready.
 - Next: instrument existing Sure cloud position/activity reads and command lifecycles without sensitive logging; add simple user-facing diagnostics screen and automated tests, verify freshness calculations and auth, then test on actual Home Assistant before release. Do not assume spare cat door works.
+
+## Pet HQ v2.18.130 released to GitHub — 10/11/2026
+
+- **Rollback source preserved:** `backup/pet-hq-v2.18.129-pre-reliability-2026-11-10` (immutable intended reference; do not overwrite).
+- **Released code to main:** PR #2, merge commit `f946bf76fb1c8f35e9616a42328fb00d58adc627`. Updated `pet_control/config.yaml`, Settings UI, service-worker marker; added bounded in-memory reliability collector and read-only report.
+- Measurements: existing Home Assistant lock and presence reads, existing Sure cloud positions and timeline reads, whole-house and individual access-command request/response duration. No extra Sure polling, no change to locking or curfew algorithms. HA entity last_changed is time of last state change, not guaranteed freshness of polling.
+- Static JavaScript parse checks and collector assertions passed. **HA install, real Sure cloud timing, and physical door operation remain unverified**; user must update add-on and observe for 24–48 hours. Collector clears on add-on restart and reports most recent 30 of 120 in-memory samples; command responses are not proof of physical actuation.
+- If regressions occur, stop and restore v2.18.129 backup branch as release source; preserve HA /data and avoid deleting histories. Next stage is analyse real diagnostics and then implement bounded reconciliation.

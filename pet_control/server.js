@@ -587,6 +587,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     }finally{globalThis.petPermissionTestBusy=false;}
   }
   if(url.pathname==='/sure/locations'&&(req.method==='GET'||req.method==='POST')){
+    const diagnosticStart=Date.now();
     const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(body));};
     let body=null;
     if(req.method==='POST'){
@@ -624,8 +625,9 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
           return {petId:String(p.id),name:String(p.name||''),location:Number(data.where)===1?'inside':Number(data.where)===2?'outside':'unknown',since:data.since||null};
         }catch{return {petId:String(p.id),name:String(p.name||''),location:'unknown',since:null};}
       }));
+      reliabilityDiagnostics.record('sure_cloud','positions',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:results.map(p=>p.since).filter(Boolean).sort().at(-1)||null});
       return reply(200,{status:'connected',pets:results,updated:new Date().toISOString()});
-    }catch(e){return reply(502,{error:String(e.message||'Sure Petcare unavailable').slice(0,140)});}
+    }catch(e){reliabilityDiagnostics.record('sure_cloud','positions',diagnosticStart,{ok:false,status:502,error:'request_failed'});return reply(502,{error:String(e.message||'Sure Petcare unavailable').slice(0,140)});}
   }
   if(req.method!=='GET'){res.writeHead(405);return res.end();}
   if(url.pathname==='/live/flap'){
@@ -734,7 +736,8 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     return res.end(JSON.stringify({events,total:events.length}));
   }
   if(url.pathname==='/sure/activity'){
-    const send=(status,detail)=>{res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({status,...detail}));};
+    const diagnosticStart=Date.now();
+    const send=(status,detail)=>{reliabilityDiagnostics.record('sure_cloud','activity',diagnosticStart,{ok:status==='connected'||status==='connected_no_cache',status:200,sourceUpdatedAt:detail.events?.[0]?.at||null,error:status.startsWith('connected')?null:status});res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({status,...detail}));};
     if(activitySnapshot&&Date.now()-activitySnapshot.at<120000)return send(activitySnapshot.status,activitySnapshot.detail);
     let opts={};try{opts=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
     const email=String(opts.sure_email||'').trim(),password=String(opts.sure_password||'');
@@ -793,6 +796,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     }catch{return send('connection_error',{events:[],total:0});}
   }
   if(url.pathname==='/live/status'){
+    const diagnosticStart=Date.now();
     if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Home Assistant access unavailable'}));}
     try{
       const result=await Promise.all(pets.map(async p=>{
@@ -801,8 +805,9 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
         const data=await response.json();
         return {name:p,state:data.state,changed:data.last_changed};
       }));
+      reliabilityDiagnostics.record('home_assistant','pet_presence',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:result.map(p=>p.changed).filter(Boolean).sort().at(-1)||null});
       res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({pets:result,updated:new Date().toISOString()}));
-    }catch(e){res.writeHead(502,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Unable to read pet status'}));}
+    }catch(e){reliabilityDiagnostics.record('home_assistant','pet_presence',diagnosticStart,{ok:false,status:502,error:'read_failed'});res.writeHead(502,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Unable to read pet status'}));}
   }
   if(url.pathname==='/live/history'){
     if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Home Assistant access unavailable'}));}

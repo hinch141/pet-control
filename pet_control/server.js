@@ -172,6 +172,7 @@ function petCurfewActive(entry,date=new Date()){
 // Do not create a new remote session on each scheduler/UI poll.
 const sureDeviceId=randomUUID();
 const sureTraffic={next:0,cooldown:0,queue:Promise.resolve(),login:new Map(),dashboard:null,permissionRead:null,permissionPending:null};
+ let positionReadUnsupportedUntil=0;
 const surePause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function sureFetch(url,options={}){
  const enqueuedAt=Date.now();
@@ -682,9 +683,16 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
         if(!result.ok)return reply(502,{error:'Sure Petcare rejected the location change (HTTP '+result.status+')'});
         return reply(200,{status:'accepted',petId:String(body.petId),location:body.location,message:'Sure Petcare accepted the change; waiting for a fresh read.'});
       }
+      // An HTTP 405 means this read endpoint is unsupported. Avoid queuing
+      // repeated failures that delay the independent movement timeline.
+      if(Date.now()<positionReadUnsupportedUntil)return reply(200,{status:'position_reads_unavailable',pets:[],updated:new Date().toISOString()});
       const results=await Promise.all(cats.map(async p=>{
         try{
           const response=await sureFetch('https://app.api.surehub.io/api/pet/'+encodeURIComponent(p.id)+'/position',{headers,signal:AbortSignal.timeout(9000)});
+          if(response.status===405){
+            positionReadUnsupportedUntil=Date.now()+30*60*1000;
+            throw Error('Position reads unsupported');
+          }
           if(!response.ok)throw Error('Location unavailable');
           const data=(await response.json()).data||{};
           return {petId:String(p.id),name:String(p.name||''),location:Number(data.where)===1?'inside':Number(data.where)===2?'outside':'unknown',since:data.since||null};
@@ -803,7 +811,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
   if(url.pathname==='/sure/activity'){
     const diagnosticStart=Date.now();
     const send=(status,detail)=>{reliabilityDiagnostics.record('sure_cloud','activity',diagnosticStart,{ok:status==='connected'||status==='connected_no_cache',status:200,sourceUpdatedAt:detail.events?.[0]?.at||null,error:status.startsWith('connected')?null:status});res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({status,...detail}));};
-    if(activitySnapshot&&Date.now()-activitySnapshot.at<120000)return send(activitySnapshot.status,activitySnapshot.detail);
+    if(activitySnapshot&&Date.now()-activitySnapshot.at<30000)return send(activitySnapshot.status,activitySnapshot.detail);
     let opts={};try{opts=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
     const email=String(opts.sure_email||'').trim(),password=String(opts.sure_password||'');
     if(!email||!password)return send('not_configured',{events:[],total:0});

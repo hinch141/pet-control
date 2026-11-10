@@ -807,10 +807,15 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       events.sort((a,b)=>new Date(b.at)-new Date(a.at));
       // First observed movement event per session: age is NOT physical-to-screen latency.
       const newest=events.find(e=>e.type===0&&Number.isFinite(Date.parse(e.at)));
-      if(newest&&Date.parse(newest.at)>lastMovementObservedAt){
-       lastMovementObservedAt=Date.parse(newest.at);
-       reliabilityDiagnostics.record('sure_cloud','movement_observed',Date.now(),{ok:true,sourceUpdatedAt:newest.at});
+      if(newest&&Date.parse(newest.at)>lastMovementObservedAt)lastMovementObservedAt=Date.parse(newest.at);
+      // Observe identifiable cat movements from the existing activity request only.
+      for(const e of [...events].reverse()){
+       if(e.type!==0||!e.id||observedMovementIds.has(e.id))continue;
+       observedMovementIds.add(e.id);
+       const movement=Number(e.details?.direction)===1?'In':Number(e.details?.direction)===2?'Out':null;
+       if(movement)for(const pet of e.pets||[])reliabilityDiagnostics.record('sure_cloud','movement_observed',Date.now(),{ok:true,sourceUpdatedAt:e.at,pet,movement,eventAt:e.at});
       }
+      if(observedMovementIds.size>1500)for(const id of [...observedMovementIds].slice(0,observedMovementIds.size-750))observedMovementIds.delete(id);
       try{
         const file='/data/sure-activity-cache.json';let saved=[];try{saved=JSON.parse(fs.readFileSync(file,'utf8'));if(!Array.isArray(saved))saved=[];}catch{}
         const map=new Map(saved.map(e=>[e.id,e]));for(const e of events)if(e.id)map.set(e.id,e);
@@ -832,6 +837,14 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
         const data=await response.json();
         return {name:p,state:data.state,changed:data.last_changed};
       }));
+      for(const p of result){
+       const previous=lastPetStates.get(p.name);
+       if(previous!==undefined&&previous!==p.state){
+        const movement=p.state==='on'?'In':p.state==='off'?'Out':null;
+        if(movement)reliabilityDiagnostics.record('home_assistant','pet_status_change',Date.now(),{ok:true,pet:p.name,movement,eventAt:p.changed});
+       }
+       lastPetStates.set(p.name,p.state);
+      }
       reliabilityDiagnostics.record('home_assistant','pet_presence',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:result.map(p=>p.changed).filter(Boolean).sort().at(-1)||null});
       res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({pets:result,updated:new Date().toISOString()}));
     }catch(e){reliabilityDiagnostics.record('home_assistant','pet_presence',diagnosticStart,{ok:false,status:502,error:'read_failed'});res.writeHead(502,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Unable to read pet status'}));}

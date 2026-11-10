@@ -148,3 +148,11 @@ These are outstanding verification/work items, **not** instructions to change al
 - **Priority sequence agreed for proposal (not implemented):** (1) read-only timestamped diagnostics for API request/response, HA state age, cloud event time and UI render; (2) single reconciled status model with stale/unknown/pending states and bounded refresh; (3) durable local event history with deduplication and backup; (4) optional local hardware sensors and eventual independent locking.
 - Safety gates: never equate cloud acknowledgement with physical lock confirmation; preserve entry access, manual override precedence and individual schedules; avoid aggressive polling, blind retries, duplicate writes or overwriting newer events with stale cloud data.
 - **No source edits, runtime tests or physical tests in this investigation.** Next concrete work is a narrowly scoped diagnostics-only implementation and tests, followed by user device observations. No release version bump until code is implemented and checked.
+
+## Stage 1 diagnostics work started — 10/11/2026
+
+- User has a spare, possibly faulty Sure Petcare cat door available for later bench inspection; do not rely on it as a verified reference or dismantle the working installed unit.
+- Protected release **main remains v2.18.129**. Created isolated branch `development/pet-hq-reliability-diagnostics`.
+- Branch adds `pet_control/reliability-diagnostics.js` (bounded, read-only timing records) and instruments existing `/live/flap` Home Assistant lock-state reads. New read-only `GET /pet-hq/reliability` returns the last 30 timing records. No new cloud polling, locking writes, UI changes, or curfew logic changes.
+- JavaScript parsing checked for the two modified/new JS files; both passed. No runtime/HA tests or integration tests have been performed; branch **must not be merged or released** until those checks and the complete diagnostics interface are ready.
+- Next: instrument existing Sure cloud position/activity reads and command lifecycles without sensitive logging; add simple user-facing diagnostics screen and automated tests, verify freshness calculations and auth, then test on actual Home Assistant before release. Do not assume spare cat door works.

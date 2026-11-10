@@ -10,6 +10,45 @@ const token=process.env.SUPERVISOR_TOKEN;
 const {createAccessVerifier}=require('./access-verifier');
 const {createReliabilityDiagnostics}=require('./reliability-diagnostics');
 const reliabilityDiagnostics=createReliabilityDiagnostics();
+ // Optional Home Assistant local-disk share. Never create the mount directory:
+ // if the USB is absent, archives must not silently fill internal /share.
+ const usbArchiveRoot='/share/Pet_HQ_Logs';
+ const usbArchiveFiles=['sure-activity-cache.json','sure-archive-progress.json','pet-hq-reliability.json'];
+ const usbArchiveState={connected:false,lastSync:null,lastError:null,files:[]};
+ const usbArchiveHashes=new Map();
+ function syncUsbArchive(){
+  try{
+   if(!fs.existsSync(usbArchiveRoot)||!fs.statSync(usbArchiveRoot).isDirectory())throw Error('USB share is not mounted');
+   const destination=path.join(usbArchiveRoot,'Pet_HQ_Archive');
+   // Write test is required before reporting connected. Do not touch live data.
+   fs.accessSync(usbArchiveRoot,fs.constants.W_OK);
+   fs.mkdirSync(destination,{recursive:true});
+   const copied=[];
+   for(const name of usbArchiveFiles){
+    const source=path.join('/data',name);
+    if(!fs.existsSync(source))continue;
+    const stat=fs.statSync(source);
+    const signature=stat.size+':'+stat.mtimeMs;
+    const target=path.join(destination,name);
+    if(usbArchiveHashes.get(name)!==signature||!fs.existsSync(target)){
+     const tmp=target+'.tmp';
+     fs.copyFileSync(source,tmp);
+     fs.renameSync(tmp,target);
+     usbArchiveHashes.set(name,signature);
+    }
+    copied.push(name);
+   }
+   usbArchiveState.connected=true;usbArchiveState.lastSync=new Date().toISOString();
+   usbArchiveState.lastError=null;usbArchiveState.files=copied;
+  }catch(error){
+   usbArchiveState.connected=false;
+   usbArchiveState.lastError=String(error.message||error).slice(0,140);
+   usbArchiveHashes.clear();
+  }
+ }
+ setTimeout(syncUsbArchive,10000);
+ setInterval(syncUsbArchive,60000);
+
 let standaloneOptions={};
 try{standaloneOptions=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
 const familyFile='/data/pet-hq-family.json';
@@ -343,6 +382,11 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
    }catch(e){return reply(500,{error:'Could not save archive: '+e.message});}
   }
   // Read-only local timings; no new cloud calls and no credentials or pet identifiers.
+  if(url.pathname==='/pet-hq/usb-archive'&&req.method==='GET'){
+   syncUsbArchive();
+   res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});
+   return res.end(JSON.stringify({name:'Pet_HQ_Logs',...usbArchiveState,mode:'additional copy; original data retained internally',intervalSeconds:60}));
+  }
   if(url.pathname==='/pet-hq/reliability'&&req.method==='GET'){
    const download=url.searchParams.get('download')==='1';
    const snapshot=reliabilityDiagnostics.snapshot(download);

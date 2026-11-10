@@ -686,7 +686,12 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       // An HTTP 405 means this read endpoint is unsupported. Avoid queuing
       // repeated failures that delay the independent movement timeline.
       if(Date.now()<positionReadUnsupportedUntil)return reply(200,{status:'position_reads_unavailable',pets:[],updated:new Date().toISOString()});
-      const results=await Promise.all(cats.map(async p=>{
+      const results=[];
+      for(const p of cats){
+        if(Date.now()<positionReadUnsupportedUntil){
+          results.push({petId:String(p.id),name:String(p.name||''),location:'unknown',since:null});
+          continue;
+        }
         try{
           const response=await sureFetch('https://app.api.surehub.io/api/pet/'+encodeURIComponent(p.id)+'/position',{headers,signal:AbortSignal.timeout(9000)});
           if(response.status===405){
@@ -695,9 +700,9 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
           }
           if(!response.ok)throw Error('Location unavailable');
           const data=(await response.json()).data||{};
-          return {petId:String(p.id),name:String(p.name||''),location:Number(data.where)===1?'inside':Number(data.where)===2?'outside':'unknown',since:data.since||null};
-        }catch{return {petId:String(p.id),name:String(p.name||''),location:'unknown',since:null};}
-      }));
+          results.push({petId:String(p.id),name:String(p.name||''),location:Number(data.where)===1?'inside':Number(data.where)===2?'outside':'unknown',since:data.since||null});
+        }catch{results.push({petId:String(p.id),name:String(p.name||''),location:'unknown',since:null});}
+      }
       reliabilityDiagnostics.record('sure_cloud','positions',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:results.map(p=>p.since).filter(Boolean).sort().at(-1)||null});
       return reply(200,{status:'connected',pets:results,updated:new Date().toISOString()});
     }catch(e){reliabilityDiagnostics.record('sure_cloud','positions',diagnosticStart,{ok:false,status:502,error:'request_failed'});return reply(502,{error:String(e.message||'Sure Petcare unavailable').slice(0,140)});}

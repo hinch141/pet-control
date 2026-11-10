@@ -132,6 +132,7 @@ const sureDeviceId=randomUUID();
 const sureTraffic={next:0,cooldown:0,queue:Promise.resolve(),login:new Map(),dashboard:null,permissionRead:null,permissionPending:null};
 const surePause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function sureFetch(url,options={}){
+ const enqueuedAt=Date.now();
  const endpoint=String(url);
  if(!endpoint.startsWith('https://app.api.surehub.io/api/'))throw Error('Unexpected Sure Petcare endpoint');
  const login=endpoint.endsWith('/auth/login'),dashboard=endpoint.endsWith('/me/start');
@@ -145,15 +146,24 @@ async function sureFetch(url,options={}){
  const job=async()=>{
   if(login){const cached=sureTraffic.login.get(key);if(cached&&Date.now()<cached.expires)return cached.response.clone();}
   if(dashboard&&method==='GET'&&sureTraffic.dashboard&&Date.now()<sureTraffic.dashboard.expires)return sureTraffic.dashboard.response.clone();
-  if(Date.now()<sureTraffic.cooldown)throw Error('Sure Petcare rate limit active; requests paused');
+  if(Date.now()<sureTraffic.cooldown){reliabilityDiagnostics.record('sure_cloud','cloud_request',enqueuedAt,{ok:false,error:'rate_limited'});throw Error('Sure Petcare rate limit active; requests paused');}
   const wait=Math.max(0,sureTraffic.next-Date.now());
   if(wait)await surePause(wait);
-  if(Date.now()<sureTraffic.cooldown)throw Error('Sure Petcare rate limit active; requests paused');
+  if(Date.now()<sureTraffic.cooldown){reliabilityDiagnostics.record('sure_cloud','cloud_request',enqueuedAt,{ok:false,error:'rate_limited'});throw Error('Sure Petcare rate limit active; requests paused');}
   sureTraffic.next=Date.now()+3000;
+  const networkStarted=Date.now();
+  const queueMs=networkStarted-enqueuedAt;
   const {timeoutMs,...fetchOptions}=options;
   // Start the timeout when the queued request actually begins, not while it waits.
   if(timeoutMs)fetchOptions.signal=AbortSignal.timeout(timeoutMs);
-  const response=await fetch(url,fetchOptions);
+  let response;
+  try{response=await fetch(url,fetchOptions);}
+  catch(e){
+   const type=e?.name==='AbortError'||e?.name==='TimeoutError'?'timeout':'network';
+   reliabilityDiagnostics.record('sure_cloud','cloud_request',enqueuedAt,{ok:false,error:type,queueMs,networkMs:Date.now()-networkStarted});
+   throw e;
+  }
+  reliabilityDiagnostics.record('sure_cloud','cloud_request',enqueuedAt,{ok:response.ok,status:response.status,queueMs,networkMs:Date.now()-networkStarted,error:response.status===429?'rate_limited':response.status===401||response.status===403?'authentication':response.ok?null:'http_error'});
   if(response.status===429){
    const retry=Number(response.headers.get('retry-after'));
    sureTraffic.cooldown=Date.now()+(Number.isFinite(retry)&&retry>0?Math.min(retry*1000,900000):300000);

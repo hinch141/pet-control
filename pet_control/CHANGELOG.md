@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.18.136 — 10 November 2026
+- Add read/write access to the Home Assistant shared storage folder for optional Pet_HQ_Logs USB archiving.
+- Copy existing Sure Petcare movement history, archive progress and bounded reliability diagnostics to Pet_HQ_Logs/Pet_HQ_Archive once per minute, without changing the live internal source files.
+- Do not create the USB mount directory when missing; failure to write to the USB never blocks live access controls or movement history.
+- Add Settings → Check USB archive to verify that the disk is writable and show archive status; no new Sure Petcare requests.
+
+
 ## v2.18.135 — 10 November 2026
 - Make View diagnostics a toggle: tap once to open, again to collapse, matching other expandable controls.
 - Keep independent diagnostic download and existing background collection unchanged.

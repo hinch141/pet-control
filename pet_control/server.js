@@ -366,9 +366,10 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
    }catch(e){return reply(400,{error:'Unable to save curfew: '+e.message});}
   }
   if(url.pathname==='/live/flap/mode'&&req.method==='POST'){
+    const commandDiagnosticStart=Date.now();
     if(curfew.enabled)return (res.writeHead(409,{'Content-Type':'application/json'}),res.end(JSON.stringify({error:'Disable the scheduled curfew before using manual control.'})));
     if(!curfew.enabled&&curfew.ownsLock){curfew.ownsLock=false;saveCurfew();}
-    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+    const reply=(code,body)=>{reliabilityDiagnostics.record('home_assistant','house_lock_command',commandDiagnosticStart,{ok:code===200&&body?.status==='confirmed',status:code,error:code===200&&body?.status==='confirmed'?null:'not_confirmed'});res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
     if(!token)return reply(503,{error:'Home Assistant connection unavailable'});
     if(!String(req.headers['content-type']||'').startsWith('application/json'))return reply(415,{error:'JSON required'});
     try{
@@ -434,8 +435,9 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
    }catch(err){return reply(400,{error:String(err.message||err)});}
   }
   if(url.pathname==='/sure/pet-access'&&req.method==='POST'){
+   const commandDiagnosticStart=Date.now();
    sureTraffic.lastInteractive=Date.now();
-   const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+   const reply=(code,body)=>{reliabilityDiagnostics.record('sure_cloud','individual_access_command',commandDiagnosticStart,{ok:code>=200&&code<300,status:code,error:code>=200&&code<300?null:'not_confirmed'});res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
    try{
     let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>512)return reply(413,{error:'Request too large'});}
     const body=JSON.parse(raw);

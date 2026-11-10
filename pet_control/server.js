@@ -37,6 +37,7 @@ try {
 } catch(error) {console.error('Standalone access disabled: invalid configuration:',error.message);}
 const standaloneEnabled=!!verifyStandalone;
 let activitySnapshot=null,activityPending=null;
+let lastMovementObservedAt=0;
 
 // Durable pet archive: stored in Home Assistant add-on /data, not browser storage.
 const petArchiveFile='/data/pet-hq-archived-pets.json';
@@ -132,6 +133,7 @@ const sureDeviceId=randomUUID();
 const sureTraffic={next:0,cooldown:0,queue:Promise.resolve(),login:new Map(),dashboard:null,permissionRead:null,permissionPending:null};
 const surePause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function sureFetch(url,options={}){
+ const enqueuedAt=Date.now();
  const endpoint=String(url);
  if(!endpoint.startsWith('https://app.api.surehub.io/api/'))throw Error('Unexpected Sure Petcare endpoint');
  const login=endpoint.endsWith('/auth/login'),dashboard=endpoint.endsWith('/me/start');
@@ -145,15 +147,24 @@ async function sureFetch(url,options={}){
  const job=async()=>{
   if(login){const cached=sureTraffic.login.get(key);if(cached&&Date.now()<cached.expires)return cached.response.clone();}
   if(dashboard&&method==='GET'&&sureTraffic.dashboard&&Date.now()<sureTraffic.dashboard.expires)return sureTraffic.dashboard.response.clone();
-  if(Date.now()<sureTraffic.cooldown)throw Error('Sure Petcare rate limit active; requests paused');
+  if(Date.now()<sureTraffic.cooldown){reliabilityDiagnostics.record('sure_cloud','cloud_request',enqueuedAt,{ok:false,error:'rate_limited'});throw Error('Sure Petcare rate limit active; requests paused');}
   const wait=Math.max(0,sureTraffic.next-Date.now());
   if(wait)await surePause(wait);
-  if(Date.now()<sureTraffic.cooldown)throw Error('Sure Petcare rate limit active; requests paused');
+  if(Date.now()<sureTraffic.cooldown){reliabilityDiagnostics.record('sure_cloud','cloud_request',enqueuedAt,{ok:false,error:'rate_limited'});throw Error('Sure Petcare rate limit active; requests paused');}
   sureTraffic.next=Date.now()+3000;
+  const networkStarted=Date.now();
+  const queueMs=networkStarted-enqueuedAt;
   const {timeoutMs,...fetchOptions}=options;
   // Start the timeout when the queued request actually begins, not while it waits.
   if(timeoutMs)fetchOptions.signal=AbortSignal.timeout(timeoutMs);
-  const response=await fetch(url,fetchOptions);
+  let response;
+  try{response=await fetch(url,fetchOptions);}
+  catch(e){
+   const type=e?.name==='AbortError'||e?.name==='TimeoutError'?'timeout':'network';
+   reliabilityDiagnostics.record('sure_cloud','cloud_request',enqueuedAt,{ok:false,error:type,queueMs,networkMs:Date.now()-networkStarted});
+   throw e;
+  }
+  reliabilityDiagnostics.record('sure_cloud','cloud_request',enqueuedAt,{ok:response.ok,status:response.status,queueMs,networkMs:Date.now()-networkStarted,error:response.status===429?'rate_limited':response.status===401||response.status===403?'authentication':response.ok?null:'http_error'});
   if(response.status===429){
    const retry=Number(response.headers.get('retry-after'));
    sureTraffic.cooldown=Date.now()+(Number.isFinite(retry)&&retry>0?Math.min(retry*1000,900000):300000);
@@ -331,8 +342,14 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
   }
   // Read-only local timings; no new cloud calls and no credentials or pet identifiers.
   if(url.pathname==='/pet-hq/reliability'&&req.method==='GET'){
+   const download=url.searchParams.get('download')==='1';
+   const snapshot=reliabilityDiagnostics.snapshot(download);
+   if(download){
+    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Content-Disposition':'attachment; filename="pet-hq-reliability.json"'});
+    return res.end(JSON.stringify(snapshot));
+   }
    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});
-   return res.end(JSON.stringify(reliabilityDiagnostics.snapshot()));
+   return res.end(JSON.stringify(snapshot));
   }
   if(url.pathname==='/live/flap/curfew'&&(req.method==='GET'||req.method==='POST')){
    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
@@ -786,6 +803,12 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
         })()
       })).filter(e=>Number.isFinite(new Date(e.at).getTime()));
       events.sort((a,b)=>new Date(b.at)-new Date(a.at));
+      // First observed movement event per session: age is NOT physical-to-screen latency.
+      const newest=events.find(e=>e.type===0&&Number.isFinite(Date.parse(e.at)));
+      if(newest&&Date.parse(newest.at)>lastMovementObservedAt){
+       lastMovementObservedAt=Date.parse(newest.at);
+       reliabilityDiagnostics.record('sure_cloud','movement_observed',Date.now(),{ok:true,sourceUpdatedAt:newest.at});
+      }
       try{
         const file='/data/sure-activity-cache.json';let saved=[];try{saved=JSON.parse(fs.readFileSync(file,'utf8'));if(!Array.isArray(saved))saved=[];}catch{}
         const map=new Map(saved.map(e=>[e.id,e]));for(const e of events)if(e.id)map.set(e.id,e);

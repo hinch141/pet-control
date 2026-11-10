@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.18.133 — 10 November 2026
+- Measure Sure Petcare queue wait separately from actual network response time using existing requests only.
+- Classify cloud failures as timeout, network, HTTP, authentication or rate limiting without exposing credentials.
+- Record when movement events are first observed in a session; event age is not a verified physical-to-screen delay.
+- Improve Reliability Check with UK times, readable labels, averages, and an exportable JSON report.
+- Keep a bounded 240-record diagnostic history in Home Assistant /data across restarts (approximately tens of kilobytes); existing pet history, lock commands, curfews and request frequency unchanged.
+- Keep v2.18.129 protected in backup/pet-hq-v2.18.129-pre-reliability-2026-11-10.
+
 ## v2.18.132 — 10 November 2026
 - Fix a silent Reliability Check button by using a direct click handler in the main Pet HQ page rather than relying on a separate script file loading.
 - Display a loading message immediately, and always display either results, an empty-state message or a clear error.

@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.18.140 — 11 November 2026
+- Stop unsupported GET position reads before they enter the cloud queue; preserve manual POST position updates.
+- Cache Activity household lookup for five minutes to reduce redundant requests.
+- Prioritise interactive Activity over archive backfill.
+- Preserve curfews, locking, USB archive and In/Out reconciliation.
+
+
 ## v2.18.139 — 11 November 2026
 - Reconcile the latest confirmed In/Out event in the Sure Petcare timeline with the Home Assistant pet presence timestamp. If the movement is newer, show it on the card immediately rather than waiting for a stale HA entity.
 - Preserve newer HA transitions, and never use looking-outside events to change location. Limit reconciliation to confirmed movements within the last 24 hours.

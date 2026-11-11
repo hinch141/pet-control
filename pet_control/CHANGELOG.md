@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.18.139 — 11 November 2026
+- Reconcile the latest confirmed In/Out event in the Sure Petcare timeline with the Home Assistant pet presence timestamp. If the movement is newer, show it on the card immediately rather than waiting for a stale HA entity.
+- Preserve newer HA transitions, and never use looking-outside events to change location. Limit reconciliation to confirmed movements within the last 24 hours.
+- Repaint pet cards when fresh Activity arrives. Preserve manual location overrides, curfews, access controls and USB archive.
+
+
 ## v2.18.138 — 10 November 2026
 - Suppress repeated Sure Petcare individual-position GET calls for 30 minutes after HTTP 405, preventing unsupported reads from filling the cloud request queue. Manual location writes remain unchanged.
 - Refresh visible Activity every 20 seconds and reduce the server-side Activity cache lifetime from 120 to 30 seconds.

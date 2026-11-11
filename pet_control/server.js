@@ -172,6 +172,7 @@ function petCurfewActive(entry,date=new Date()){
 // Do not create a new remote session on each scheduler/UI poll.
 const sureDeviceId=randomUUID();
 const sureTraffic={next:0,cooldown:0,queue:Promise.resolve(),login:new Map(),dashboard:null,permissionRead:null,permissionPending:null};
+let activityHouseholdCache=null;
  let positionReadUnsupportedUntil=0;
 const surePause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function sureFetch(url,options={}){
@@ -661,6 +662,9 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       let raw='';try{for await(const chunk of req){raw+=chunk;if(raw.length>512)return reply(413,{error:'Request too large'});}body=JSON.parse(raw);}catch{return reply(400,{error:'Invalid JSON'});}
       if(!['inside','outside'].includes(body?.location)||!/^\d+$/.test(String(body?.petId||'')))return reply(400,{error:'Invalid pet or location'});
     }
+    // GET position reads are unsupported (HTTP 405); bypass the cloud queue.
+    // POST manual position changes are unaffected.
+    if(req.method==='GET')return reply(200,{status:'position_reads_unavailable',pets:[],updated:new Date().toISOString()});
     let options={};try{options=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
     const email=String(options.sure_email||'').trim(),password=String(options.sure_password||'');
     if(!email||!password)return reply(503,{error:'Sure Petcare credentials not configured'});
@@ -683,29 +687,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
         if(!result.ok)return reply(502,{error:'Sure Petcare rejected the location change (HTTP '+result.status+')'});
         return reply(200,{status:'accepted',petId:String(body.petId),location:body.location,message:'Sure Petcare accepted the change; waiting for a fresh read.'});
       }
-      // An HTTP 405 means this read endpoint is unsupported. Avoid queuing
-      // repeated failures that delay the independent movement timeline.
-      if(Date.now()<positionReadUnsupportedUntil)return reply(200,{status:'position_reads_unavailable',pets:[],updated:new Date().toISOString()});
-      const results=[];
-      for(const p of cats){
-        if(Date.now()<positionReadUnsupportedUntil){
-          results.push({petId:String(p.id),name:String(p.name||''),location:'unknown',since:null});
-          continue;
-        }
-        try{
-          const response=await sureFetch('https://app.api.surehub.io/api/pet/'+encodeURIComponent(p.id)+'/position',{headers,signal:AbortSignal.timeout(9000)});
-          if(response.status===405){
-            positionReadUnsupportedUntil=Date.now()+30*60*1000;
-            throw Error('Position reads unsupported');
-          }
-          if(!response.ok)throw Error('Location unavailable');
-          const data=(await response.json()).data||{};
-          results.push({petId:String(p.id),name:String(p.name||''),location:Number(data.where)===1?'inside':Number(data.where)===2?'outside':'unknown',since:data.since||null});
-        }catch{results.push({petId:String(p.id),name:String(p.name||''),location:'unknown',since:null});}
-      }
-      reliabilityDiagnostics.record('sure_cloud','positions',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:results.map(p=>p.since).filter(Boolean).sort().at(-1)||null});
-      return reply(200,{status:'connected',pets:results,updated:new Date().toISOString()});
-    }catch(e){reliabilityDiagnostics.record('sure_cloud','positions',diagnosticStart,{ok:false,status:502,error:'request_failed'});return reply(502,{error:String(e.message||'Sure Petcare unavailable').slice(0,140)});}
+      }catch(e){reliabilityDiagnostics.record('sure_cloud','positions',diagnosticStart,{ok:false,status:502,error:'request_failed'});return reply(502,{error:String(e.message||'Sure Petcare unavailable').slice(0,140)});}
   }
   if(req.method!=='GET'){res.writeHead(405);return res.end();}
   if(url.pathname==='/live/flap'){
@@ -814,6 +796,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     return res.end(JSON.stringify({events,total:events.length}));
   }
   if(url.pathname==='/sure/activity'){
+    sureTraffic.lastInteractive=Date.now();
     const diagnosticStart=Date.now();
     const send=(status,detail)=>{reliabilityDiagnostics.record('sure_cloud','activity',diagnosticStart,{ok:status==='connected'||status==='connected_no_cache',status:200,sourceUpdatedAt:detail.events?.[0]?.at||null,error:status.startsWith('connected')?null:status});res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({status,...detail}));};
     if(activitySnapshot&&Date.now()-activitySnapshot.at<30000)return send(activitySnapshot.status,activitySnapshot.detail);
@@ -828,10 +811,18 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       const auth=await authRes.json();const access=auth.data?.token||auth.token;
       if(!access)return send('authentication_error',{events:[],total:0});
       headers.Authorization='Bearer '+access;
-      const homeRes=await sureFetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});
-      if(!homeRes.ok)return send('household_error',{events:[],total:0});
-      const home=await homeRes.json();const hs=home.data?.households||home.data?.household||home.households||[];
-      const house=Array.isArray(hs)?hs[0]:hs;const houseId=house?.id||home.data?.household_id||home.data?.household?.id;
+      let houseId,home;
+      if(activityHouseholdCache&&Date.now()<activityHouseholdCache.expires){
+        ({houseId,home}=activityHouseholdCache);
+      }else{
+        const homeRes=await sureFetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});
+        if(!homeRes.ok)return send('household_error',{events:[],total:0});
+        home=await homeRes.json();
+        const hs=home.data?.households||home.data?.household||home.households||[];
+        const house=Array.isArray(hs)?hs[0]:hs;
+        houseId=house?.id||home.data?.household_id||home.data?.household?.id;
+        if(houseId)activityHouseholdCache={houseId,home,expires:Date.now()+5*60*1000};
+      }
       if(!houseId)return send('household_error',{events:[],total:0});
       // Fast live path: fetch only the newest page. Archive retrieval is separate.
       const response=await sureFetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page=0',{headers,signal:AbortSignal.timeout(12000)});

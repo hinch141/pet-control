@@ -66,6 +66,23 @@ for(const member of family.members){
 function saveFamily(){
  const tmp=familyFile+'.tmp';fs.writeFileSync(tmp,JSON.stringify(family,null,2),{mode:0o600});fs.renameSync(tmp,familyFile);
 }
+// One-time household email correction. Existing primary account stays intact.
+// Run before access verification is configured, then persist atomically.
+const previousNickyEmail='nicky.hinchliffe@gmail.com';
+const correctedNickyEmail='nicky.hinchliffe1@gmail.com';
+const oldNicky=family.members.find(m=>m.email===previousNickyEmail);
+if(oldNicky){
+ const existing=family.members.find(m=>m.email===correctedNickyEmail);
+ if(existing){
+  // Preserve the primary account and avoid duplicate email identities.
+  existing.primary=Boolean(existing.primary||oldNicky.primary);
+  if(oldNicky.primary&&(!existing.name||existing.name===correctedNickyEmail.split('@')[0]))existing.name=oldNicky.name||'Nicky';
+  family.members=family.members.filter(m=>m!==oldNicky);
+ }else{
+  oldNicky.email=correctedNickyEmail;
+ }
+ saveFamily();
+}
 const emailAllowed=email=>family.members.some(m=>m.email===email);
 try{if(family.members.some(m=>(m.email==='hinchi1@gmail.com'&&m.name==='John')||(m.email==='nicky.hinchliffe@gmail.com'&&m.name==='Nicky')))saveFamily();}catch(e){console.error('Family name update failed:',e.message);}
 let verifyStandalone=null;

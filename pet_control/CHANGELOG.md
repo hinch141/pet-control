@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.18.141 — 11 November 2026
+- Correct the locked primary household email for Nicky from the previous address to the authorised address on add-on startup.
+- Preserve the existing household account and permissions, and avoid duplicate accounts if the corrected email is already registered.
+- Keep the existing Home Assistant add-on identity, configuration, curfews, locking, In/Out updates and USB archive unchanged.
+
+
 ## v2.18.140 — 11 November 2026
 - Stop unsupported GET position reads before they enter the cloud queue; preserve manual POST position updates.
 - Cache Activity household lookup for five minutes to reduce redundant requests.

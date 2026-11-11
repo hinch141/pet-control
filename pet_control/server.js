@@ -354,6 +354,23 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     catch{res.writeHead(403,{'Content-Type':'text/plain','Cache-Control':'no-store'});return res.end('Access denied');}
   }else if(peer!=='172.30.32.2'){res.writeHead(403);return res.end();}
   const url=new URL(req.url,'http://localhost');
+  if(url.pathname==='/pet-hq/release-info'&&req.method==='GET'){
+    try{
+      const configuration=fs.readFileSync('/app/config.yaml','utf8');
+      const match=configuration.match(/^version:\s*["']?([0-9.]+)["']?\s*$/m);
+      if(!match)throw Error('Add-on version missing');
+      const changelog=fs.readFileSync('/app/CHANGELOG.md','utf8');
+      const sections=changelog.split(/^##\s+/m).slice(1);
+      const latest=sections.find(section=>section.startsWith('v'+match[1]+' '));
+      const notes=latest?latest.slice(latest.indexOf('\n')+1).trim():'Release notes unavailable for this version.';
+      res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
+      return res.end(JSON.stringify({version:match[1],notes}));
+    }catch(e){
+      res.writeHead(503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
+      return res.end(JSON.stringify({error:'Release information unavailable'}));
+    }
+  }
+
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Cache-Control','no-store');
 

@@ -312,7 +312,7 @@ window.renderSurePetDetail=function(){
  const imageUrl=typeof petPhoto==='function'?petPhoto(p):p.photo||'';
  root.innerHTML=
  '<div class="pet-profile-hero"><div class="pet-profile-photo"><img alt="'+escapeHtml(p.name)+'" src="'+escapeHtml(imageUrl)+'" onerror="this.style.display=\'none\'"></div>'+
- '<div class="pet-profile-title"><h2>'+escapeHtml(p.name)+'</h2><span class="pill '+(statusLabel==='Out'?'out':'')+'">'+escapeHtml(statusLabel)+'</span><div class="small" style="margin-top:8px">Live status from Home Assistant</div></div></div>'+
+ '<div class="pet-profile-title"><h2>'+escapeHtml(p.name)+'</h2><span class="pill '+(statusLabel==='Out'?'out':'')+'">'+escapeHtml(statusLabel)+'</span><div class="small" style="margin-top:8px">Latest confirmed movement or Home Assistant status</div></div></div>'+
  '<div class="card pet-control-panel"><h3>In / Out</h3><div class="small">Update '+escapeHtml(p.name)+'’s current location</div>'+
  '<div class="actions">'+(status==='Home'?'<button class="button secondary" onclick="manualSureLocation(\''+id+'\',\'outside\')">Mark Out</button>':status==='Away'?'<button class="button secondary" onclick="manualSureLocation(\''+id+'\',\'inside\')">Mark In</button>':'<span class="small">Waiting for a tracked location.</span>')+'</div>'+
  (manualLocationNotice?'<p class="small" role="status">'+escapeHtml(manualLocationNotice)+'</p>':'')+'</div>'+
@@ -550,6 +550,9 @@ async function refreshCloud(force=false){
    const data=await r.json();if(!String(data.status).startsWith('connected'))throw Error(data.status);
    activity=data.events||[];historyInfo={total:data.total,pagesFetched:data.pagesFetched,oldestEvent:data.oldestEvent,stopReason:data.stopReason,paginationMethod:data.paginationMethod,paginationTests:data.paginationTests};loaded=true;lastFetched=Date.now();
    try{sessionStorage.setItem('pet-sure-activity-v211',JSON.stringify({events:activity}));}catch{}
+   // The Activity feed can lead a stale Home Assistant presence entity.
+   // Repaint pet cards immediately after a confirmed movement is retrieved.
+   if(window.sureLiveStates)renderReconciledPresence();
   }catch{if(!loaded){const box=document.getElementById('homeEvents');if(box)box.innerHTML='<div class="empty">Sure Petcare activity unavailable.</div>';}}
   finally{pending=null;paint();}
  })();
@@ -582,7 +585,38 @@ function paintSureLocations(){
 }
 let manualLocationNotice='';
 const manualOverrides=new Map();
-function effectivePetStatus(name){const key=String(name).toLowerCase(),tracked=window.sureLiveStates?.[key]||'Unknown',override=manualOverrides.get(key);if(!override)return tracked;if(tracked===override.status){manualOverrides.delete(key);if(manualLocationNotice.startsWith('Synchronising'))manualLocationNotice='Location confirmed by Home Assistant.';return tracked;}if(Date.now()-override.at>180000){manualOverrides.delete(key);if(manualLocationNotice.startsWith('Synchronising'))manualLocationNotice='Home Assistant has not confirmed the change yet. Showing its tracked location.';return tracked;}return override.status;}
+function latestConfirmedMovement(name){
+ const key=String(name).toLowerCase();
+ // Only live timeline events. Looking outside (direction 0) is not a crossing.
+ const latest=activity.filter(e=>e.type===0&&(e.pets||[]).includes(key))
+  .map(e=>({at:Date.parse(e.at),direction:direction(e)}))
+  .filter(e=>Number.isFinite(e.at)&&(e.direction==='In'||e.direction==='Out')&&e.at<=Date.now()+60000)
+  .sort((a,b)=>b.at-a.at)[0];
+ return latest||null;
+}
+function reconciledPresence(name){
+ const key=String(name).toLowerCase();
+ const tracked=window.sureLiveStates?.[key]||'Unknown';
+ const lastChanged=Date.parse(window.sureLiveChanged?.[key]||'');
+ const movement=latestConfirmedMovement(key);
+ if(!movement||Date.now()-movement.at>24*3600000)return tracked;
+ // If HA has a newer state transition, it wins; never let an old timeline
+ // movement overwrite newer HA data.
+ if(Number.isFinite(lastChanged)&&lastChanged>=movement.at)return tracked;
+ return movement.direction==='In'?'Home':'Away';
+}
+function renderReconciledPresence(){
+ const list=document.getElementById('pet-live-list');
+ if(list)list.innerHTML=names.filter(n=>typeof activePets==='function'&&activePets().some(p=>p.name.toLowerCase()===n.toLowerCase()))
+  .map(n=>'<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+escapeHtml(n)+'</span><strong>'+(effectivePetStatus(n)==='Home'?'In':effectivePetStatus(n)==='Away'?'Out':'Unknown')+'</strong></div>').join('');
+ document.querySelectorAll('#homePets .pet-tap').forEach(card=>{
+  const name=card.querySelector('.petname')?.textContent?.trim();if(!name)return;
+  const status=effectivePetStatus(name),pill=card.querySelector('.pill');
+  if(pill){pill.textContent=status==='Home'?'In':status==='Away'?'Out':status;pill.classList.toggle('out',status==='Away');}
+ });
+ if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
+}
+function effectivePetStatus(name){const key=String(name).toLowerCase(),tracked=reconciledPresence(key),override=manualOverrides.get(key);if(!override)return tracked;if(tracked===override.status){manualOverrides.delete(key);if(manualLocationNotice.startsWith('Synchronising'))manualLocationNotice='Location confirmed by Home Assistant.';return tracked;}if(Date.now()-override.at>180000){manualOverrides.delete(key);if(manualLocationNotice.startsWith('Synchronising'))manualLocationNotice='Home Assistant has not confirmed the change yet. Showing its tracked location.';return tracked;}return override.status;}
 
 window.effectivePetStatus=effectivePetStatus;
 window.manualSureLocation=function(id,where){
@@ -611,7 +645,8 @@ if(statusPending||document.hidden)return;
 statusPending=true;
 try{const r=await fetch('./live/status',{cache:'no-store',signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('unavailable');const d=await r.json();
 window.sureLiveStates=Object.fromEntries(d.pets.map(p=>[p.name,p.state==='on'?'Home':p.state==='off'?'Away':'Unknown']));
-document.getElementById('pet-live-list').innerHTML=names.filter(n=>typeof activePets==='function'&&activePets().some(p=>p.name.toLowerCase()===n.toLowerCase())).map(n=>{const p=d.pets.find(x=>x.name===n.toLowerCase());const status=effectivePetStatus(n);return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+n+'</span><strong>'+(status==='Home'?'In':status==='Away'?'Out':status)+'</strong></div>';}).join('');
+window.sureLiveChanged=Object.fromEntries(d.pets.map(p=>[p.name,p.changed]));
+renderReconciledPresence();
 document.getElementById('pet-live-time').textContent='Updated '+new Date(d.updated).toLocaleTimeString('en-GB');
 document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim();const p=d.pets.find(x=>x.name===name?.toLowerCase());if(!p)return;const pill=card.querySelector('.pill');const detail=card.querySelector('.small');const status=effectivePetStatus(name);if(pill){pill.textContent=status==='Home'?'In':status==='Away'?'Out':status;pill.classList.toggle('out',status==='Away');}if(detail){detail.innerHTML=detail.innerHTML.replace(/Sample status only|Awaiting live status/g,'Live status from Sure Petcare');}});
 }catch(e){if(!window.sureLiveStates)document.getElementById('pet-live-list').textContent='Live status unavailable. Check Home Assistant app logs.';}

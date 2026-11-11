@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.18.142 — 11 November 2026
+- Show the installed Home Assistant add-on version dynamically in Pet HQ Settings, with no hard-coded version in the interface.
+- Show the matching release notes from the bundled changelog in Pet HQ Settings.
+- Retain the v2.18.141 household email correction and existing curfews, In/Out, locking and USB archive.
+
+
 ## v2.18.141 — 11 November 2026
 - Correct the locked primary household email for Nicky from the previous address to the authorised address on add-on startup.
 - Preserve the existing household account and permissions, and avoid duplicate accounts if the corrected email is already registered.

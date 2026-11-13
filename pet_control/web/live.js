@@ -120,7 +120,6 @@ async function refreshFlap(){
   const actual=await readFlap();
   flapConfirmed=actual;flapLastSuccess=Date.now();flapMessage='';
  }catch{
-  // Preserve the last verified position, but do not permit commands on stale data.
   flapMessage='Checking flap connection… Last confirmed: '+(flapConfirmed==='indoor_only'?'Indoor only':flapConfirmed==='normal'?'Free Access':'not available');
   scheduleFlapRetry();
  }finally{flapPending=false;syncFlapUI();}
@@ -182,8 +181,6 @@ try{const saved=JSON.parse(sessionStorage.getItem('pet-sure-activity-v211')||'nu
 function direction(e){
  if(e.type!==0)return 'Unknown';
  const raw=e.details||{};
- // Sure Petcare movement diagnostics: 1/side 1 = entered, 2/side 0 = left.
- // Direction 0 is not a confirmed crossing and must not be counted.
  const value=raw.direction;
  if(value===1||value==='1')return 'In';
  if(value===2||value==='2')return 'Out';
@@ -251,7 +248,7 @@ async function refreshPetPermissionDisplay(force=false){
     petPermissionCache=next;petPermissionCheckedAt=Date.now();
     try{sessionStorage.setItem('pet-control-permissions',JSON.stringify({cache:next,at:petPermissionCheckedAt}));}catch{}
    }
-  }catch{/* Keep the last confirmed state rather than resetting every cat to Checking. */}
+  }catch{}
   finally{petPermissionRequest=null;}
   if(document.getElementById('petDetailContent')?.closest('.page.active'))window.renderSurePetDetail();
   if(document.getElementById('home')?.classList.contains('active')&&typeof render==='function')render();
@@ -360,7 +357,6 @@ function refreshRangeFromCache(dates){
 async function loadGraphRange(){
  const token=++rangeToken,dates=rangeDays();
  rangeLoading=true;rangeError='';
- // Draw once immediately; do not repeatedly rebuild the graph while downloading.
  refreshRangeFromCache(dates);
  const missing=dates.filter(day=>!archiveCache.has(day));
  let cursor=0,failures=0;
@@ -381,7 +377,6 @@ async function loadGraphRange(){
    }catch{failures++;}
   }
  }
- // Two requests at once protects Home Assistant on slower devices.
  await Promise.all(Array.from({length:Math.min(2,missing.length)},worker));
  if(token!==rangeToken)return;
  rangeLoading=false;
@@ -510,7 +505,6 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElement
 function renderGraphs(){
  const page=document.getElementById('timeline');
  if(!page?.classList.contains('active'))return;
- // Keep preset graph ranges anchored to the current UK day, including after midnight.
  if(graphRange!==0&&graphEnd!==graphToday()){graphEnd=graphToday();graphStart=shiftDay(graphEnd,1-graphRange);loadGraphRange();return;}
  if(!rangeInitialized){rangeInitialized=true;rangeLoading=false;}
  let root=document.getElementById('pet-graphs');
@@ -550,8 +544,6 @@ async function refreshCloud(force=false){
    const data=await r.json();if(!String(data.status).startsWith('connected'))throw Error(data.status);
    activity=data.events||[];historyInfo={total:data.total,pagesFetched:data.pagesFetched,oldestEvent:data.oldestEvent,stopReason:data.stopReason,paginationMethod:data.paginationMethod,paginationTests:data.paginationTests};loaded=true;lastFetched=Date.now();
    try{sessionStorage.setItem('pet-sure-activity-v211',JSON.stringify({events:activity}));}catch{}
-   // The Activity feed can lead a stale Home Assistant presence entity.
-   // Repaint pet cards immediately after a confirmed movement is retrieved.
    if(window.sureLiveStates)renderReconciledPresence();
   }catch{if(!loaded){const box=document.getElementById('homeEvents');if(box)box.innerHTML='<div class="empty">Sure Petcare activity unavailable.</div>';}}
   finally{pending=null;paint();}
@@ -569,25 +561,14 @@ async function refreshSureLocations(force=false){
   const data=await response.json();
   if(data.status!=='connected')throw Error('Locations unavailable');
   sureLocationLast=Date.now();
-  // Preserve the Home Assistant tracking feed; direct position lookup is only for manual controls.
   window.surePetLocations=Object.fromEntries(data.pets.map(p=>[p.name.toLowerCase(),p]));
-  // Do not replace tracked presence with an unverified direct location lookup.
- }catch(e){const el=document.getElementById('pet-live-time');if(el)el.textContent='Direct Sure Petcare update unavailable — showing Home Assistant status';}
+ }catch(e){const el=document.getElementById('pet-live-time');if(el&&!streamConnected)el.textContent='Direct Sure Petcare update unavailable — showing Home Assistant status';}
  finally{sureLocationPending=false;}
-}
-function paintSureLocations(){
- const locations=window.surePetLocations;if(!locations)return;
- const list=document.getElementById('pet-live-list');
- if(list)list.innerHTML=names.map(n=>{const p=locations[n.toLowerCase()];return '<div style="display:flex;justify-content:space-between;padding:5px 0"><span>'+escapeHtml(n)+'</span><strong>'+(p?.location==='inside'?'In':p?.location==='outside'?'Out':'Unknown')+'</strong></div>';}).join('');
- const stamp=document.getElementById('pet-live-time');if(stamp)stamp.textContent='Sure Petcare checked '+new Date().toLocaleTimeString('en-GB');
- document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim()?.toLowerCase();const p=locations[name];if(!p)return;const pill=card.querySelector('.pill');if(pill){pill.textContent=p.location==='inside'?'In':p.location==='outside'?'Out':'Unknown';pill.classList.toggle('out',p.location==='outside');}});
- if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();
 }
 let manualLocationNotice='';
 const manualOverrides=new Map();
 function latestConfirmedMovement(name){
  const key=String(name).toLowerCase();
- // Only live timeline events. Looking outside (direction 0) is not a crossing.
  const latest=activity.filter(e=>e.type===0&&(e.pets||[]).includes(key))
   .map(e=>({at:Date.parse(e.at),direction:direction(e)}))
   .filter(e=>Number.isFinite(e.at)&&(e.direction==='In'||e.direction==='Out')&&e.at<=Date.now()+60000)
@@ -600,8 +581,6 @@ function reconciledPresence(name){
  const lastChanged=Date.parse(window.sureLiveChanged?.[key]||'');
  const movement=latestConfirmedMovement(key);
  if(!movement||Date.now()-movement.at>24*3600000)return tracked;
- // If HA has a newer state transition, it wins; never let an old timeline
- // movement overwrite newer HA data.
  if(Number.isFinite(lastChanged)&&lastChanged>=movement.at)return tracked;
  return movement.direction==='In'?'Home':'Away';
 }
@@ -627,33 +606,90 @@ window.manualSureLocation=function(id,where){
 };
 window.confirmManualSureLocation=async function(id,where){
  const p=(state.pets||[]).find(x=>x.id===id);if(!p||sureLocationBusy)return;
- closeModal();const live=window.surePetLocations?.[p.name.toLowerCase()];
- if(!live?.petId){manualLocationNotice='Could not identify '+p.name+' in Sure Petcare. Please try again shortly.';window.renderSurePetDetail();return;}
+ closeModal();
+ const targetPetId=p.surePetId||window.surePetLocations?.[p.name.toLowerCase()]?.petId;
+ if(!targetPetId){manualLocationNotice='Could not identify '+p.name+' in Sure Petcare. Sync pets in the Pets tab first.';window.renderSurePetDetail();return;}
  sureLocationBusy=true;manualLocationNotice='Updating '+p.name+'…';window.renderSurePetDetail();
  try{
-  const response=await fetch('./sure/locations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({petId:live.petId,location:where}),signal:AbortSignal.timeout(20000)});
+  const response=await fetch('./sure/locations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({petId:targetPetId,location:where}),signal:AbortSignal.timeout(20000)});
   const data=await response.json();if(!response.ok)throw Error(data.error||'Location update failed');
   manualOverrides.set(p.name.toLowerCase(),{status:where==='inside'?'Home':'Away',at:Date.now()});
   manualLocationNotice='Synchronising with Home Assistant…';window.renderSurePetDetail();
-  sureLocationLast=0;await refreshSureLocations(true);await refresh();
+  await refresh();
  }catch(e){manualLocationNotice='Unable to update location: '+(e.message||'Please try again.');}
  finally{sureLocationBusy=false;window.renderSurePetDetail();}
 };
+
+function applyLiveStatusPayload(d){
+ if(!d||!Array.isArray(d.pets))return;
+ window.sureLiveStates=Object.fromEntries(d.pets.map(p=>[p.name,p.state==='on'?'Home':p.state==='off'?'Away':'Unknown']));
+ window.sureLiveChanged=Object.fromEntries(d.pets.map(p=>[p.name,p.changed]));
+ renderReconciledPresence();
+ const stamp=document.getElementById('pet-live-time');
+ if(stamp)stamp.textContent=(streamConnected?'Live · ':'Updated ')+new Date(d.updated||Date.now()).toLocaleTimeString('en-GB');
+ document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim();const p=d.pets.find(x=>x.name===name?.toLowerCase());if(!p)return;const pill=card.querySelector('.pill');const detail=card.querySelector('.small');const status=effectivePetStatus(name);if(pill){pill.textContent=status==='Home'?'In':status==='Away'?'Out':status;pill.classList.toggle('out',status==='Away');}if(detail){detail.innerHTML=detail.innerHTML.replace(/Sample status only|Awaiting live status/g,'Live status from Sure Petcare');}});
+}
+
 let statusPending=false;
 async function refresh(){
 if(statusPending||document.hidden)return;
 statusPending=true;
-try{const r=await fetch('./live/status',{cache:'no-store',signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('unavailable');const d=await r.json();
-window.sureLiveStates=Object.fromEntries(d.pets.map(p=>[p.name,p.state==='on'?'Home':p.state==='off'?'Away':'Unknown']));
-window.sureLiveChanged=Object.fromEntries(d.pets.map(p=>[p.name,p.changed]));
-renderReconciledPresence();
-document.getElementById('pet-live-time').textContent='Updated '+new Date(d.updated).toLocaleTimeString('en-GB');
-document.querySelectorAll('#homePets .pet-tap').forEach(card=>{const name=card.querySelector('.petname')?.textContent?.trim();const p=d.pets.find(x=>x.name===name?.toLowerCase());if(!p)return;const pill=card.querySelector('.pill');const detail=card.querySelector('.small');const status=effectivePetStatus(name);if(pill){pill.textContent=status==='Home'?'In':status==='Away'?'Out':status;pill.classList.toggle('out',status==='Away');}if(detail){detail.innerHTML=detail.innerHTML.replace(/Sample status only|Awaiting live status/g,'Live status from Sure Petcare');}});
-}catch(e){if(!window.sureLiveStates)document.getElementById('pet-live-list').textContent='Live status unavailable. Check Home Assistant app logs.';}
+try{
+ const r=await fetch('./live/status',{cache:'no-store',signal:AbortSignal.timeout(12000)});
+ if(r.status===401||r.status===403){location.reload();return;}
+ if(!r.ok)throw Error('unavailable');
+ const ct=r.headers.get('content-type')||'';
+ if(!ct.includes('application/json')){location.reload();return;}
+ const d=await r.json();
+ applyLiveStatusPayload(d);
+}catch(e){if(!window.sureLiveStates){const list=document.getElementById('pet-live-list');if(list)list.textContent='Live status unavailable. Check Home Assistant app logs.';}}
 finally{statusPending=false;if(typeof window.renderSurePetDetail==='function')window.renderSurePetDetail();}
 }
 window.refreshPetPresence=refresh;
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshSureLocations(true);refreshFlap();refreshCloud();refreshPetPermissionDisplay();});else{mount();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();syncCurfewPermissionStatus();}});
-setInterval(refresh,5000);setInterval(refreshSureLocations,20000);setInterval(refreshFlap,15000);setInterval(refreshWholeCurfew,10000);setInterval(syncCurfewPermissionStatus,3000);syncCurfewPermissionStatus();refreshWholeCurfew();setInterval(refreshCloud,20000);
+
+/* Real-time Server-Sent Events stream with automatic fallback to polling */
+let liveEventSource=null,streamConnected=false,streamReconnectTimer=null;
+function updateStreamBadge(connected){
+ streamConnected=connected;
+ const badge=document.getElementById('petHqStreamBadge');
+ if(!badge)return;
+ badge.textContent=connected?'● Live':'● Polling';
+ badge.style.background=connected?'#dcfce7':'#fef3c7';
+ badge.style.color=connected?'#166534':'#92400e';
+}
+function connectLiveStream(){
+ if(typeof EventSource==='undefined'||document.hidden)return;
+ if(liveEventSource){try{liveEventSource.close();}catch{}liveEventSource=null;}
+ try{
+  const es=new EventSource('./live/stream',{withCredentials:true});
+  liveEventSource=es;
+  es.onopen=()=>{updateStreamBadge(true);};
+  es.addEventListener('status',ev=>{
+   try{applyLiveStatusPayload(JSON.parse(ev.data));}catch{}
+  });
+  es.addEventListener('flap',ev=>{
+   try{
+    const d=JSON.parse(ev.data);
+    if(d.status==='normal'||d.status==='indoor_only'){flapConfirmed=d.status;flapLastSuccess=Date.now();flapMessage='';syncFlapUI();}
+   }catch{}
+  });
+  es.addEventListener('curfew',()=>{refreshWholeCurfew();syncCurfewPermissionStatus();});
+  es.addEventListener('activity',()=>{refreshCloud(true);});
+  es.onerror=()=>{
+   updateStreamBadge(false);
+   try{es.close();}catch{}
+   liveEventSource=null;
+   clearTimeout(streamReconnectTimer);
+   streamReconnectTimer=setTimeout(connectLiveStream,5000);
+  };
+ }catch{updateStreamBadge(false);}
+}
+
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();connectLiveStream();});else{mount();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();connectLiveStream();}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();syncCurfewPermissionStatus();connectLiveStream();}else if(liveEventSource){try{liveEventSource.close();}catch{}liveEventSource=null;updateStreamBadge(false);}});
+setInterval(()=>{if(!streamConnected)refresh();},5000);
+setInterval(()=>{if(!streamConnected)refreshFlap();},15000);
+setInterval(()=>{if(!streamConnected)refreshWholeCurfew();},10000);
+setInterval(()=>{if(!streamConnected)syncCurfewPermissionStatus();},3000);
+syncCurfewPermissionStatus();refreshWholeCurfew();setInterval(refreshCloud,20000);
 })();

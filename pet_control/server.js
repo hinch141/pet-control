@@ -97,6 +97,97 @@ let lastMovementObservedAt=0;
 const observedMovementIds=new Set();
 const lastPetStates=new Map();
 
+// Real-time Home Assistant WebSocket state cache + SSE broadcast hub
+const sseClients=new Set();
+const liveEntityCache=new Map();
+let haWsConnected=false,haWs=null,haWsMsgId=1,haWsSubId=null,haWsReconnectTimer=null;
+const trackedEntities=new Set([...pets.map(p=>'binary_sensor.'+p),'lock.my_flap_locked_out']);
+
+function broadcastSse(event,payload){
+ if(!sseClients.size)return;
+ const frame='event: '+event+'\ndata: '+JSON.stringify(payload)+'\n\n';
+ for(const client of sseClients){
+  try{client.write(frame);}catch{sseClients.delete(client);}
+ }
+}
+
+function buildStatusSnapshot(){
+ return {
+  pets:pets.map(p=>{
+   const ent=liveEntityCache.get('binary_sensor.'+p);
+   return {name:p,state:ent?.state||'unknown',changed:ent?.last_changed||null};
+  }),
+  updated:new Date().toISOString()
+ };
+}
+
+function buildFlapSnapshot(){
+ const ent=liveEntityCache.get('lock.my_flap_locked_out');
+ const state=String(ent?.state||'unknown');
+ const status=state==='locked'?'indoor_only':state==='unlocked'?'normal':'unknown';
+ return {entity_id:'lock.my_flap_locked_out',state,status,updated:ent?.last_updated||null};
+}
+
+function applyHaEntityState(entityObj){
+ if(!entityObj||!trackedEntities.has(entityObj.entity_id))return;
+ const id=entityObj.entity_id;
+ liveEntityCache.set(id,{state:String(entityObj.state||'unknown'),last_changed:entityObj.last_changed||null,last_updated:entityObj.last_updated||null});
+ if(id.startsWith('binary_sensor.')){
+  const petName=id.slice('binary_sensor.'.length);
+  const previous=lastPetStates.get(petName);
+  if(previous!==undefined&&previous!==entityObj.state){
+   const movement=entityObj.state==='on'?'In':entityObj.state==='off'?'Out':null;
+   if(movement)reliabilityDiagnostics.record('home_assistant','pet_status_change',Date.now(),{ok:true,pet:petName,movement,eventAt:entityObj.last_changed});
+  }
+  lastPetStates.set(petName,entityObj.state);
+  broadcastSse('status',buildStatusSnapshot());
+ }else if(id==='lock.my_flap_locked_out'){
+  broadcastSse('flap',buildFlapSnapshot());
+ }
+}
+
+function connectHaWebSocket(){
+ if(!token||typeof WebSocket==='undefined')return;
+ if(haWs){try{haWs.close();}catch{}haWs=null;}
+ haWsConnected=false;
+ try{
+  const ws=new WebSocket('ws://supervisor/core/websocket');
+  haWs=ws;
+  ws.onmessage=ev=>{
+   let msg;try{msg=JSON.parse(String(ev.data));}catch{return;}
+   if(msg.type==='auth_required'){
+    ws.send(JSON.stringify({type:'auth',access_token:token}));
+   }else if(msg.type==='auth_ok'){
+    haWsConnected=true;
+    const statesId=haWsMsgId++;
+    haWsSubId=haWsMsgId++;
+    ws.send(JSON.stringify({id:statesId,type:'get_states'}));
+    ws.send(JSON.stringify({id:haWsSubId,type:'subscribe_events',event_type:'state_changed'}));
+   }else if(msg.type==='result'&&Array.isArray(msg.result)){
+    for(const ent of msg.result)applyHaEntityState(ent);
+   }else if(msg.type==='event'&&msg.event?.event_type==='state_changed'){
+    applyHaEntityState(msg.event.data?.new_state);
+   }
+  };
+  ws.onclose=()=>{
+   haWsConnected=false;
+   haWs=null;
+   clearTimeout(haWsReconnectTimer);
+   haWsReconnectTimer=setTimeout(connectHaWebSocket,5000);
+  };
+  ws.onerror=()=>{try{ws.close();}catch{}};
+ }catch{
+  clearTimeout(haWsReconnectTimer);
+  haWsReconnectTimer=setTimeout(connectHaWebSocket,5000);
+ }
+}
+connectHaWebSocket();
+setInterval(()=>{
+ for(const client of sseClients){
+  try{client.write(': ping\n\n');}catch{sseClients.delete(client);}
+ }
+},25000);
+
 // Durable pet archive: stored in Home Assistant add-on /data, not browser storage.
 const petArchiveFile='/data/pet-hq-archived-pets.json';
 let petArchive={version:1,pets:{}};
@@ -112,10 +203,14 @@ function writePetArchive(){
 const curfewFile='/data/whole_house_curfew.json';
 let curfew={enabled:false,ranges:[{start:'10:00',end:'10:01'}],phase:'off',ownsLock:false,lastError:'',override:false};
 try{const saved=JSON.parse(fs.readFileSync(curfewFile,'utf8'));curfew={...curfew,...saved};if(!Array.isArray(saved.ranges))curfew.ranges=[{start:saved.start||'10:00',end:saved.end||'10:01'}];if(saved.enabled&&saved.date){curfew.enabled=!!saved.ownsLock;curfew.phase=saved.ownsLock?'active':'off';curfew.lastError='Previous one-off schedule was migrated. Review the new daily time ranges.';}}catch{}
-function saveCurfew(){fs.writeFileSync(curfewFile,JSON.stringify(curfew),{mode:0o600});}
+function saveCurfew(){fs.writeFileSync(curfewFile,JSON.stringify(curfew),{mode:0o600});broadcastSse('curfew',{wholeHouse:true});}
 function londonDateTime(date=new Date()){const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date);const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));return {date:p.year+'-'+p.month+'-'+p.day,time:p.hour+':'+p.minute};}
 let curfewBusy=false;
 async function readCurfewFlap(){
+ if(haWsConnected&&liveEntityCache.has('lock.my_flap_locked_out')){
+  const cached=liveEntityCache.get('lock.my_flap_locked_out').state;
+  if(cached==='locked'||cached==='unlocked')return cached;
+ }
  if(!token)throw Error('Home Assistant connection unavailable');
  const r=await fetch('http://supervisor/core/api/states/lock.my_flap_locked_out',{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(6000)});
  if(!r.ok)throw Error('Unable to read flap state');
@@ -165,7 +260,7 @@ setTimeout(()=>curfewTick().catch(()=>{}),2000);
 const petCurfewFile='/data/pet_curfews.json';
 let petCurfewState={pets:{}};
 try{const saved=JSON.parse(fs.readFileSync(petCurfewFile,'utf8'));if(saved&&saved.pets&&typeof saved.pets==='object')petCurfewState=saved;}catch{}
-const savePetCurfews=()=>fs.writeFileSync(petCurfewFile,JSON.stringify(petCurfewState),{mode:0o600});
+const savePetCurfews=()=>{fs.writeFileSync(petCurfewFile,JSON.stringify(petCurfewState),{mode:0o600});broadcastSse('curfew',{individual:true});};
 const petCurfewEventFile='/data/pet_curfew_events.json';
 let petCurfewEvents=[];
 try{const saved=JSON.parse(fs.readFileSync(petCurfewEventFile,'utf8'));if(Array.isArray(saved))petCurfewEvents=saved.slice(-150);}catch{}
@@ -354,6 +449,25 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     catch{res.writeHead(403,{'Content-Type':'text/plain','Cache-Control':'no-store'});return res.end('Access denied');}
   }else if(peer!=='172.30.32.2'){res.writeHead(403);return res.end();}
   const url=new URL(req.url,'http://localhost');
+
+  if(url.pathname==='/live/stream'&&req.method==='GET'){
+    res.writeHead(200,{
+      'Content-Type':'text/event-stream; charset=utf-8',
+      'Cache-Control':'no-cache, no-store',
+      'Connection':'keep-alive',
+      'X-Accel-Buffering':'no'
+    });
+    sseClients.add(res);
+    req.on('close',()=>sseClients.delete(res));
+    if(liveEntityCache.size){
+      res.write('event: status\ndata: '+JSON.stringify(buildStatusSnapshot())+'\n\n');
+      if(liveEntityCache.has('lock.my_flap_locked_out')){
+        res.write('event: flap\ndata: '+JSON.stringify(buildFlapSnapshot())+'\n\n');
+      }
+    }
+    return;
+  }
+
   if(url.pathname==='/pet-hq/release-info'&&req.method==='GET'){
     try{
       const configuration=fs.readFileSync('/app/config.yaml','utf8');
@@ -726,12 +840,19 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
   if(req.method!=='GET'){res.writeHead(405);return res.end();}
   if(url.pathname==='/live/flap'){
     const diagnosticStart=Date.now();
+    if(haWsConnected&&liveEntityCache.has('lock.my_flap_locked_out')){
+      const snap=buildFlapSnapshot();
+      reliabilityDiagnostics.record('home_assistant','flap_state',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:snap.updated});
+      res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});
+      return res.end(JSON.stringify(snap));
+    }
     if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({status:'unavailable'}));}
     try{
       const response=await fetch('http://supervisor/core/api/states/lock.my_flap_locked_out',{
         headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(6000)});
       if(!response.ok)throw Error('HA state request failed');
       const data=await response.json();
+      applyHaEntityState(data);
       const state=String(data.state||'unknown');
       const status=state==='locked'?'indoor_only':state==='unlocked'?'normal':'unknown';
       reliabilityDiagnostics.record('home_assistant','flap_state',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:data.last_updated});
@@ -824,7 +945,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       const q=x=>'"'+String(x??'').replace(/"/g,'""')+'"';
       const lines=['Time (UTC),Pet,Movement'];
       for(const e of events)for(const pet of e.pets||[])lines.push([e.at,pet,e.type===0&&Number(e.details?.direction)===1?'In':e.type===0&&Number(e.details?.direction)===2?'Out':'Other'].map(q).join(','));
-      res.writeHead(200,{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="pet-control-history.csv"'});return res.end(lines.join('\\r\\n'));
+      res.writeHead(200,{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="pet-control-history.csv"'});return res.end(lines.join('\r\n'));
     }
     res.writeHead(200,{'Content-Type':'application/json; charset=utf-8',...(url.searchParams.get('download')==='1'?{'Content-Disposition':'attachment; filename="pet-control-history.json"'}:{})});
     return res.end(JSON.stringify({events,total:events.length}));
@@ -911,12 +1032,18 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
   }
   if(url.pathname==='/live/status'){
     const diagnosticStart=Date.now();
+    if(haWsConnected&&pets.every(p=>liveEntityCache.has('binary_sensor.'+p))){
+      const snap=buildStatusSnapshot();
+      reliabilityDiagnostics.record('home_assistant','pet_presence',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:snap.pets.map(p=>p.changed).filter(Boolean).sort().at(-1)||null});
+      res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(snap));
+    }
     if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Home Assistant access unavailable'}));}
     try{
       const result=await Promise.all(pets.map(async p=>{
         const response=await fetch('http://supervisor/core/api/states/binary_sensor.'+p,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(8000)});
         if(!response.ok)throw Error('Home Assistant returned '+response.status);
         const data=await response.json();
+        liveEntityCache.set('binary_sensor.'+p,{state:data.state,last_changed:data.last_changed,last_updated:data.last_updated});
         return {name:p,state:data.state,changed:data.last_changed};
       }));
       for(const p of result){
@@ -1004,7 +1131,7 @@ async function archiveBackfill(){
     oldest=Math.min(oldest,Date.parse(at));
     if(map.has(id))continue;
     const ids=[...(Array.isArray(e.pets)?e.pets:[]),...(Array.isArray(e.movements)?e.movements:e.movements?[e.movements]:[])];
-    const names=[...new Set(ids.map(p=>String(p.name||lookup.get(String(p.pet_id??p.petId??p.id))||'').toLowerCase()).filter(n=>pets.includes(n)))];
+    const names=[...new Set(ids.map(p=>String(p.name||petLookup.get(String(p.pet_id??p.petId??p.id))||'').toLowerCase()).filter(n=>pets.includes(n)))];
     const m=Array.isArray(e.movements)?e.movements[0]:e.movements;
     const source=[m,e.movement,e.data?.movement,e.data,e].find(x=>x&&typeof x==='object'&&(x.direction!==undefined||x.side!==undefined||x.where!==undefined))||{};
     const details={};for(const k of ['where','direction','position','side','type','movement_type'])if(['string','number','boolean'].includes(typeof source[k]))details[k]=source[k];

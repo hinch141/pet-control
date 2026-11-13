@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.18.143 — 13 November 2026
+- Replace HTTP polling loops with a persistent Home Assistant WebSocket listener and real-time Server-Sent Events stream (`/live/stream`).
+- Fix manual In/Out location overrides on pet profiles to use the stored Sure Petcare pet ID directly.
+- Add a live connection status indicator to the Home screen header while preserving curfews, USB archive, and Cloudflare Access controls.
+
 ## v2.18.142 — 11 November 2026
 - Show the installed Home Assistant add-on version dynamically in Pet HQ Settings, with no hard-coded version in the interface.
 - Show the matching release notes from the bundled changelog in Pet HQ Settings.

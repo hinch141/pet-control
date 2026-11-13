@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.18.144 - Household User Editor & Cloudflare Access Sync
+- Added an **Edit** button to every household user card (including primary accounts) so display names and email addresses can be corrected directly in the Users tab.
+- Added automatic Cloudflare Access policy synchronization when adding, editing, or removing household users.
+- Removed the temporary one-time email migration script now that user records are editable from the UI.
+
 ## v2.18.143 — 13 November 2026
 - Replace HTTP polling loops with a persistent Home Assistant WebSocket listener and real-time Server-Sent Events stream (`/live/stream`).
 - Fix manual In/Out location overrides on pet profiles to use the stored Sure Petcare pet ID directly.

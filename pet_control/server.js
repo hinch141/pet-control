@@ -66,22 +66,34 @@ for(const member of family.members){
 function saveFamily(){
  const tmp=familyFile+'.tmp';fs.writeFileSync(tmp,JSON.stringify(family,null,2),{mode:0o600});fs.renameSync(tmp,familyFile);
 }
-// One-time household email correction. Existing primary account stays intact.
-// Run before access verification is configured, then persist atomically.
-const previousNickyEmail='nicky.hinchliffe@gmail.com';
-const correctedNickyEmail='nicky.hinchliffe1@gmail.com';
-const oldNicky=family.members.find(m=>m.email===previousNickyEmail);
-if(oldNicky){
- const existing=family.members.find(m=>m.email===correctedNickyEmail);
- if(existing){
-  // Preserve the primary account and avoid duplicate email identities.
-  existing.primary=Boolean(existing.primary||oldNicky.primary);
-  if(oldNicky.primary&&(!existing.name||existing.name===correctedNickyEmail.split('@')[0]))existing.name=oldNicky.name||'Nicky';
-  family.members=family.members.filter(m=>m!==oldNicky);
- }else{
-  oldNicky.email=correctedNickyEmail;
- }
- saveFamily();
+async function syncCloudflareAccessEmails(members){
+ const accountId=String(standaloneOptions.cf_account_id||'').trim();
+ const policyId=String(standaloneOptions.cf_policy_id||'').trim();
+ const apiToken=String(standaloneOptions.cf_api_token||'').trim();
+ if(!accountId||!policyId||!apiToken)return {synced:false,reason:'not_configured'};
+ const endpoint='https://api.cloudflare.com/client/v4/accounts/'+encodeURIComponent(accountId)+'/access/policies/'+encodeURIComponent(policyId);
+ const headers={'Authorization':'Bearer '+apiToken,'Content-Type':'application/json'};
+ const getRes=await fetch(endpoint,{headers,signal:AbortSignal.timeout(12000)});
+ if(!getRes.ok)throw Error('Cloudflare policy read failed (HTTP '+getRes.status+')');
+ const current=(await getRes.json()).result;
+ if(!current||!Array.isArray(current.include))throw Error('Unexpected Cloudflare policy format');
+ const nonEmailRules=current.include.filter(rule=>!rule.email);
+ const emailRules=members.map(m=>({email:{email:m.email}}));
+ const payload={
+  name:current.name,
+  decision:current.decision,
+  include:[...nonEmailRules,...emailRules],
+  exclude:Array.isArray(current.exclude)?current.exclude:[],
+  require:Array.isArray(current.require)?current.require:[]
+ };
+ if(current.session_duration)payload.session_duration=current.session_duration;
+ if(typeof current.purpose_justification_required==='boolean')payload.purpose_justification_required=current.purpose_justification_required;
+ if(current.purpose_justification_prompt)payload.purpose_justification_prompt=current.purpose_justification_prompt;
+ if(typeof current.approval_required==='boolean')payload.approval_required=current.approval_required;
+ if(Array.isArray(current.approval_groups))payload.approval_groups=current.approval_groups;
+ const putRes=await fetch(endpoint,{method:'PUT',headers,body:JSON.stringify(payload),signal:AbortSignal.timeout(12000)});
+ if(!putRes.ok)throw Error('Cloudflare policy update failed (HTTP '+putRes.status+')');
+ return {synced:true};
 }
 const emailAllowed=email=>family.members.some(m=>m.email===email);
 try{if(family.members.some(m=>(m.email==='hinchi1@gmail.com'&&m.name==='John')||(m.email==='nicky.hinchliffe@gmail.com'&&m.name==='Nicky')))saveFamily();}catch(e){console.error('Family name update failed:',e.message);}
@@ -492,23 +504,44 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
    if(!standaloneRequest)return reply(403,{error:'Manage family members through the signed-in Pet HQ app'});
    if(!verifiedEmail||!emailAllowed(verifiedEmail))return reply(403,{error:'Not authorised'});
-   if(req.method==='GET')return reply(200,{members:family.members,viewer:verifiedEmail});
+   if(req.method==='GET')return reply(200,{members:family.members,viewer:verifiedEmail,cfSyncConfigured:Boolean(standaloneOptions.cf_account_id&&standaloneOptions.cf_policy_id&&standaloneOptions.cf_api_token)});
    try{
     let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>4096)return reply(413,{error:'Request too large'});}
     const body=JSON.parse(raw),email=String(body.email||'').trim().toLowerCase(),name=String(body.name||'').trim();
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>120)return reply(400,{error:'Valid email required'});
+    const nextMembers=family.members.map(m=>({...m}));
     if(body.action==='add'){
      if(!name||name.length>60)return reply(400,{error:'Name required'});
-     if(family.members.some(m=>m.email===email))return reply(409,{error:'Email already registered'});
-     family.members.push({email,name,primary:false,addedAt:new Date().toISOString()});
+     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>120)return reply(400,{error:'Valid email required'});
+     if(nextMembers.some(m=>m.email===email))return reply(409,{error:'Email already registered'});
+     nextMembers.push({email,name,primary:false,addedAt:new Date().toISOString()});
+    }else if(body.action==='edit'){
+     const originalEmail=String(body.originalEmail||'').trim().toLowerCase();
+     const target=nextMembers.find(m=>m.email===originalEmail);
+     if(!target)return reply(404,{error:'Member not found'});
+     if(!name||name.length>60)return reply(400,{error:'Name required'});
+     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>120)return reply(400,{error:'Valid email required'});
+     if(email!==originalEmail&&nextMembers.some(m=>m.email===email))return reply(409,{error:'Email already registered'});
+     target.name=name;
+     target.email=email;
+     target.updatedAt=new Date().toISOString();
     }else if(body.action==='remove'){
-     const existing=family.members.find(m=>m.email===email);
+     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>120)return reply(400,{error:'Valid email required'});
+     const existing=nextMembers.find(m=>m.email===email);
      if(!existing)return reply(404,{error:'Member not found'});
      if(existing.primary)return reply(403,{error:'Primary household members are protected'});
-     if(family.members.length<=1)return reply(409,{error:'Cannot remove last member'});
-     family.members=family.members.filter(m=>m.email!==email);
+     if(nextMembers.length<=1)return reply(409,{error:'Cannot remove last member'});
+     const idx=nextMembers.indexOf(existing);
+     nextMembers.splice(idx,1);
     }else return reply(400,{error:'Invalid action'});
-    saveFamily();return reply(200,{members:family.members,viewer:verifiedEmail});
+    let cfSync={synced:false,reason:'not_configured'};
+    try{
+     cfSync=await syncCloudflareAccessEmails(nextMembers);
+    }catch(cfErr){
+     return reply(502,{error:'Cloudflare Access sync failed — no changes saved: '+cfErr.message});
+    }
+    family.members=nextMembers;
+    saveFamily();
+    return reply(200,{members:family.members,viewer:verifiedEmail,cfSynced:cfSync.synced});
    }catch(e){return reply(500,{error:'Family update failed: '+e.message});}
   }
   if(url.pathname==='/pet-hq/archive'&&(req.method==='GET'||req.method==='POST')){
@@ -1131,7 +1164,7 @@ async function archiveBackfill(){
     oldest=Math.min(oldest,Date.parse(at));
     if(map.has(id))continue;
     const ids=[...(Array.isArray(e.pets)?e.pets:[]),...(Array.isArray(e.movements)?e.movements:e.movements?[e.movements]:[])];
-    const names=[...new Set(ids.map(p=>String(p.name||petLookup.get(String(p.pet_id??p.petId??p.id))||'').toLowerCase()).filter(n=>pets.includes(n)))];
+    const names=[...new Set(ids.map(p=>String(p.name||lookup.get(String(p.pet_id??p.petId??p.id))||'').toLowerCase()).filter(n=>pets.includes(n)))];
     const m=Array.isArray(e.movements)?e.movements[0]:e.movements;
     const source=[m,e.movement,e.data?.movement,e.data,e].find(x=>x&&typeof x==='object'&&(x.direction!==undefined||x.side!==undefined||x.where!==undefined))||{};
     const details={};for(const k of ['where','direction','position','side','type','movement_type'])if(['string','number','boolean'].includes(typeof source[k]))details[k]=source[k];

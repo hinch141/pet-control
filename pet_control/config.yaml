@@ -1,5 +1,5 @@
 name: Pet Control
-version: "2.18.143"
+version: "2.18.144"
 slug: pet_control
 description: Pet Control interface with live Sure Petcare presence
 arch:
@@ -26,9 +26,15 @@ options:
   access_team_domain: ""
   access_audience: ""
   access_emails: ""
+  cf_account_id: ""
+  cf_policy_id: "f02fbc5d-0036-478f-bb44-eb6ea667a903"
+  cf_api_token: ""
 schema:
   sure_email: str?
   sure_password: password?
   access_team_domain: str?
   access_audience: str?
   access_emails: str?
+  cf_account_id: str?
+  cf_policy_id: str?
+  cf_api_token: password?

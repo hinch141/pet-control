@@ -530,6 +530,15 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       return reply(200,{members:family.members,viewer:verifiedEmail,cfSynced:false});
      }
 
+     // A display-name change does not alter access. Save it locally without
+     // touching Cloudflare's security policy or relying on its API.
+     if(email===originalEmail){
+      target.name=name;
+      target.updatedAt=new Date().toISOString();
+      family.members=nextMembers;
+      saveFamily();
+      return reply(200,{members:family.members,viewer:verifiedEmail,cfSynced:false});
+     }
      target.name=name;
      target.email=email;
      target.updatedAt=new Date().toISOString();

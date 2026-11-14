@@ -73,7 +73,10 @@ async function syncCloudflareAccessEmails(members){
  if(!accountId||!policyId||!apiToken)return {synced:false,reason:'not_configured'};
  const endpoint='https://api.cloudflare.com/client/v4/accounts/'+encodeURIComponent(accountId)+'/access/policies/'+encodeURIComponent(policyId);
  const headers={'Authorization':'Bearer '+apiToken,'Content-Type':'application/json'};
- const getRes=await fetch(endpoint,{headers,signal:AbortSignal.timeout(12000)});
+ // Bound the entire Cloudflare transaction, not each request separately. A stalled
+ // external API must not leave the household save hanging until the tunnel fails.
+ const deadline=AbortSignal.timeout(8000);
+ const getRes=await fetch(endpoint,{headers,signal:deadline});
  if(!getRes.ok)throw Error('Cloudflare policy read failed (HTTP '+getRes.status+')');
  const current=(await getRes.json()).result;
  if(!current||!Array.isArray(current.include))throw Error('Unexpected Cloudflare policy format');
@@ -91,7 +94,7 @@ async function syncCloudflareAccessEmails(members){
  if(current.purpose_justification_prompt)payload.purpose_justification_prompt=current.purpose_justification_prompt;
  if(typeof current.approval_required==='boolean')payload.approval_required=current.approval_required;
  if(Array.isArray(current.approval_groups))payload.approval_groups=current.approval_groups;
- const putRes=await fetch(endpoint,{method:'PUT',headers,body:JSON.stringify(payload),signal:AbortSignal.timeout(12000)});
+ const putRes=await fetch(endpoint,{method:'PUT',headers,body:JSON.stringify(payload),signal:deadline});
  if(!putRes.ok)throw Error('Cloudflare policy update failed (HTTP '+putRes.status+')');
  return {synced:true};
 }
@@ -543,7 +546,8 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     try{
      cfSync=await syncCloudflareAccessEmails(nextMembers);
     }catch(cfErr){
-     return reply(502,{error:'Cloudflare Access sync failed — no changes saved: '+cfErr.message});
+     console.error('Family Cloudflare sync failed:',String(cfErr.message||cfErr));
+     return reply(502,{error:'Cloudflare Access did not confirm the update. No Pet HQ user changes were saved. Please retry; if it continues, check the add-on log.'});
     }
     family.members=nextMembers;
     saveFamily();

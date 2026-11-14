@@ -1,3 +1,11 @@
+## v2.18.154 — Prepared family synchronisation safety corrections (not deployed)
+- Fail closed if Cloudflare API credentials are missing.
+- Refuse policy updates when existing email rules differ from Pet HQ family membership or non-email inclusion rules are present.
+- Verify Cloudflare's update response before committing Pet HQ membership changes.
+- Protect primary-account email changes pending verification and block changes to the currently signed-in account.
+- Report local registry write failures explicitly and preserve in-memory state.
+- Pending confirmation of the correct Cloudflare policy and API permissions; no changes to Cloudflare configuration.
+
 ## v2.18.153 — Family display-name save
 - Edit a family member's display name without changing their email or contacting Cloudflare Access.
 - Email changes, additions and removals still require the existing Cloudflare policy synchronisation and do not bypass security.

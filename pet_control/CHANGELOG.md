@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.18.150 — v146 recovery hotfix
+- Restore v2.18.146 application snapshot after repository damage.
+- Correct Dockerfile to copy existing web/live.js through web/ rather than nonexistent root live.js.
+- Fix Open Web UI HTTP 405 by checking req.method instead of url.method.
+- No changes to Pet HQ data, curfew controls or user records.
+
 ## v2.18.145
 - Added self-healing session and connection checks in live.js to recover seamlessly from mobile cache clearing.
 - Enhanced server.js family/user update endpoints to guarantee clean JSON error responses instead of HTML page fallbacks.

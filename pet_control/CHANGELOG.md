@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.18.146
+- Fixed a JSON parsing crash (`Unexpected token '<'`) occurring when saving family profile changes with no modifications.
+- Added an immediate JSON success response pass-through for identical profile save requests to prevent unnecessary error fallbacks.
+
 ## v2.18.145
 - Added self-healing session and connection checks in live.js to recover seamlessly from mobile cache clearing.
 - Enhanced server.js family/user update endpoints to guarantee clean JSON error responses instead of HTML page fallbacks.

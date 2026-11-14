@@ -1,0 +1,1020 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#142c29"><title>Hinchliffe Pet HQ</title><link rel="manifest" href="./manifest.webmanifest" crossorigin="use-credentials"><link rel="apple-touch-icon" href="./icon-192.png"><meta name="theme-color" content="#142c29"><style>
+:root{--ink:#19312d;--muted:#6b7c76;--bg:#f5f7f3;--card:#fff;--accent:#176b58;--line:#e5ebe5;--pale:#e9f3ed;--red:#b44942}*{box-sizing:border-box}body{margin:0;background:var(--bg);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink)}button,input,select{font:inherit}button{cursor:pointer}header{background:#142c29;color:#fff;padding:24px 20px 27px;border-radius:0 0 25px 25px}header .top{display:flex;justify-content:space-between;align-items:center;max-width:900px;margin:auto}header h1{font-size:27px;letter-spacing:-.8px;margin:0}header p{margin:3px 0 0;color:#c3d8cf;font-size:13px}.mark{width:42px;height:42px;display:grid;place-items:center;border:1px solid #5a7c70;border-radius:14px;font-size:23px}.shell{max-width:900px;margin:auto;padding:18px 16px 100px}.notice{background:#fff3d9;color:#795a18;border:1px solid #eedba8;border-radius:13px;padding:10px 13px;font-size:12px;margin-bottom:17px}.sectionhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:20px 0 12px}.sectionhead h2{font-size:20px;letter-spacing:-.4px;margin:0}.muted{color:var(--muted);font-size:13px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 4px 16px #15332807}.pethead{display:flex;justify-content:space-between;align-items:center}.avatar img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}.avatar{overflow:hidden;flex:0 0 54px;width:54px;height:54px;display:grid;place-items:center;background:var(--pale);border-radius:14px;font-size:23px}.pill{display:inline-block;border-radius:50px;padding:4px 9px;background:#e8f2e9;color:#226449;font-size:11px;font-weight:700}.pill.out{background:#fff0df;color:9b6228}.petname{font-weight:750;font-size:18px;margin:14px 0 4px}.small{font-size:12px;color:var(--muted)}.button{border:0;background:var(--accent);color:#fff;border-radius:11px;padding:10px 13px;font-weight:650}.button.secondary{background:var(--pale);color:var(--accent)}.button.danger{background:#fae9e7;color:var(--red)}.button.outline{background:#fff;color:var(--ink);border:1px solid var(--line)}.button:active{transform:scale(.98)}.button:disabled{opacity:.45}.wide{width:100%}.row{display:flex;align-items:center;gap:10px}.between{justify-content:space-between}.stack{display:grid;gap:12px}.listrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid var(--line)}.listrow:last-child{border:0}.field{display:grid;gap:5px;font-size:12px;font-weight:700;color:var(--muted)}input,select{width:100%;padding:11px 12px;border:1px solid #dbe4dc;border-radius:11px;background:white;color:var(--ink);min-width:0}input[type=checkbox]{width:auto;accent-color:var(--accent)}.filters{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tabs{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:center;padding:8px 6px calc(8px + env(safe-area-inset-bottom));z-index:10;box-shadow:0 -6px 20px #122b220a}.tabs button{border:0;background:none;color:#75857d;display:grid;gap:3px;place-items:center;padding:7px 3px;width:min(20%,110px);font-size:11px;font-weight:650}.tabs button span{font-size:21px}.tabs button.active{color:var(--accent);background:#eef5ef;border-radius:12px}.page{display:none}.page.active{display:block}.actions{display:flex;gap:7px;flex-wrap:wrap}.actions .button{padding:8px 10px;font-size:12px}.curfew{display:grid;grid-template-columns:1fr 1fr;gap:10px}.switchrow{display:flex;align-items:center;gap:8px}.empty{text-align:center;padding:26px;color:var(--muted)}.toast{position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:#19312d;color:#fff;padding:10px 16px;border-radius:12px;z-index:20;display:none;max-width:90%;text-align:center}.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#e7f0e8;padding:16px;border-radius:15px}.stat strong{display:block;font-size:27px}.eventicon{background:var(--pale);width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:18px}.modalwrap{position:fixed;inset:0;background:#142c2970;display:none;align-items:end;justify-content:center;z-index:30}.modal{background:white;border-radius:22px 22px 0 0;padding:22px;width:100%;max-width:500px;max-height:90vh;overflow:auto}.modal h3{margin:0 0 16px;font-size:20px}.modal .stack{margin-bottom:15px}@media(min-width:650px){.cards{grid-template-columns:repeat(4,1fr)}.modalwrap{align-items:center}.modal{border-radius:22px}.shell{padding-top:24px}}
+/* v1.1 Android scrolling and readable pet list fix */
+html{height:auto;min-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+body{height:auto;min-height:100dvh;overflow-x:hidden;overflow-y:visible;touch-action:pan-y}
+.shell{padding-bottom:calc(115px + env(safe-area-inset-bottom));min-height:calc(100dvh - 100px)}
+.cards{grid-template-columns:minmax(0,1fr)}
+.card{min-width:0}.petname{overflow-wrap:anywhere}
+.tabs{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+@media(min-width:480px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:850px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* v1.2 individual pet detail */
+.pet-tap{width:100%;text-align:left;border:1px solid var(--line);cursor:pointer;color:inherit;font:inherit}.pet-tap:focus-visible{outline:3px solid var(--accent)}.detailhero{display:flex;gap:14px;align-items:center}.detailhero .avatar{flex-basis:84px;width:84px;height:84px;font-size:42px}.detailhero h2{margin:0;font-size:26px}.detail-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0}.detail-actions button{min-height:45px}.detail-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.detail-summary .stat{background:#f0f5f1}.detail-section{margin-top:18px}.detail-section h3{font-size:17px;margin:0 0 10px}.back-button{margin-bottom:15px}.pet-tap .openhint{font-size:12px;color:var(--accent);margin-top:10px;font-weight:700}
+.schedule-heading{font-weight:750;margin:8px 0 10px;font-size:14px}.schedule-area{border-top:1px solid var(--line);padding-top:8px}.schedule-area .curfew{margin-top:6px}.daynav{display:flex;align-items:center;justify-content:space-between;gap:12px}.daynav>.button{min-width:53px;min-height:46px;font-size:20px}.daytitle{text-align:center;display:grid;gap:2px}.daytitle strong{font-size:18px}.daytitle .small{font-size:12px}#todayButton{padding:8px}.day-schedules{display:grid;gap:8px}.day-schedule{display:grid;grid-template-columns:minmax(65px,.8fr) minmax(0,1fr) minmax(0,1fr) auto;align-items:end;gap:7px;padding:9px 0;border-bottom:1px solid var(--line)}.day-schedule strong{font-size:12px;align-self:center}.day-schedule .field{font-size:10px}.day-schedule input{padding:9px 3px;font-size:13px}.day-schedule .button{padding:10px 7px;font-size:11px}.override-box{background:#f0f5ef;border-radius:13px;padding:13px;display:grid;gap:9px}.override-box .button{justify-self:start}@media(max-width:370px){.day-schedule{grid-template-columns:1fr 1fr auto}.day-schedule strong{grid-column:1/-1}} 
+/* v2.18.85 visual refresh — presentation only */
+:root{--ink:#17334b;--muted:#51667a;--bg:#eef5fc;--card:#fff;--accent:#087baf;--line:#d8e6f1;--pale:#e0f3fc;--red:#bf3d55}
+body{background:linear-gradient(180deg,#d8f0ff 0,#eff7ff 245px,#f5f8fd 100%)}
+header{background:linear-gradient(125deg,#0879b3 0%,#1765bd 54%,#744ec2 100%);box-shadow:0 8px 24px #164c8b25}
+header p{color:#e8f5ff}.mark{border-color:#ffffff75;background:#ffffff20!important}
+.card{border-color:#d9e8f4;box-shadow:0 6px 20px #1b5c9812}
+.pet-tap{background:linear-gradient(145deg,#fff 48%,#e7f7ff);border:1px solid #b9dff6;box-shadow:0 7px 20px #0879b315;transition:transform .15s,box-shadow .15s}
+.pet-tap:nth-child(4n+2){background:linear-gradient(145deg,#fff 45%,#fff0e5);border-color:#f5d4b6}
+.pet-tap:nth-child(4n+3){background:linear-gradient(145deg,#fff 45%,#f0eaff);border-color:#d8c7f7}
+.pet-tap:nth-child(4n+4){background:linear-gradient(145deg,#fff 45%,#e5f8ef);border-color:#bde8d2}
+.pet-tap:active{transform:scale(.985)}.petname{color:#173b70}.avatar{background:#d9f1ff}
+.pill{background:#d9f6e7;color:#12613b}.pill.out{background:#ffe6d1;color:#a34716}
+.stat{background:linear-gradient(135deg,#d9efff,#e9e3ff)}.stats .stat:nth-child(2){background:linear-gradient(135deg,#fff0d8,#ffe2e4)}
+.detail-summary .stat{background:#e3f2ff}.detail-summary .stat:nth-child(even){background:#f3e9ff}
+.button{background:linear-gradient(115deg,#087db4,#2864bb)}.button.secondary{background:#dcefff;color:#145d9b}.button.outline{border-color:#b8d3e8}
+.tabs{background:#fff;border-color:#d4e7f5}.tabs button.active{background:#dcefff;color:#095b9e}
+.eventicon{background:#dff3ff;color:#076fa8}.listrow:nth-child(even) .eventicon{background:#f4e6ff;color:#7246aa}
+.openhint{color:#086ca8!important}.pet-daily-entries{display:inline-flex;align-items:center;gap:5px;margin-top:10px;padding:6px 10px;border-radius:11px;background:#ffffffcf;border:1px solid #b8dcf0;color:#145c8e;font-size:12px;font-weight:750}
+.notice{background:#fff0d9;color:#855019}.toast{background:#183d61}
+
+/* v2.18.85 richer, modern interface — CSS only, no behaviour changes */
+:root{--accent:#056bdb;--bg:#e8f2ff;--pale:#d9eaff;--line:#cbdff1;--muted:#52617a}
+body{background:linear-gradient(155deg,#d8edff 0%,#f1f6ff 42%,#fff4f1 100%)}
+header{background:linear-gradient(115deg,#0649a8 0%,#087dce 46%,#8a43cd 100%);border-radius:0 0 32px 32px;padding-top:28px;padding-bottom:32px}
+header h1{font-size:clamp(22px,5.6vw,30px);letter-spacing:-.8px;line-height:1.15}header p{font-size:13px;letter-spacing:.3px;margin-top:7px}
+.sectionhead h2{color:#193d70;font-weight:800}.card{border-radius:22px;border:1px solid #d2e3f4;box-shadow:0 9px 24px #22518b16}
+.pet-tap{border-radius:23px;padding:19px;box-shadow:0 9px 25px #2569ad20}
+.pet-tap:nth-child(4n+1){background:linear-gradient(140deg,#fff 32%,#d7edff 100%);border-color:#a9d5ff}
+.pet-tap:nth-child(4n+2){background:linear-gradient(140deg,#fff 32%,#ffe1cf 100%);border-color:#ffccaa}
+.pet-tap:nth-child(4n+3){background:linear-gradient(140deg,#fff 32%,#eadcff 100%);border-color:#d8bbff}
+.pet-tap:nth-child(4n+4){background:linear-gradient(140deg,#fff 32%,#d4f8e9 100%);border-color:#b0ead2}
+.pet-tap .avatar{box-shadow:0 3px 10px #163e6c20;border:2px solid #ffffffad}.petname{font-size:20px}
+.button{border-radius:14px;padding:12px 15px;box-shadow:0 3px 10px #1359ad20;min-height:42px}.button.secondary{background:linear-gradient(135deg,#d6eaff,#e5e4ff);color:#164a9b}.button.outline{box-shadow:none}
+.pill{padding:6px 11px;font-size:12px;background:#cbf7dd;color:#11623b}.pill.out{background:#ffe0c5;color:#9e4318}
+.stats .stat{border:1px solid #b8dcff;background:linear-gradient(135deg,#d0eaff,#e3ddff)}.stats .stat:nth-child(2){border-color:#ffd6a9;background:linear-gradient(135deg,#ffebc9,#ffdcdf)}
+.stat{border-radius:18px}.stat strong{color:#184d94}.pet-daily-entries{background:#fff;border:1px solid #acd5f4;box-shadow:0 2px 8px #246aa615}
+.tabs{border-radius:20px 20px 0 0;box-shadow:0 -8px 25px #1e4d8615}.tabs button{border-radius:14px;transition:background .2s}.tabs button.active{background:linear-gradient(140deg,#cbe7ff,#e4dfff);color:#064a9e;font-weight:800}
+input,select{border-radius:13px;border-color:#bed5e9;min-height:43px}input:focus,select:focus{outline:2px solid #4a9bff;outline-offset:1px}
+.eventicon{background:#d7edff;color:#075caa}.listrow:nth-child(2n) .eventicon{background:#f2dcff;color:#8139ad}
+.modal{border:1px solid #d1e4f7;box-shadow:0 12px 45px #16365a30}.override-box{background:#e4f0ff}
+@media(prefers-reduced-motion:reduce){.pet-tap,.tabs button{transition:none}}
+
+/* v2.18.85 dimensional UI — visual styling only */
+:root{--depth-shadow:0 14px 30px #123f7b21,0 3px 7px #174b8512;--depth-inset:inset 0 1px 0 #ffffffd9}
+body{background:radial-gradient(ellipse at 12% 0%,#c7e7ff 0%,transparent 38%),radial-gradient(ellipse at 100% 35%,#ebd9ff 0%,transparent 40%),linear-gradient(155deg,#e6f3ff,#f8faff 65%,#fff1eb)}
+header{background:radial-gradient(ellipse at 85% 0%,#b778ff7a,transparent 45%),linear-gradient(115deg,#0646a4,#087fcb 53%,#6939b5);box-shadow:0 12px 30px #154fa44d,inset 0 -2px 0 #ffffff21}
+.card{background:linear-gradient(155deg,#fff 0%,#f8fbff 100%);border:1px solid #ffffff;box-shadow:var(--depth-shadow),var(--depth-inset);position:relative}
+.pet-tap{box-shadow:0 12px 22px #124f9227,0 3px 5px #154d871a,inset 0 2px 0 #fff;transform:translateY(0);transition:transform .17s ease,box-shadow .17s ease}
+.pet-tap:active{transform:translateY(3px);box-shadow:0 4px 9px #124f9228,inset 0 2px 4px #154d8717}
+.pet-tap .avatar{box-shadow:0 5px 11px #1a4c8b35,inset 0 1px 0 #fff;border:2px solid #fff}
+.button{background:linear-gradient(180deg,#319cf2 0%,#0877cf 52%,#0755b6 100%);border:1px solid #ffffff75;box-shadow:0 5px 0 #074e9d,0 9px 14px #10549b28,inset 0 2px 1px #ffffff85;transform:translateY(0);transition:transform .12s,box-shadow .12s}
+.button:active{transform:translateY(3px);box-shadow:0 2px 0 #074e9d,0 4px 7px #10549b20,inset 0 1px 2px #073f7533}
+.button.secondary{background:linear-gradient(180deg,#f5faff,#d9eaff);border-color:#fff;box-shadow:0 3px 0 #b7cfe7,0 6px 10px #1b57931a,inset 0 1px 0 #fff}
+.button.secondary:active{box-shadow:0 1px 0 #b7cfe7,inset 0 1px 3px #1b579326}
+.button.outline{background:linear-gradient(180deg,#fff,#f1f6fd);box-shadow:0 3px 0 #d0ddec}
+.button.danger{background:linear-gradient(180deg,#fff1f0,#ffdbdf);box-shadow:0 3px 0 #e9b7bf}
+.stats .stat,.detail-summary .stat{box-shadow:0 7px 14px #225a8d1c,inset 0 2px 1px #fff;border:1px solid #ffffffbf}
+.stat strong{text-shadow:0 1px 0 #fff}.pill{box-shadow:inset 0 1px 1px #fff,0 3px 7px #173e6c18;border:1px solid #ffffffb5}
+.pet-daily-entries{box-shadow:0 4px 9px #246aa625,inset 0 1px 0 #fff}.eventicon{box-shadow:inset 0 1px 0 #fff,0 3px 6px #1b579322}
+.tabs{background:linear-gradient(180deg,#fff,#f3f8ff);box-shadow:0 -8px 28px #174d8422;border-top:1px solid #fff}.tabs button.active{box-shadow:inset 0 2px 2px #fff,0 3px 8px #2d63a525}
+.modal{background:linear-gradient(155deg,#fff,#f4f8ff);box-shadow:0 20px 60px #123a6970}
+input,select{box-shadow:inset 0 2px 4px #184c7b0d,0 1px 0 #fff}
+@media(prefers-reduced-motion:reduce){.button,.pet-tap{transition:none}}
+
+/* v2.18.85 installed-app update prompt */
+#pet-hq-update-banner{position:fixed;left:12px;right:12px;bottom:calc(82px + env(safe-area-inset-bottom,0px));z-index:1000;display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:13px 14px;background:linear-gradient(125deg,#073f8c,#106fb4);color:white;border:1px solid #9acaff;border-radius:17px;box-shadow:0 12px 35px #143b6b65;font-size:13px;font-weight:700}
+#pet-hq-update-banner span{flex:1 1 140px}#pet-hq-update-banner button{border:0;border-radius:10px;padding:9px 12px;background:#fff;color:#064a8c;font-weight:800;cursor:pointer}#pet-hq-update-banner button:last-child{background:#ffffff29;color:#fff}
+
+/* Pet HQ navigation refresh: presentation only; existing controls and callbacks retained */
+:root{--ink:#193b32;--muted:#687d73;--bg:#f3f8f3;--accent:#176d50;--line:#e2ece3;--pale:#e9f4e9}
+body{background:linear-gradient(180deg,#e9f3e9,#f8faf7 420px);color:var(--ink)}
+header{background:linear-gradient(130deg,#103e32,#1b6247);border-radius:0 0 30px 30px;box-shadow:0 8px 24px #173d3025}
+header h1{font-size:25px}header p{color:#d0e5d7}
+.shell{max-width:650px;padding:16px 18px calc(120px + env(safe-area-inset-bottom))}
+.sectionhead h2{color:#183d31}
+.card{background:#fff;border:1px solid #e4eee5;box-shadow:0 8px 26px #143c3010;border-radius:22px}
+.button{background:#176d50;box-shadow:none;border:0;transform:none}
+.button:active{transform:scale(.985);box-shadow:none}
+.button.secondary{background:#e7f3e9;color:#205c42;box-shadow:none}
+.button.outline{background:#fff;box-shadow:none;border:1px solid #d8e7db}
+.button.danger{background:#fcebea;box-shadow:none}
+.tabs{background:#fff;border-radius:22px 22px 0 0;border-top:1px solid #e5eee7;box-shadow:0 -6px 22px #143c3012}
+.tabs button.active{background:#e6f2e8;color:#176d50;box-shadow:none}
+.pill{background:#e2f5e8;color:#246a46;box-shadow:none}.pill.out{background:#fff0df;color:#97622a}
+.stat,.stats .stat,.stats .stat:nth-child(2),.detail-summary .stat{background:#e9f4eb;border:0;box-shadow:none}
+.stat strong{color:#194c38}
+input,select{border-color:#d4e4d8;box-shadow:none}input:focus,select:focus{outline-color:#348969}
+.notice{background:#fff3de}
+#home .cards{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:16px;padding:4px 18px 22px;margin:0 -18px;overscroll-behavior-inline:contain;scrollbar-width:none}
+#home .cards::-webkit-scrollbar{display:none}
+#home .pet-tap{flex:0 0 min(84vw,410px);min-width:0;min-height:375px;padding:0;border:0;border-radius:27px;overflow:hidden;scroll-snap-align:center;background:#fff!important;box-shadow:0 13px 28px #133f3022!important;display:flex;flex-direction:column;text-align:left;transform:none}
+#home .pet-tap .pethead{height:245px;position:relative;display:block;background:linear-gradient(145deg,#c5dfc9,#e9f4e8)}
+#home .pet-tap .avatar{height:100%;width:100%;border:0;border-radius:0;box-shadow:none;background:transparent;font-size:88px;display:grid;place-items:center}
+#home .pet-tap .avatar img{width:100%;height:100%;object-fit:cover;border-radius:0}
+#home .pet-tap .pill{position:absolute;right:16px;bottom:15px;padding:8px 14px;background:#ffffffeb;color:#23553f}
+#home .pet-tap .petname{font-size:28px;color:#183b2e;margin:14px 18px 4px}
+#home .pet-tap>.small{margin:0 18px;line-height:1.6;color:#65796d}
+#home .pet-tap .pet-daily-entries{margin:12px 18px 0;align-self:flex-start;background:#edf6ee;border:0;box-shadow:none;color:#1e694a}
+#home .pet-tap .openhint{margin:12px 18px 20px;color:#176d50!important}
+#home .pet-tap:focus-visible{outline:3px solid #24845e;outline-offset:-3px}
+#home .stats{margin-bottom:14px}
+#home .household-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0 24px}
+#home .household-controls .card{padding:16px;min-width:0}
+#home .household-controls .card strong{font-size:15px}
+#home .household-controls .card .small{font-size:12px}
+#home .household-controls .card .button{width:100%;margin-top:10px}
+#home .household-controls .switchrow{margin-top:9px}
+#home .household-controls .house-control-heading{display:flex;flex-direction:column;gap:7px}
+#home .household-controls .house-icon{font-size:26px}
+#home .household-controls #houseCurfewStatus{min-height:30px}
+#home .household-controls .house-curfew-note{margin-bottom:0}
+#petdetail .detailhero .avatar{width:108px;height:108px;flex-basis:108px;border-radius:22px}
+#petdetail .detailhero .avatar img{object-fit:cover}
+@media(min-width:650px){#home .pet-tap{flex-basis:390px}}
+@media(max-width:370px){#home .household-controls{grid-template-columns:1fr}}
+/* Pet HQ photographic cards and individual pet screen, v2.18.95 */
+#home .pet-tap{min-height:405px;border-radius:28px;box-shadow:0 16px 40px #103f3030!important}
+#home .pet-tap .pethead{height:285px;background:linear-gradient(135deg,#c7d9cd,#769782)}
+#home .pet-tap .avatar{font-size:0}
+#home .pet-tap .avatar img{object-position:center 42%}
+#home .pet-tap .petname{font-size:30px;letter-spacing:-.7px;margin-top:16px}
+#home .pet-tap .openhint{font-size:13px}
+#home .pet-tap .pet-daily-entries{font-weight:600}
+#petdetail .pet-profile-hero{overflow:hidden;border-radius:26px;background:#fff;box-shadow:0 14px 35px #133f3020;margin-bottom:16px}
+#petdetail .pet-profile-photo{height:270px;background:#cbded0;position:relative}
+#petdetail .pet-profile-photo img{display:block;width:100%;height:100%;object-fit:cover}
+#petdetail .pet-profile-title{padding:18px 20px}
+#petdetail .pet-profile-title h2{margin:0 0 6px;font-size:30px}
+#petdetail .pet-profile-title .pill{font-size:13px}
+#petdetail .pet-control-panel{padding:19px;margin:12px 0;border-radius:22px}
+#petdetail .pet-control-panel h3{font-size:18px;margin:0 0 7px}
+#petdetail .pet-control-panel .button{min-height:45px}
+#petdetail .pet-control-panel .actions{margin-top:14px}
+#petdetail .pet-control-panel .actions .button{flex:1 1 125px}
+#petdetail .pet-activity-card{margin-top:16px;padding:19px}
+#petdetail .pet-activity-card h3{margin:0 0 10px}
+#petdetail .pet-profile-back{margin-bottom:14px}
+/* Pet HQ unified confirmation and editor presentation */
+.modalwrap{padding:14px;background:rgba(11,35,27,.56);backdrop-filter:blur(5px)}
+.modal{background:#fff;border:1px solid #e2ece5;border-radius:26px 26px 0 0;box-shadow:0 24px 70px #0c302b35;padding:24px 22px calc(25px + env(safe-area-inset-bottom));color:#193b32}
+.modal h3{font-size:22px;letter-spacing:-.4px;line-height:1.25;margin:0 0 12px;color:#143d2e}
+.modal p{line-height:1.55;color:#405b4d}
+.modal .small{color:#62786d}
+.modal .row{gap:10px;flex-wrap:wrap}
+.modal .button{min-height:45px;border-radius:13px;font-weight:650}
+.modal .button.outline{border:1px solid #d5e4d9}
+.modal .listrow{border-radius:14px;background:#f3f8f3;padding:12px}
+.modal .field input,.modal .field select{min-height:43px}
+.modal:focus{outline:none}
+@media(min-width:650px){.modal{border-radius:26px;max-width:510px;padding:28px}}
+#home .pet-hq-card{cursor:default;padding-bottom:16px}#home .pet-hq-card .pethead{cursor:pointer}#home .pet-hq-card .pet-card-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 16px 8px}#home .pet-hq-card .pet-card-controls .button{font-size:13px;min-height:43px;padding:9px 6px}#home .pet-hq-card .pet-card-controls .button:last-child{grid-column:1/-1}#home .pet-hq-card .pet-card-more{margin:0 16px 8px;width:calc(100% - 32px);min-height:42px}#home .household-controls{grid-template-columns:1fr;gap:12px}#home .household-controls .card{padding:20px}#home .household-controls .house-control-heading strong{font-size:19px}
+/* v2.18.143: compact red/blue refresh and read-only access indicators. */
+:root{--accent:#1766d6;--pale:#e9f1ff;--line:#d8e3f3;--ink:#21324c;--muted:#52647d}
+body{background:linear-gradient(180deg,#f0f5ff,#fff 370px)}
+header{background:linear-gradient(112deg,#c91e39 0%,#f04450 48%,#a91037 100%);box-shadow:0 8px 23px #b71d3b24}
+header p{color:#fff0f2}.mark{border-color:#ffffff80}
+#home .pet-hq-card{border-color:#d7e5f6;box-shadow:0 7px 22px #1c44851b}
+#home .pet-hq-card .petname{color:#263b62}
+#home .pet-card-controls .button{background:linear-gradient(135deg,#edf3ff,#dce9ff);color:#174a98;border:1px solid #c5d9f8;box-shadow:0 3px 7px #174a9815;font-weight:750}
+#home .pet-card-controls .button:active{transform:scale(.98)}
+#home .pet-access-indicator{display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 32px);margin:8px 16px 0;padding:6px 11px;border-radius:999px;border:1px solid #cbd7eb;background:#f3f6fc;color:#44536b;font-size:12px;font-weight:750;line-height:1.3}
+#home .pet-access-indicator.restricted{background:#ffe8eb;border-color:#f3b9c1;color:#9f1936}
+#home .pet-access-indicator.free{background:#e5f1ff;border-color:#b7d5ff;color:#1457a6}
+#home .pet-access-indicator.pending{background:#fff2da;border-color:#f5d79c;color:#82560d}
+#home .pet-access-indicator .status-dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+#home .pet-hq-card .pet-access-detail{margin:5px 16px 0;font-size:11px;color:#60718b}
+.tabs button.active{color:#b71c3b;background:#fff0f2}
+
+/* v2.18.143 — brighter styling across all screens, compact status always visible */
+:root{--accent:#1764dc;--ink:#1d3055;--muted:#4c6284;--bg:#f4f6ff;--card:#fff;--line:#d1ddf1;--pale:#e8f0ff;--red:#d62b4c}
+body{background:linear-gradient(145deg,#eaf3ff 0%,#fff5f5 42%,#f3eeff 100%);color:var(--ink)}
+header{background:linear-gradient(110deg,#cf173c,#f0445c 53%,#a91e61);box-shadow:0 9px 27px #bd24502d}
+.sectionhead h2,.petname,.modal h3{color:#253d79}
+.card{border-color:#cadbf2;box-shadow:0 7px 22px #24498a16}
+.button{background:linear-gradient(120deg,#0878ee,#394cdd);color:#fff;border:0;box-shadow:0 4px 11px #1452bd2c}
+.button.secondary{background:linear-gradient(125deg,#dceaff,#e4e1ff);color:#174fa7;border:1px solid #c0d4fa;box-shadow:0 3px 8px #255bc31a}
+.button.danger{background:linear-gradient(120deg,#ffdae0,#ffe9ec);color:#a71e3c}
+.button.outline{background:#fff;color:#214a91;border:1px solid #c1d4ef}
+.button:focus-visible,.tabs button:focus-visible{outline:3px solid #f4a12e;outline-offset:2px}
+.tabs{background:#fff;border-top:2px solid #e1d5f3;box-shadow:0 -6px 24px #203b7920}
+.tabs button{color:#566989}.tabs button.active{color:#c21f4c;background:#ffe8f0}
+.stat,.stats .stat{background:linear-gradient(135deg,#d5ebff,#e6ddff);border:1px solid #c4d9fa}
+.stats .stat:nth-child(2){background:linear-gradient(135deg,#ffe7d3,#ffe0e8);border-color:#ffd3b5}
+.eventicon{background:#e2eaff;color:#2754c7}.listrow:nth-child(even) .eventicon{background:#ffe6f0;color:#bd315a}
+.notice{background:#fff0d7;border-color:#f7d69c;color:#825014}
+.modal{border-color:#d5e0f4;color:#23385e}.modal h3{color:#253d79}.modal p{color:#4b5e7d}.modal .listrow{background:#f2f5ff}
+input,select,textarea{border-color:#c7d6ef;accent-color:#215de0}
+#home .pet-tap:nth-child(4n+1){background:linear-gradient(145deg,#fff 28%,#d9ecff);border-color:#9cc9ff}
+#home .pet-tap:nth-child(4n+2){background:linear-gradient(145deg,#fff 28%,#ffe5d5);border-color:#ffc39d}
+#home .pet-tap:nth-child(4n+3){background:linear-gradient(145deg,#fff 28%,#f0dfff);border-color:#d8b1fc}
+#home .pet-tap:nth-child(4n+4){background:linear-gradient(145deg,#fff 28%,#ffe1ed);border-color:#ffb9d4}
+#home .pet-access-indicator{display:inline-flex!important;visibility:visible!important;opacity:1!important}
+#home .pet-access-detail{font-weight:650;color:#3f557a}
+#home .pet-card-controls .button{background:linear-gradient(125deg,#dceaff,#e5e3ff);color:#164eab;border:1px solid #bad0fb}
+
+/* v2.18.143: tactile surfaces only; no functional or layout changes */
+.button:not(:disabled),.tabs button:not(:disabled){
+ transition:transform .15s ease,box-shadow .18s ease,filter .18s ease;
+ -webkit-tap-highlight-color:transparent;
+}
+.button:not(.outline):not(:disabled){
+ box-shadow:0 4px 0 rgba(19,57,116,.25),0 7px 13px rgba(26,60,120,.16);
+}
+.button.outline:not(:disabled){
+ box-shadow:0 3px 0 rgba(34,70,125,.13),0 5px 10px rgba(26,60,120,.08);
+}
+#home .pet-card-controls .button:not(:disabled){
+ box-shadow:0 4px 0 #9ebae8,0 7px 13px rgba(33,83,164,.14);
+}
+.button:not(:disabled):active,.tabs button:not(:disabled):active{
+ transform:translateY(3px) scale(.985);
+ box-shadow:0 1px 1px rgba(25,55,105,.15);
+ filter:brightness(.96);
+}
+@media (hover:hover) and (pointer:fine){
+ .button:not(:disabled):hover{filter:brightness(1.055);transform:translateY(-1px)}
+}
+.button:disabled{box-shadow:none;opacity:.7}
+@media (prefers-reduced-motion:reduce){
+ .button,.tabs button{transition:none!important}
+ .button:active,.tabs button:active{transform:none!important}
+}
+
+/* v2.18.143 — mobile-friendly raised pet card treatment, scoped to home cards */
+#home .pet-3d-card{
+ position:relative;overflow:hidden;border-radius:23px;
+ background:linear-gradient(150deg,#ffffff 12%,#f4f4ff 72%,#e9edff);
+ border:1px solid #d5d9f5;
+ box-shadow:inset 0 2px 2px #ffffff,0 7px 0 #d5d9ed,0 13px 24px rgba(48,61,125,.15);
+ padding:14px;
+}
+#home .pet-3d-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
+#home .pet-3d-top .pethead{display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 86px}
+#home .pet-3d-top .avatar{width:86px;height:96px;flex:0 0 96px;border-radius:19px;border:2px solid white;box-shadow:0 4px 12px #23346a25}
+#home .pet-3d-top .pill{font-size:11px;padding:4px 10px}
+#home .pet-3d-info{flex:1;min-width:0}
+#home .pet-3d-info .petname{font-size:clamp(18px,3.8vw,23px);margin:0 0 9px;color:#1a2447}
+#home .pet-3d-info .pet-access-indicator{font-size:12px;padding:6px 9px;border-radius:100px;margin:0 0 5px}
+#home .pet-3d-info .pet-access-detail{font-size:11px;line-height:1.3;margin-bottom:6px}
+#home .pet-3d-info .pet-daily-entries{font-size:11px}
+#home .pet-3d-card .pet-card-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+#home .pet-3d-card .pet-card-controls .button{
+ min-width:0;white-space:normal;font-size:clamp(10px,2.4vw,13px);padding:10px 3px;
+ border-radius:14px;color:white;border:1px solid #ffffff88;
+ text-shadow:0 1px 1px #0002;box-shadow:inset 0 2px 2px #ffffff70,0 4px 0 #154b9b,0 7px 12px #264c8c33;
+ background:linear-gradient(180deg,#62adff 0%,#2577e5 52%,#1255bd 100%);
+}
+#home .pet-3d-card .pet-card-controls .button:nth-child(2){background:linear-gradient(180deg,#d784fa,#9d34d8 55%,#761db8);box-shadow:inset 0 2px 2px #ffffff70,0 4px 0 #66158d,0 7px 12px #58218c33}
+#home .pet-3d-card .pet-card-controls .button:nth-child(3){background:linear-gradient(180deg,#60e4e1,#11aeb4 55%,#087f94);box-shadow:inset 0 2px 2px #ffffff70,0 4px 0 #076477,0 7px 12px #126c7733}
+#home .pet-3d-card .pet-card-controls .button:active{transform:translateY(4px);box-shadow:inset 0 2px 5px #0003,0 1px 2px #0002}
+#home .pet-3d-card .pet-card-more{margin-top:11px}
+@media(max-width:680px){#home .pet-3d-top{gap:9px}#home .pet-3d-top .pethead{flex-basis:72px}#home .pet-3d-top .avatar{width:72px;height:82px;flex-basis:82px}}
+@media(prefers-reduced-motion:reduce){#home .pet-3d-card .button{transition:none}}
+
+/* v2.18.143 — spacious pet portraits; preserve v125 tactile controls */
+#home #homePets{grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:20px;align-items:stretch}
+#home .pet-3d-card{padding:18px;overflow:visible;min-width:0}
+#home .pet-3d-top{display:block;margin-bottom:18px}
+#home .pet-3d-top .pethead{position:relative;display:block;width:100%;margin:0 0 14px;cursor:pointer}
+#home .pet-3d-top .avatar{
+ width:100%;height:auto;aspect-ratio:1.55/1;min-height:170px;max-height:270px;
+ border-radius:19px;box-shadow:0 6px 18px #23346a24;
+ border:3px solid #fff;display:block;overflow:hidden;
+}
+#home .pet-3d-top .avatar img{width:100%;height:100%;object-fit:cover;object-position:center}
+#home .pet-3d-top .pill{
+ position:absolute;bottom:13px;right:13px;font-size:12px;padding:7px 13px;
+ background:#e7faee;color:#146044;border:1px solid #bce6c9;box-shadow:0 3px 10px #0002;
+}
+#home .pet-3d-top .pill.out{background:#fff0dd;color:#905018;border-color:#f6d2a2}
+#home .pet-3d-info .petname{font-size:23px;margin:0 0 9px}
+#home .pet-3d-info .pet-access-indicator{margin:0 0 8px;max-width:100%}
+#home .pet-3d-info .pet-access-detail{font-size:12px;margin:0 0 9px}
+#home .pet-3d-info .pet-daily-entries{font-size:12px;margin-top:5px}
+#home .pet-3d-card .pet-card-controls{gap:10px}
+#home .pet-3d-card .pet-card-controls .button{padding:13px 6px;font-size:clamp(11px,2.5vw,14px)}
+@media(max-width:680px){
+ #home #homePets{grid-template-columns:minmax(0,1fr);gap:22px}
+ #home .pet-3d-card{padding:18px}
+ #home .pet-3d-top .pethead{display:block;flex:none}
+ #home .pet-3d-top .avatar{width:100%;height:auto;aspect-ratio:1.55/1;min-height:190px;max-height:none;flex:none}
+}
+
+/* v2.18.143: refined pet cards, strong restriction and curfew labels */
+#home #homePets{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:17px}
+#home .pet-3d-card{
+ padding:17px;border-radius:20px;overflow:hidden;
+ background:#fff;border:1px solid #dbe3ef;
+ box-shadow:0 5px 17px rgba(35,58,101,.10);
+}
+#home .pet-3d-top{display:flex;align-items:center;gap:15px;margin:0 0 17px}
+#home .pet-3d-top .pethead{display:flex;flex:0 0 118px;width:118px;flex-direction:column;align-items:center;gap:7px;margin:0}
+#home .pet-3d-top .avatar{
+ width:118px;height:134px;min-height:0;max-height:none;aspect-ratio:auto;flex:0 0 134px;
+ border:0;border-radius:16px;box-shadow:0 3px 10px rgba(35,58,101,.16);
+}
+#home .pet-3d-top .avatar img{width:100%;height:100%;object-fit:cover}
+#home .pet-3d-top .pill{
+ position:static;font-size:11px;padding:5px 11px;
+ border:1px solid #c9e5d4;box-shadow:none;
+}
+#home .pet-3d-info{min-width:0;flex:1}
+#home .pet-3d-info .petname{font-size:23px;margin:0 0 10px}
+#home .pet-3d-info .pet-access-indicator{
+ display:inline-flex;max-width:100%;margin:0 0 7px;padding:8px 11px;
+ font-size:12px;font-weight:800;border-radius:10px;
+}
+#home .pet-3d-info .pet-access-indicator.free{
+ background:#eaf6f0;border:1px solid #a7d9bc;color:#155e3a;
+}
+#home .pet-3d-info .pet-access-indicator.restricted{
+ background:#b91c38;border:1px solid #8c1229;color:#fff;
+ box-shadow:0 3px 9px #b91c3830;
+}
+#home .pet-3d-info .pet-access-indicator.pending{background:#fff0d7;color:#7c500a;border:1px solid #e9c37e}
+#home .pet-3d-info .pet-access-detail{font-size:12px;line-height:1.4;margin:0 0 9px;color:#53627b;font-weight:650}
+#home .pet-3d-info .pet-access-detail.curfew-scheduled{
+ display:inline-block;background:#6c2ba6;color:#fff;border-radius:9px;
+ padding:6px 10px;font-weight:800;box-shadow:0 3px 9px #6c2ba628;
+}
+#home .pet-3d-info .pet-daily-entries{font-size:12px}
+#home .pet-3d-card .pet-card-controls{gap:8px}
+#home .pet-3d-card .pet-card-controls .button{padding:12px 4px}
+@media(max-width:680px){
+ #home #homePets{grid-template-columns:minmax(0,1fr);gap:18px}
+ #home .pet-3d-card{padding:16px}
+ #home .pet-3d-top{display:flex;gap:13px}
+ #home .pet-3d-top .pethead{display:flex;flex:0 0 112px;width:112px}
+ #home .pet-3d-top .avatar{width:112px;height:132px;min-height:0;max-height:none;flex:0 0 132px;aspect-ratio:auto}
+}
+@media(max-width:360px){
+ #home .pet-3d-top .pethead{flex-basis:96px;width:96px}
+ #home .pet-3d-top .avatar{width:96px;height:118px;flex-basis:118px}
+ #home .pet-3d-info .petname{font-size:20px}
+}
+
+/* v2.18.143 — expansive cat photo as a soft watermark, with readable foreground */
+#home #homePets{grid-template-columns:repeat(auto-fit,minmax(min(100%,350px),1fr));gap:22px}
+#home .pet-3d-card{
+ padding:0 0 16px;border-radius:22px;overflow:hidden;
+ background:#fff;border:1px solid #dbe3ef;box-shadow:0 6px 19px rgba(35,58,101,.12);
+}
+#home .pet-3d-top{
+ position:relative;display:block;height:270px;margin:0 0 16px;
+ overflow:hidden;background:linear-gradient(110deg,#fff 0%,#f4f6ff 100%);
+}
+#home .pet-3d-top .pethead{position:static;display:block;width:auto;margin:0}
+#home .pet-3d-top .avatar{
+ position:absolute;inset:0 0 0 auto;width:86%;height:100%;
+ min-height:0;max-height:none;aspect-ratio:auto;display:block;
+ border:0;border-radius:0;box-shadow:none;background:transparent;
+}
+#home .pet-3d-top .avatar img{
+ width:100%;height:100%;object-fit:contain;object-position:right center;
+ filter:saturate(.95);opacity:.88;
+}
+#home .pet-3d-top::after{
+ content:"";position:absolute;inset:0;pointer-events:none;
+ background:linear-gradient(90deg,#fff 0%,#ffffffed 20%,#ffffffb8 39%,#ffffff12 75%,transparent 100%);
+}
+#home .pet-3d-top .pill{
+ position:absolute;right:14px;top:14px;bottom:auto;z-index:2;
+ padding:6px 12px;border-radius:999px;background:#e7f7ee;color:#17603e;
+ border:1px solid #b7dfc7;box-shadow:0 2px 8px #0001;
+}
+#home .pet-3d-top .pill.out{background:#fff0dd;color:#935319;border-color:#f3d0a3}
+#home .pet-3d-info{
+ position:absolute;z-index:2;left:17px;bottom:16px;width:min(63%,260px);
+ padding:0;min-width:0;flex:none;
+}
+#home .pet-3d-info .petname{font-size:25px;margin:0 0 10px;text-shadow:0 1px 2px #fff}
+#home .pet-3d-info .pet-access-indicator{margin:0 0 7px;max-width:100%;font-size:12px}
+#home .pet-3d-info .pet-access-detail{font-size:12px;margin:0 0 7px}
+#home .pet-3d-info .pet-daily-entries{font-size:12px;font-weight:650}
+#home .pet-3d-card .pet-card-controls{margin:0 15px;gap:9px}
+#home .pet-3d-card .pet-card-controls .button{padding:13px 15px 0;width:calc(100% - 30px)}
+#home .pet-3d-card .pet-card-more{margin:13px 15px 0;width:calc(100% - 30px)}
+@media(max-width:680px){
+ #home #homePets{grid-template-columns:minmax(0,1fr);gap:22px}
+ #home .pet-3d-card{padding:0 0 16px}
+ #home .pet-3d-top{display:block;height:clamp(250px,72vw,340px);margin-bottom:16px}
+ #home .pet-3d-top .pethead{display:block;width:auto;flex:none}
+ #home .pet-3d-top .avatar{width:88%;height:100%;min-height:0;max-height:none;flex:none;aspect-ratio:auto}
+ #home .pet-3d-info{width:min(65%,265px)}
+}
+@media(max-width:370px){
+ #home .pet-3d-top{height:260px}
+ #home .pet-3d-info{left:12px;width:68%}
+ #home .pet-3d-info .petname{font-size:22px}
+}
+
+/* v2.18.143 — align daily entries with access label */
+#home .pet-3d-info .pet-daily-entries{margin:5px 0 0;align-self:flex-start}
+</style></head><body><header><div class="top"><div><h1>🐾 Hinchliffe Pet HQ</h1><p>Four paws. One happy home.</p></div><button class="mark" type="button" onclick="showPage('settings')" aria-label="Settings" style="background:transparent;color:white;cursor:pointer">⚙</button></div></header><main class="shell">
+<section id="home" class="page active"><div class="sectionhead"><h2 id="greeting">Hello 👋</h2><div class="row" style="gap:8px"><span id="petHqStreamBadge" class="pill" style="background:#fef3c7;color:#92400e;font-size:11px">● Connecting</span><span class="muted" id="today"></span></div></div><div class="stats"><div class="stat"><strong id="countPets">4</strong><span class="small">Pet profiles</span></div><div class="stat"><strong id="countEvents">0</strong><span class="small">Pet activity today</span></div></div><div class="sectionhead"><h2>Your pets</h2><button class="button secondary" onclick="showPage('pets')">Manage pets</button></div><div class="cards" id="homePets" aria-label="Swipe between your cats"></div><div class="sectionhead"><h2>Whole-house controls</h2><span class="muted">For all cats</span></div><div class="household-controls"><div class="card"><div class="house-control-heading"><span class="house-icon" aria-hidden="true">🏠</span><strong>Keep all cats indoors</strong><span class="small">Stops exits for every cat. Cats can still come in.</span></div><label class="switchrow"><input type="checkbox" id="houseIndoorToggle" onchange="toggleHouseIndoor(this.checked)"> Keep indoors</label><div class="small" id="houseIndoorStatus">Checking actual flap status…</div></div><div class="card"><div class="house-control-heading"><span class="house-icon" aria-hidden="true">◷</span><strong>Whole-house curfew</strong><span class="small">Set daily times for all cats. Individual schedules are kept.</span></div><label class="switchrow"><input id="houseCurfewEnabled" type="checkbox" onchange="toggleWholeCurfew(this.checked)"> Enabled</label><p class="small" id="houseCurfewStatus" role="status">Loading curfew…</p><p class="small">Switch on to choose your curfew times. To change an active curfew, switch it off first; your saved times will be kept.</p></div></div><div class="sectionhead"><h2>Recent activity · Today</h2><button class="button secondary" onclick="showPage('timeline')">View timeline →</button></div><div class="card" id="homeEvents"></div></section>
+<section id="settings" class="page"><div class="sectionhead"><h2>Settings</h2><button class="button secondary" onclick="showPage('home')">Back to Home</button></div><div class="card"><h3>Manage pets</h3><p class="small">Register new cats in the official Sure Petcare app, then import them into Pet Control.</p><button class="button secondary" onclick="showPage('pets')">Manage pets and sync →</button><h3>Archived &amp; remembered pets</h3><p class="small">Kept privately out of everyday screens. Open only when you choose to.</p><button class="button secondary" onclick="openPrivatePetArchive()">Open private pet archive</button><h3>Sure Petcare activity connection</h3><p class="small">Enter your Sure Petcare account details in Home Assistant → Apps → Pet Control → Configuration. They are stored locally in Home Assistant's protected app options, not GitHub.</p><h3>Individual curfew administration</h3><p class="small">Turn off individual curfews without changing the whole-house curfew or manual Keep indoors restrictions.</p><button class="button secondary" onclick="confirmBulkCurfewDisable(true)">Turn off all individual curfews</button><h3>Reliability check</h3><p class="small">Read-only timings from existing Home Assistant and Sure Petcare checks. No locking commands are sent by this check.</p><button id="petReliabilityButton" class="button secondary" type="button" onclick="petHQReliabilityCheck()">View diagnostics</button> <a class="button secondary" href="./pet-hq/reliability?download=1" download="pet-hq-reliability.json">Download diagnostic report</a><div id="petReliabilityResults" class="small" aria-live="polite" hidden style="margin-top:12px"></div><h3>USB archive</h3><p class="small">Pet HQ keeps its existing internal data and copies movement history and diagnostics to Pet_HQ_Logs when available.</p><div id="petUsbArchiveStatus" class="small" aria-live="polite">USB archive status will appear when Settings opens.</div><button class="button secondary" type="button" onclick="petHQCheckUsbArchive()">Refresh USB status</button><h3>About Hinchliffe Pet HQ</h3><p>Version <strong id="petHQVersion">Loading…</strong> · Pet HQ</p><h4>What’s new</h4><p id="petHQReleaseNotes" class="small" style="white-space:pre-line">Loading release notes…</p><p>Live In/Out status is read from Home Assistant. Today's activity is read directly from Sure Petcare.</p><p class="small">Individual curfews and manual access controls are connected to Sure Petcare. Pet profile history and household invitations remain local or incomplete; adding a user does not send an invitation.</p></div></section><section id="petdetail" class="page"><button class="button secondary back-button" onclick="showPage('home')">← All pets</button><div id="petDetailContent"></div></section><section id="timeline" class="page"><div class="sectionhead"><div><h2>Cat activity</h2><div class="muted">Movements and time outside</div></div></div><div id="pet-graphs"></div><details id="movement-history-details" style="display:none" aria-hidden="true"><summary class="card" style="cursor:pointer;font-weight:700;list-style-position:inside;padding:18px">Movement history <span class="small" style="font-weight:400">— choose a day and view individual records</span></summary><div class="card stack" style="margin-top:10px"><div class="daynav"><button class="button secondary" id="prevDay" onclick="changeDay(-1)" aria-label="Previous day">←</button><div class="daytitle"><strong id="selectedDayLabel">Today</strong><span class="small" id="selectedDayDate"></span></div><button class="button secondary" id="nextDay" onclick="changeDay(1)" aria-label="Next day">→</button></div><label class="field" style="margin-top:12px">Jump to date<input type="date" id="timelineDatePicker" onchange="jumpTimelineDate(this.value)"></label><button class="button outline wide" id="todayButton" onclick="goToday()">Jump to today</button><div class="filters"><label class="field">Pet<select id="filterPet" onchange="renderTimeline()"></select></label><label class="field">Movement<select id="filterType" onchange="renderTimeline()"><option value="all">All movements</option><option value="In">Came inside</option><option value="Out">Went outside</option></select></label></div><div class="row between"><span class="muted" id="eventCount"></span></div></div><div class="card" style="margin-top:12px" id="timelineEvents"></div></details><div id="archive-download-controls" class="card" style="margin-top:12px"><strong>Saved movement archive</strong><p class="small">Download your stored movements for veterinary records or analysis.</p><a class="button secondary" href="./sure/archive?format=csv" download>Download CSV</a></div></section>
+<section id="curfews" class="page"><div class="sectionhead"><div><h2>Individual curfews</h2><div class="muted">Automatic schedules for each cat · Entry always allowed</div></div></div><div class="card" style="margin-bottom:12px;background:#f0f5ef"><strong>Exit restriction schedules</strong><p class="small">Set a different schedule for each day, copy times to other days, and adjust exit restrictions. Enabled individual curfews control the flap through Sure Petcare. Manual Keep indoors takes priority.</p></div><div id="curfewProfileBack" style="display:none;margin-bottom:12px"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><button class="button secondary" onclick="showPage('petdetail')">← Back to pet profile</button><button class="button secondary" onclick="openMainCurfews()">View all pets</button></div></div><div class="card" id="curfewPetChooser" style="margin-bottom:12px"><label class="field">Select pet<select id="curfewPetSelect" onchange="selectCurfewPet(this.value)"></select></label></div><details class="card" style="margin-bottom:12px"><summary style="cursor:pointer;font-weight:700">Individual flap permission check <span class="small" style="font-weight:400">— tap to expand or hide</span></summary><p class="small">Read-only check of each cat’s current Sure Petcare permission. No flap settings are changed.</p><button class="button secondary" onclick="checkPetPermissions()">Check individual cat access</button><details id="petPermissionResults" style="margin-top:12px"><summary style="cursor:pointer;font-weight:600">Check results — tap to show or hide</summary><div id="petPermissionCheck" class="small" style="margin-top:10px" aria-live="polite"></div></details></details><div class="card" style="margin-bottom:12px"><strong>Individual curfew diagnostics</strong><p class="small">Read-only scheduler information to help identify why a curfew has not released a cat.</p><button class="button secondary" onclick="checkCurfewDiagnostics()">Check scheduler status</button><div id="curfewDiagnostics" class="small" style="margin-top:10px" aria-live="polite"></div><button class="button secondary" style="margin-top:10px" onclick="checkCurfewEvents()">View curfew event history</button><div id="curfewEvents" class="small" style="margin-top:10px" aria-live="polite"></div></div><div class="stack" id="curfewCards"></div></section>
+<section id="pets" class="page"><div class="sectionhead"><div><h2>Manage pets</h2><div class="muted">Import cats registered in Sure Petcare</div></div><button class="button" onclick="syncSurePets()">↻ Sync Pets</button></div><div class="card" style="margin-bottom:12px"><strong>Sync from Sure Petcare</strong><p class="small">Register your cat at the flap and name it in the official app first. Sync finds new cats without changing flap permissions or existing curfews.</p><div id="petSyncResult" class="small" aria-live="polite"></div></div><div class="card" id="petList"></div></section>
+<section id="users" class="page"><div class="sectionhead"><div><h2>Household users</h2><div class="muted">John and Nicky · full access · manage family members</div></div><button class="button" onclick="openUser()">+ Add user</button></div><div class="card" id="userList"></div><div class="card" style="margin-top:12px;background:#f0f5ef"><strong>🔒 Family access</strong><p class="muted">Household members are stored securely in Pet HQ. Each member has full access. Email invitations open in your email app; Cloudflare Access updates automatically when configured.</p></div></section></main>
+<nav class="tabs" aria-label="Main navigation"><button class="active" data-page="home" onclick="showPage('home')"><span>⌂</span>Home</button><button data-page="timeline" onclick="showPage('timeline')"><span>☷</span>Timeline</button><button data-page="curfews" onclick="openMainCurfews()"><span>◷</span>Curfews</button><button data-page="pets" onclick="showPage('pets')"><span>🐾</span>Pets</button><button data-page="users" onclick="showPage('users')"><span>♙</span>Users</button></nav><div id="toast" class="toast"></div><div class="modalwrap" id="modalWrap" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"></div></div>
+<script>
+const key='petcontrol-v1-demo';const iso=(d)=>new Date(d).toISOString();const now=Date.now();const initial={pets:['Jessie','Henry','Rosie','Violet'].map((name,i)=>({id:'p'+(i+1),name,enabled:true,start:'21:00',end:'07:00',weekend:false,archived:false})),users:[{id:'u1',name:'John',email:'',role:'full',primary:true},{id:'u2',name:'Nicky',email:'',role:'full',primary:true}],events:[{id:'e1',petId:'p1',type:'In',at:iso(now-45*60000)},{id:'e2',petId:'p2',type:'Out',at:iso(now-90*60000)},{id:'e3',petId:'p3',type:'In',at:iso(now-150*60000)},{id:'e4',petId:'p4',type:'Out',at:iso(now-260*60000)},{id:'e5',petId:'p1',type:'Out',at:iso(now-360*60000)},{id:'e6',petId:'p2',type:'In',at:iso(now-900*60000)}]};for(let days=1;days<=30;days++){for(let j=0;j<4;j++){const d=new Date();d.setHours(7+j*3,15+(days*7+j*11)%40,0,0);d.setDate(d.getDate()-days);initial.events.push({id:'hist-'+days+'-'+j,petId:'p'+(1+(days+j)%4),type:j%2?'In':'Out',at:d.toISOString()})}}let selectedPetId=null;let curfewPetId=null;let curfewFromProfile=false;let state;try{state=JSON.parse(localStorage.getItem(key))||initial;if(!Array.isArray(state.pets)||!Array.isArray(state.users))state=initial}catch{state=initial}if(!state.userManagementV23){state.users=state.users.map(u=>u.id==='u1'?{...u,name:'John',role:'full',primary:true}:u.id==='u2'?{...u,name:'Nicky',role:'full',primary:true}:{...u,role:u.role||'full',primary:false});state.userManagementV23=true;try{localStorage.setItem(key,JSON.stringify(state))}catch{}}if(!state.userInviteV24){state.users.forEach(u=>{u.status=u.primary?'Active':(u.email?'Pending invitation':'Email needed');u.invitedAt=u.invitedAt||null});state.userInviteV24=true;try{localStorage.setItem(key,JSON.stringify(state))}catch{}}if(!state.timelineHistoryAdded){const ids=new Set(state.events.map(e=>e.id));for(const e of initial.events.filter(e=>e.id.startsWith('hist-')))if(!ids.has(e.id))state.events.push(e);state.timelineHistoryAdded=true;try{localStorage.setItem(key,JSON.stringify(state))}catch{}}const el=id=>document.getElementById(id);const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const pet=id=>state.pets.find(p=>p.id===id);function save(){try{localStorage.setItem(key,JSON.stringify(state))}catch{}render()}let toastTimer;function toast(s){const box=el('toast');box.textContent=s;box.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>box.style.display='none',3000)}function openMainCurfews(){curfewFromProfile=false;showPage('curfews')}
+function showPage(page){if(page!=='curfews')curfewFromProfile=false;if(page==='curfews'&&!activePets().some(p=>p.id===curfewPetId))curfewPetId=activePets()[0]?.id||null;document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id===page));document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.page===page));window.scrollTo({top:0,behavior:'smooth'});render();if(page==='settings'&&typeof petHQCheckUsbArchive==='function')petHQCheckUsbArchive();if(page==='home'){if(typeof window.refreshPetPresence==='function')window.refreshPetPresence();if(typeof window.refreshPetPermissionDisplay==='function')window.refreshPetPermissionDisplay()}}function time(s){return new Date(s).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}function activePets(){return state.pets.filter(p=>!p.archived&&p.name.toLowerCase()!=='rosie')}function lastEvent(id){return [...state.events].filter(e=>e.petId===id).sort((a,b)=>new Date(b.at)-new Date(a.at))[0]}function eventRow(e){let p=pet(e.petId);return `<div class="listrow"><div class="row"><div class="eventicon">${e.type==='In'?'↙':'↗'}</div><div><strong>${esc(p?.name||'Archived pet')}</strong><div class="small">${e.type==='In'?'Came inside':'Went outside'} · sample</div></div></div><span class="small">${time(e.at)}</span></div>`}function indoorMode(p){return p.indoorMode||'normal'}function petPhoto(p){
+ if(p&&p.photo)return p.photo;
+ const demo={
+ jessie:'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=900&q=85&fit=crop',
+ henry:'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=900&q=85&fit=crop',
+ violet:'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=900&q=85&fit=crop'
+ };
+ return demo[String(p?.name||'').toLowerCase()]||'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=900&q=85&fit=crop';
+}
+function petAvatar(p){return '<div class="avatar"><img alt="'+esc(p?.name||'Cat')+'" src="'+petPhoto(p)+'" loading="lazy" onerror="this.style.display=\'none\'"></div>'}
+
+let petArchiveRegistry=null;
+async function loadPetArchive(){
+ const r=await fetch('./pet-hq/archive',{cache:'no-store',signal:AbortSignal.timeout(10000)});
+ if(!r.ok)throw Error('Pet archive unavailable');
+ const data=await r.json();
+ if(!data||!data.pets||typeof data.pets!=='object')throw Error('Invalid archive response');
+ petArchiveRegistry=data.pets;
+ let changed=false;
+ for(const p of state.pets){if(p.surePetId&&petArchiveRegistry[String(p.surePetId)]&&!p.archived){p.archived=true;changed=true;}}
+ if(changed)save();
+ return petArchiveRegistry;
+}
+async function updatePetArchive(action,p){
+ const body={action,surePetId:String(p.surePetId),profile:p,events:state.events.filter(e=>e.petId===p.id)};
+ const r=await fetch('./pet-hq/archive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
+ const data=await r.json();if(!r.ok)throw Error(data.error||'Could not save pet archive');
+ petArchiveRegistry=data.pets;
+}
+let surePetSyncCandidates=[];
+async function syncSurePets(){
+ const target=el('petSyncResult');target.textContent='Checking Sure Petcare…';
+ try{
+  await loadPetArchive();
+ const response=await fetch('./sure/pet-permissions',{cache:'no-store',signal:AbortSignal.timeout(32000)});
+  if(!response.ok)throw Error('Connection failed');
+  const result=await response.json();
+  if(result.status!=='read_only')throw Error(result.message||'Could not read cats');
+  const cats=(result.cats||[]).filter(c=>c.surePetId&&c.sureTagId);
+  const knownIds=new Set(state.pets.map(p=>String(p.surePetId||'')).filter(Boolean));
+  surePetSyncCandidates=cats.filter(c=>!knownIds.has(String(c.surePetId))&&!petArchiveRegistry[String(c.surePetId)]);
+  if(!surePetSyncCandidates.length){target.textContent='No new cats found. '+cats.length+' registered cat(s) checked.';return;}
+  target.innerHTML='<strong>'+surePetSyncCandidates.length+' unlinked cat(s) found</strong>'+surePetSyncCandidates.map((c,i)=>{
+   const existing=state.pets.filter(p=>!p.surePetId&&p.name.toLowerCase()===c.name.toLowerCase());
+   return '<label class="listrow"><input type="checkbox" class="sync-pet-check" value="'+i+'" checked><div><strong>'+esc(c.name)+'</strong><div class="small">'+(existing.length===1?'Link existing profile — preserve curfews':'Add new profile — curfew off')+'</div></div></label>';
+  }).join('')+'<button class="button" onclick="confirmSurePetSync()">Add selected cats</button>';
+ }catch(e){target.textContent='Sync failed: '+e.message+'. No profiles were changed.';}
+}
+function confirmSurePetSync(){
+ const selected=[...document.querySelectorAll('.sync-pet-check:checked')].map(x=>surePetSyncCandidates[Number(x.value)]).filter(Boolean);
+ let added=0,linked=0;
+ for(const c of selected){
+  if(state.pets.some(p=>String(p.surePetId)===String(c.surePetId))||petArchiveRegistry?.[String(c.surePetId)])continue;
+  const existing=state.pets.filter(p=>!p.surePetId&&p.name.toLowerCase()===c.name.toLowerCase());
+  if(existing.length===1){existing[0].surePetId=c.surePetId;existing[0].sureTagId=c.sureTagId;linked++;continue;}
+  state.pets.push({id:'sure-'+c.surePetId,name:c.name,surePetId:c.surePetId,sureTagId:c.sureTagId,indoorMode:'normal',enabled:false,start:'21:00',end:'07:00',weekend:false,archived:false});added++;
+ }
+ surePetSyncCandidates=[];save();el('petSyncResult').textContent=added+' cat(s) added; '+linked+' existing profile(s) linked. Curfews and flap permissions unchanged.';
+}
+function confirmJessiePermissionTest(){
+ modal('<h3>Test Jessie’s actual flap permission?</h3><p>Pet Control will temporarily set <strong>Jessie only</strong> to Indoor Only, read the setting back, then immediately restore Free Access and check again.</p><p class="small">This sends real commands to Sure Petcare. Entry should remain allowed, but physical behaviour has not been verified. If a connection fails, restoration may require checking manually.</p><div class="row"><button class="button wide" onclick="runJessiePermissionTest()">Start test and restore</button><button class="button outline" onclick="closeModal()">Cancel</button></div>');
+}
+let jessieTestRunning=false;
+async function runJessiePermissionTest(){
+ if(jessieTestRunning)return;
+ closeModal();jessieTestRunning=true;
+ const button=el('jessiePermissionTestButton'),target=el('jessiePermissionTestResult');
+ button.disabled=true;target.textContent='Testing Jessie and restoring Free Access… Allow up to 2 minutes for delayed cloud confirmation. Please wait.';
+ try{
+  const response=await fetch('./sure/pet-permission-test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pet:'Jessie',confirm:'TEST_JESSIE_AND_RESTORE'}),signal:AbortSignal.timeout(180000)});
+  const result=await response.json();
+  if(!response.ok)throw Error(result.error||'Test request failed');
+  target.textContent=result.status==='passed'?'Electronic test passed: Jessie’s restriction and restoration were confirmed by repeated Sure Petcare checks; the other cats stayed unchanged. Physical entry has not been tested.':(result.message||'Test needs review')+(result.stage?' Stage: '+result.stage+'.':'')+(result.cause?' Reason: '+result.cause+'.':'')+(result.restoreError?' Restore issue: '+result.restoreError+'.':'');
+  if(result.status==='passed')await checkPetPermissions();
+ }catch{target.textContent='Test connection interrupted. Check Jessie’s actual permission using the button above or the Sure Petcare app. Restoration is not confirmed.';}
+ finally{jessieTestRunning=false;button.disabled=false;}
+}
+async function checkPetPermissions(){
+ const target=el('petPermissionCheck');const panel=el('petPermissionResults');if(panel)panel.open=true;target.textContent='Checking Sure Petcare…';
+ try{
+  const response=await fetch('./sure/pet-permissions',{cache:'no-store',signal:AbortSignal.timeout(32000)});
+  if(!response.ok)throw Error('Connection unavailable');
+  const result=await response.json();
+  if(result.status!=='read_only'){target.textContent=result.message||'Check unavailable';return;}
+  const rows=result.cats||[];
+  target.innerHTML='<strong>Read-only results — no settings changed</strong>'+(rows.length?rows.map(c=>'<div class="listrow"><div><strong>'+esc(c.name)+'</strong><div class="small">'+(c.matched?(c.profile==='indoor_only'?'Indoor Only':c.profile==='free_access'?'Free Access':'Unknown permission'):'No unique flap tag match')+'</div></div></div>').join(''):'<p>No cats found in the cloud response.</p>')+'<p class="small">This confirms only the reported settings. Individual commands and physical flap behaviour have not yet been tested.</p>';
+ }catch{target.textContent='Could not complete the check. No flap settings were changed.';}
+}
+function curfewSummaryForUnlock(){
+ const rows=[];
+ for(const p of activePets()){
+  if(!p.enabled)continue;
+  const days=ensureSchedule(p).days||[];
+  const groups=new Map();
+  days.forEach((d,i)=>{
+   if(d.enabled===false||!d.start||!d.end)return;
+   const k=d.start+'–'+d.end;
+   if(!groups.has(k))groups.set(k,[]);
+   groups.get(k).push(dayNames[i].slice(0,3));
+  });
+  for(const [hours,names] of groups)rows.push({name:p.name,days:names.join(', '),hours});
+ }
+ return rows;
+}
+let houseReview=null;
+async function houseReviewCandidates(){
+ const cats=activePets().filter(p=>p.surePetId);
+ let live={};
+ try{const r=await fetch('./sure/pet-curfews',{cache:'no-store',signal:AbortSignal.timeout(12000)});if(r.ok)live=(await r.json()).pets||{};}catch{}
+ return cats.filter(p=>{const e=live[String(p.surePetId)];return e?e.manual||e.enabled:!!p.enabled;}).map(p=>({id:p.id,name:p.name,manual:!!live[String(p.surePetId)]?.manual,scheduled:!!(live[String(p.surePetId)]?.enabled??p.enabled)}));
+}
+async function requestHouseSetting(kind,enabled){
+ if(kind==='mode'&&typeof window.setLiveFlapMode!=='function'){toast('Flap connection unavailable');return;}
+ if(kind==='mode'&&typeof window.syncLiveFlapUI==='function')window.syncLiveFlapUI();
+ const cats=await houseReviewCandidates();
+ houseReview={kind,enabled,cats,index:0};
+ if(kind==='curfew'&&!enabled){showHouseReviewFinal();return;}
+ if(!cats.length){showHouseReviewFinal();return;}
+ const turningOff=!enabled;
+ const heading=turningOff?'Individual cat settings will remain active':'Individual cat settings will stay as they are';
+ const intro=turningOff?'Switching off the whole-house setting does not switch off individual curfews or manual Keep indoors settings.':'You can switch on the whole-house setting as normal. Individual cat settings will be preserved.';
+ const details=cats.map(c=>'<div class="listrow"><strong>'+esc(c.name)+'</strong><span class="small">'+[c.manual?'Keep indoors':null,c.scheduled?'Curfew enabled':null].filter(Boolean).join(' · ')+'</span></div>').join('');
+ modal('<h3>'+heading+'</h3><p>'+intro+'</p><div class="stack">'+details+'</div><p class="small">Review these settings if you think you may have forgotten any.</p><div class="stack"><button class="button" onclick="applyHouseReview()">'+(turningOff?'Switch off whole-house setting — keep individual settings':'Continue — keep individual settings')+'</button><button class="button secondary" onclick="startHouseReview()">Review individual settings</button>'+(turningOff&&cats.some(c=>c.scheduled)?'<button class="button outline" onclick="confirmBulkCurfewDisable(false)">Turn off all individual curfews</button>':'')+'<button class="button outline" onclick="cancelHouseReview()">Cancel</button></div>');
+}
+function confirmBulkCurfewDisable(fromSettings){
+ modal('<h3>Turn off all individual curfews?</h3><p>This disables each cat\'s weekly curfew. Saved times are retained.</p><p><strong>Manual Keep indoors restrictions will remain active.</strong></p><div class="stack"><button class="button" onclick="disableAllIndividualCurfews('+!!fromSettings+')">Confirm — turn off curfews only</button><button class="button outline" onclick="'+(fromSettings?'closeModal()':'showHouseReviewFinal()')+'">Back</button></div>');
+}
+async function disableAllIndividualCurfews(fromSettings){
+ try{
+  const r=await fetch('./sure/pet-curfews/bulk-disable',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm:'DISABLE_ALL_INDIVIDUAL_CURFEWS'}),signal:AbortSignal.timeout(15000)});
+  const d=await r.json();if(!r.ok)throw Error(d.error||'Unable to disable curfews');
+  for(const p of state.pets)p.enabled=false;
+  save();toast(d.disabled+' individual curfew(s) switched off; manual restrictions kept');
+  if(fromSettings){closeModal();return;}
+  if(houseReview){houseReview.cats=houseReview.cats.filter(c=>c.manual);showHouseReviewFinal();}else closeModal();
+ }catch(e){toast('Curfews unchanged: '+e.message);}
+}
+function cancelHouseReview(){houseReview=null;closeModal();if(typeof window.syncLiveFlapUI==='function')window.syncLiveFlapUI();if(typeof window.refreshWholeCurfew==='function')window.refreshWholeCurfew();}
+function startHouseReview(){if(!houseReview)return;houseReview.index=0;showHouseReviewCat();}
+function showHouseReviewCat(){
+ const flow=houseReview;if(!flow)return;
+ const c=flow.cats[flow.index];if(!c){showHouseReviewFinal();return;}
+ modal('<h3>Review '+esc(c.name)+'</h3><p class="small">Cat '+(flow.index+1)+' of '+flow.cats.length+'</p><p>'+(c.manual?'Manual Keep indoors is active.':c.scheduled?'An individual curfew is enabled.':'An individual setting is present.')+'</p><p class="small">Nothing changes unless you explicitly select a control.</p><div class="row"><button class="button secondary" onclick="reviewHouseCatAccess()">Review access</button><button class="button secondary" onclick="reviewHouseCatCurfew()">Review curfew</button></div><div class="row"><button class="button outline" '+(flow.index===0?'disabled':'')+' onclick="houseReviewStep(-1)">Previous cat</button><button class="button" onclick="houseReviewStep(1)">'+(flow.index===flow.cats.length-1?'Finish review':'Next cat')+'</button><button class="button outline" onclick="cancelHouseReview()">Cancel</button></div>');
+}
+function houseReviewStep(direction){if(!houseReview)return;houseReview.index+=direction;if(houseReview.index>=houseReview.cats.length)showHouseReviewFinal();else{houseReview.index=Math.max(0,houseReview.index);showHouseReviewCat();}}
+function reviewHouseCatAccess(){const c=houseReview?.cats[houseReview.index];if(!c)return;openPet(c.id);}
+function reviewHouseCatCurfew(){const c=houseReview?.cats[houseReview.index];if(!c)return;closeModal();openPetCurfew(c.id);const target=el('curfewCards');if(target)target.insertAdjacentHTML('afterbegin','<div class="card"><strong>Whole-house settings review</strong><p class="small">Cat '+(houseReview.index+1)+' of '+houseReview.cats.length+'</p><button class="button" onclick="showHouseReviewCat()">Return to review</button></div>');}
+function showHouseReviewFinal(){
+ const flow=houseReview;if(!flow)return;
+ const isMode=flow.kind==='mode';
+ const title=isMode?(flow.enabled?'Set all cats to Indoor Only?':'Restore normal access for all cats?'):'Turn off whole-house curfew?';
+ const detail=isMode?(flow.enabled?'This will keep all cats indoors until you turn this setting off. Individual cat settings and curfews will be preserved.':'This will turn off the whole-house Indoor Only setting. Individual Indoor Only settings and curfews will remain in place.'):'All cats will return to their individual access settings. Your whole-house curfew times will be saved for next time.';
+ const confirm=isMode?(flow.enabled?'Set all cats indoors':'Restore normal access'):'Turn off curfew';
+ modal('<h3>'+title+'</h3><p>'+detail+'</p><div class="row"><button class="button" onclick="applyHouseReview()">'+confirm+'</button><button class="button outline" onclick="cancelHouseReview()">Cancel</button></div>');
+}
+async function applyHouseReview(){const flow=houseReview;if(!flow)return;houseReview=null;closeModal();if(flow.kind==='mode'){await window.setLiveFlapMode(flow.enabled);}else if(typeof window.applyWholeCurfew==='function'){await window.applyWholeCurfew(flow.enabled);}else toast('Whole-house curfew control unavailable');}
+function toggleHouseIndoor(enabled){requestHouseSetting('mode',enabled);}
+function confirmHouseUnlock(){requestHouseSetting('mode',false);}
+function petCardAccessIndicator(p){
+ const raw=String(window.getLivePetAccess?.(p.surePetId)||'');
+ const curfewOn=p.enabled===true;
+ let label='Checking access',tone='pending',detail=curfewOn?'Individual curfew enabled':'Curfew off';
+ if(raw.startsWith('Indoor Only')){label='Keep indoors';tone='restricted';detail=curfewOn?'Individual curfew also scheduled':'No individual curfew';}
+ else if(raw.startsWith('Free Access')){label='Not locked in';tone='free';detail=curfewOn?'Curfew scheduled':'No individual curfews';}
+ else if(raw.startsWith('Status unavailable')){label='Access unconfirmed';detail=curfewOn?'Curfew scheduled':'Curfew off';}
+ if(raw.includes('last confirmed'))detail+=' · Access last confirmed earlier';
+ return '<div class="pet-access-indicator '+tone+'" role="status"><span class="status-dot" aria-hidden="true"></span>'+esc(label)+'</div><div class="pet-access-detail'+(curfewOn?' curfew-scheduled':'')+'">'+esc(detail)+'</div>';
+}
+function render(){if(typeof window.syncLiveFlapUI==='function')window.syncLiveFlapUI();const ukHour=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'numeric',hourCycle:'h23'}).format(new Date()));el('greeting').textContent=(ukHour<12?'Good morning':ukHour<17?'Good afternoon':'Good evening')+' 👋';el('today').textContent=new Date().toLocaleDateString('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric',month:'short'});el('countPets').textContent=activePets().filter(p=>p.name.toLowerCase()!=='rosie').length;if(!window.petLiveHistoryLoaded)el('countEvents').textContent='–';el('homePets').innerHTML=activePets().filter(p=>p.name.toLowerCase()!=='rosie').map(p=>{const id=esc(p.id),live=(typeof window.effectivePetStatus==='function'?window.effectivePetStatus(p.name):window.sureLiveStates?.[p.name.toLowerCase()])||'Unknown';return `<div class="card pet-tap pet-hq-card pet-3d-card"><div class="pet-3d-top"><div class="pethead" onclick="openPetDetail('${id}')">${petAvatar(p)}<span class="pill ${live==='Away'?'out':''}">${esc(live==='Home'?'In':live==='Away'?'Out':live)}</span></div><div class="pet-3d-info"><div class="petname">${esc(p.name)}</div>${petCardAccessIndicator(p)}<div class="pet-daily-entries" data-pet-entries="${esc(p.name.toLowerCase())}">Entries today: —</div></div></div><div class="pet-card-controls"><button class="button secondary" onclick="openPet('${id}')"><span aria-hidden="true">🔓</span> Access</button><button class="button secondary" onclick="openPetCurfew('${id}')"><span aria-hidden="true">☾</span> Curfews</button><button class="button secondary" onclick="showPetTimeline('${id}')"><span aria-hidden="true">◷</span> Movements</button></div><button class="button outline pet-card-more" onclick="openPetDetail('${id}')">All ${esc(p.name)}'s settings</button></div>`}).join('')||'<div class="empty">No active pets yet</div>';if(typeof window.refreshTodayEntryBadges==='function')window.refreshTodayEntryBadges();if(!window.petLiveHistoryLoaded)el('homeEvents').innerHTML='<div class="empty">Loading real movement history…</div>';const old=el('filterPet').value;el('filterPet').innerHTML='<option value="all">All pets</option>'+activePets().map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');el('filterPet').value=activePets().some(p=>p.id===old)?old:'all';renderTimeline();renderPetDetail();el('petList').innerHTML=state.pets.filter(p=>!p.archived&&!p.remembered&&p.name.toLowerCase()!=='rosie').map(p=>`<div class="listrow"><div class="row">${petAvatar(p)}<div><strong>${esc(p.name)}</strong><div class="small">${p.archived?'Archived · history retained':'Active pet profile'}</div></div></div><div class="actions"><button class="button secondary" onclick="openPet('${p.id}')">Edit</button><button class="button ${p.archived?'secondary':'danger'}" onclick="toggleArchive('${p.id}')">${p.archived?'Restore':'Archive'}</button></div></div>`).join('')||'<div class="empty">No pets yet</div>';renderFamily();if(!activePets().some(p=>p.id===curfewPetId))curfewPetId=activePets()[0]?.id||null;el('curfewPetChooser').style.display=curfewFromProfile?'none':'block';el('curfewProfileBack').style.display=curfewFromProfile?'block':'none';el('curfewPetSelect').innerHTML=activePets().map(p=>`<option value="${esc(p.id)}" ${p.id===curfewPetId?'selected':''}>${esc(p.name)}</option>`).join('');el('curfewCards').innerHTML=activePets().filter(p=>p.id===curfewPetId).map(p=>{let c=ensureSchedule(p),on=p.enabled;let override=p.override&&p.override.until>Date.now()?p.override:null;let overrideStart=override?(override.start??(override.until-60*60000)):null;let overrideActive=override&&overrideStart<=Date.now();return `<div class="card stack"><div class="row between"><div class="row">${petAvatar(p)}<div><strong style="font-size:19px">${esc(p.name)}</strong><div class="small">${on?'Weekly curfew enabled':'Weekly curfew off'}</div></div></div><label class="switchrow"><input type="checkbox" ${on?'checked':''} onchange="updateCurfew('${p.id}','enabled',this.checked)"> On</label></div><div class="small">Switch off individual days when no curfew is needed. Overnight times are supported.</div><div class="card stack" style="background:#f4f8f5"><div class="row between"><strong>Same curfew all week</strong><label class="switchrow"><input type="checkbox" ${on&&c.allWeek?.active?'checked':''} ${on?'':'disabled'} onchange="toggleAllWeek('${p.id}',this.checked)"> Apply to all days</label></div><div class="row" style="flex-wrap:wrap"><label class="field">No exit after<input type="time" value="${c.allWeek?.start||c.days[0].start}" ${on?'':'disabled'} oninput="setAllWeekTime('${p.id}','start',this.value,false);previewCurfewEnd(this)" onchange="setAllWeekTime('${p.id}','start',this.value,true)"></label><label class="field">Enter / End<input type="time" value="${c.allWeek?.end||c.days[0].end}" ${on?'':'disabled'} onchange="setAllWeekTime('${p.id}','end',this.value)"></label></div><div class="small">Tick to use these times every day. Untick to restore your individual day settings.</div><button class="button secondary" ${on?'':'disabled'} onclick="copyCurfewPrompt('${p.id}')">Copy whole week to other pets</button></div><div class="day-schedules">${dayNames.map((day,i)=>`<div class="day-schedule"><strong>${day}</strong><label class="switchrow"><input type="checkbox" style="width:23px;height:23px;min-width:23px;accent-color:#278454" ${on&&c.days[i].enabled===true?'checked':''} ${on&&!c.allWeek?.active?'':'disabled'} onchange="setDayEnabled('${p.id}',${i},this.checked)"> Curfew on this day</label><label class="field">No exit after<input type="time" value="${c.days[i].start}" ${on&&!c.allWeek?.active&&c.days[i].enabled===true?'':'disabled'} oninput="setDaySchedule('${p.id}',${i},'start',this.value,false);previewCurfewEnd(this)" onchange="setDaySchedule('${p.id}',${i},'start',this.value,true)"></label><label class="field">Enter / End<input type="time" value="${c.days[i].end}" ${on&&!c.allWeek?.active&&c.days[i].enabled===true?'':'disabled'} onchange="setDaySchedule('${p.id}',${i},'end',this.value)"></label><button class="button secondary" onclick="copyDayPrompt('${p.id}',${i})">Copy</button></div>`).join('')}</div><div class="override-box"><strong>Temporary override</strong><div class="small">A one-off exception; your weekly schedule stays unchanged.</div>${override?`<div class="small"><strong>${overrideActive?'ACTIVE NOW':'SCHEDULED — NOT ACTIVE YET'}</strong><br>${override.mode==='allow'?'Allow exit':'Restrict exit'}<br><strong>Starts:</strong> ${new Date(overrideStart).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}<br><strong>Ends:</strong> ${new Date(override.until).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div><button class="button danger" onclick="clearOverride('${p.id}')">Cancel override</button>`:`<button class="button secondary" onclick="overridePrompt('${p.id}')">Set temporary override</button>`}</div><div class="actions"><button class="button outline" onclick="openPetDetail('${p.id}')">View profile →</button></div></div>`}).join('')||'<div class="card empty">Add a pet to configure curfews</div>' }
+function openPetDetail(id){selectedPetId=id;showPage('petdetail');if(typeof window.refreshPetPermissionDisplay==='function')window.refreshPetPermissionDisplay()}function openPetCurfew(id){curfewPetId=id;curfewFromProfile=true;showPage('curfews')}function selectCurfewPet(id){curfewPetId=id;render()}
+function renderPetDetail(){if(typeof window.renderSurePetDetail==='function'){window.renderSurePetDetail();return;}let target=el('petDetailContent');if(!target)return;let p=pet(selectedPetId);if(!p){target.innerHTML='<div class="card empty">Choose a pet from Home.</div>';return}let e=lastEvent(p.id);let events=[...state.events].filter(x=>x.petId===p.id).sort((a,b)=>new Date(b.at)-new Date(a.at));let status=e?.type==='In'?'Inside*':e?.type==='Out'?'Outside*':'Unknown';target.innerHTML=`<div class="card"><div class="detailhero">${petAvatar(p)}<div><h2>${esc(p.name)}</h2><span class="pill ${e?.type==='Out'?'out':''}">${status}</span><div class="small">Demonstration status — not live</div></div></div><div class="detail-summary"><div class="stat"><strong style="font-size:17px">${events.length}</strong><span class="small">Sample movements</span></div><div class="stat"><strong style="font-size:17px">${p.enabled?'On':'Off'}</strong><span class="small">Curfew setting</span></div></div><div class="detail-actions"><button class="button secondary" onclick="openPet('${p.id}')">✎ Edit pet</button><button class="button secondary" onclick="openPetCurfew('${p.id}')">◷ All curfews</button></div></div><div class="card detail-section stack"><div><h3>Individual curfew</h3><div class="small">Seven-day schedules and temporary overrides are managed on the Curfews tab.</div></div><div class="row between"><strong>${p.enabled?'Enabled':'Disabled'}</strong><button class="button secondary" onclick="openPetCurfew('${p.id}')">Edit weekly schedule →</button></div></div><div class="detail-section"><div class="sectionhead"><h3>Recent movements</h3><button class="button secondary" onclick="showPetTimeline('${p.id}')">Full timeline →</button></div><div class="card">${events.slice(0,5).map(eventRow).join('')||'<div class="empty">No sample movements</div>'}</div></div><div class="card detail-section"><strong>Pet management</strong><p class="small">You can rename this profile above or archive it in the Pets tab. Archiving does not change microchip permissions.</p><button class="button secondary" onclick="showPage('pets')">Manage pet profiles →</button></div>`}
+function showPetTimeline(id){showPage('timeline');el('filterPet').value=id;renderTimeline();const p=(state.pets||[]).find(x=>x.id===id);if(p&&typeof window.petGraphPet==='function')window.petGraphPet(p.name.toLowerCase());}
+let dayOffset=0;
+function localDay(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate())}
+function changeDay(step){dayOffset=Math.min(0,dayOffset+step);renderTimeline()}
+function jumpTimelineDate(value){if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return;const today=new Date();today.setHours(12,0,0,0);const chosen=new Date(value+'T12:00:00');if(!Number.isFinite(chosen.getTime())||chosen>today)return toast('Select today or an earlier date');dayOffset=Math.round((chosen-today)/86400000);renderTimeline()}
+function goToday(){dayOffset=0;renderTimeline()}
+function renderTimeline(){
+ if(typeof window.renderSureTimeline==='function')return window.renderSureTimeline();
+ const target=localDay(new Date());target.setDate(target.getDate()+dayOffset);
+ const keyDay=target.getFullYear()+'-'+String(target.getMonth()+1).padStart(2,'0')+'-'+String(target.getDate()).padStart(2,'0');
+ const f=el('filterPet').value,t=el('filterType').value;
+ const events=[...state.events].filter(e=>{let d=new Date(e.at);let k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');return k===keyDay&&(f==='all'||e.petId===f)&&(t==='all'||e.type===t)}).sort((a,b)=>new Date(b.at)-new Date(a.at));
+ el('selectedDayLabel').textContent=dayOffset===0?'Today':dayOffset===-1?'Yesterday':target.toLocaleDateString('en-GB',{weekday:'long'});
+ el('selectedDayDate').textContent=target.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+ el('prevDay').disabled=dayOffset<=-30;el('nextDay').disabled=dayOffset>=0;el('todayButton').style.display=dayOffset===0?'none':'block';
+ let ins=events.filter(e=>e.type==='In').length,outs=events.filter(e=>e.type==='Out').length;
+ el('eventCount').textContent=events.length+' movements · '+ins+' in · '+outs+' out';
+ el('timelineEvents').innerHTML=events.map(eventRow).join('')||'<div class="empty">No movements recorded on this day.<br><span class="small">Use the arrows to browse other days.</span></div>';
+}
+const dayNames=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+function ensureSchedule(p){if(!p.curfewV3){let old=p.curfewV2;let weekdays=old?.weekdays||{start:p.start||'21:00',end:p.end||'07:00'};let weekends=old?.weekendSame!==false?weekdays:(old?.weekends||weekdays);p.curfewV3={days:dayNames.map((_,i)=>({...((i<5)?weekdays:weekends),enabled:false}))};}p.curfewV3.days=p.curfewV3.days.map(d=>({...d,enabled:d.enabled===true&&d.start!==d.end,start:/^([01]\d|2[0-3]):[0-5]\d$/.test(d.start||'')?d.start:'22:00',end:/^([01]\d|2[0-3]):[0-5]\d$/.test(d.end||'')?d.end:'07:00'}));return p.curfewV3}
+let petCurfewSyncTimers={};
+async function loadLivePetCurfews(){
+ try{
+  const r=await fetch('./sure/pet-curfews',{cache:'no-store',signal:AbortSignal.timeout(12000)});
+  if(!r.ok)return;
+  const data=await r.json();
+  for(const p of state.pets){
+   const live=data.pets?.[String(p.surePetId||'')];
+   if(!live){p.enabled=false;continue;}
+   p.enabled=!!live.enabled;
+   if(Array.isArray(live.days)&&live.days.length===7){ensureSchedule(p).days=live.days.map(d=>({...d}));if(ensureSchedule(p).allWeek)ensureSchedule(p).allWeek.active=false;}
+  }
+  localStorage.setItem(key,JSON.stringify(state));render();
+ }catch{}
+}
+let curfewHistoryItems=[],curfewHistoryShown=0;
+function renderCurfewHistory(){
+ const box=el('curfewEvents');if(!box||box.dataset.expanded!=='true')return;
+ const names=Object.fromEntries(state.pets.map(p=>[String(p.surePetId||''),p.name]));
+ const visible=curfewHistoryItems.slice(0,curfewHistoryShown);
+ box.innerHTML=visible.length?visible.map(e=>'<div class="listrow"><div><strong>'+esc(names[e.petId]||'Pet '+e.petId)+'</strong> · '+esc(new Date(e.at).toLocaleString('en-GB'))+'<div>'+esc(e.event.replaceAll('_',' '))+'</div><div>'+esc(e.detail||'')+'</div></div></div>').join(''):'No events recorded yet.';
+ if(curfewHistoryShown<curfewHistoryItems.length){
+  const more=document.createElement('button');more.className='button secondary';more.textContent='Show 5 older events ('+(curfewHistoryItems.length-curfewHistoryShown)+' remaining)';
+  more.addEventListener('click',()=>{curfewHistoryShown+=5;renderCurfewHistory();});box.append(more);
+ }
+}
+async function checkCurfewEvents(){
+ const box=el('curfewEvents');if(!box)return;
+ if(box.dataset.expanded==='true'){box.replaceChildren();box.dataset.expanded='false';return;}
+ box.dataset.expanded='true';box.textContent='Loading event history…';
+ try{
+  const r=await fetch('./sure/pet-curfew-events',{cache:'no-store',signal:AbortSignal.timeout(15000)});
+  if(!r.ok)throw Error('History unavailable');
+  const data=await r.json();
+  if(box.dataset.expanded!=='true')return;
+  curfewHistoryItems=(data.events||[]).slice().reverse();curfewHistoryShown=5;renderCurfewHistory();
+ }catch(e){if(box.dataset.expanded==='true')box.textContent='Unable to load history: '+e.message;}
+}
+async function checkCurfewDiagnostics(){
+ const box=el('curfewDiagnostics');if(!box)return;
+ if(box.dataset.expanded==='true'){box.replaceChildren();box.dataset.expanded='false';return;}
+ box.dataset.expanded='true';box.textContent='Checking scheduler…';
+ try{const r=await fetch('./sure/pet-curfews',{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('Scheduler unavailable');
+ const data=await r.json(),names=Object.fromEntries(state.pets.map(p=>[String(p.surePetId||''),p.name]));
+ const entries=Object.entries(data.pets||{});
+ box.innerHTML=entries.length?entries.map(([id,e])=>'<div class="listrow"><div><strong>'+esc(names[id]||'Pet '+id)+'</strong><div>Weekly curfew: '+(e.enabled?'On':'Off')+' · Active now: '+(e.activeNow?'Yes':'No')+'</div><div>Manual hold: '+(e.manual?'Yes':'No')+' · Scheduler owns restriction: '+(e.owned?'Yes':'No')+'</div><div>Phase: '+esc(e.phase||'Not recorded')+' · Cloud profile: '+esc(String(e.lastObservedProfile??'Not checked'))+'</div><div>Last checked: '+esc(e.lastChecked||'Not checked')+'</div><div>Last error: '+esc(e.lastError||'None')+'</div></div></div>').join(''):'No individual curfews recorded on server';
+ }catch(e){box.textContent='Unable to check scheduler: '+e.message;}
+}
+function individualCurfewPassedToday(p){
+ if(!p?.enabled)return [];
+ const now=new Date(),today=(now.getDay()+6)%7;
+ const current=now.getHours()*60+now.getMinutes();
+ const day=ensureSchedule(p).days[today];
+ if(!day?.enabled)return [];
+ const minutes=t=>{const [h,m]=String(t||'').split(':').map(Number);return Number.isInteger(h)&&Number.isInteger(m)?h*60+m:NaN};
+ const from=minutes(day.start),until=minutes(day.end);
+ if(!Number.isFinite(from)||!Number.isFinite(until)||until<=from||current<until)return [];
+ return [{name:dayNames[today],start:day.start,end:day.end}];
+}
+function syncLivePetCurfew(id){
+ clearTimeout(petCurfewSyncTimers[id]);
+ petCurfewSyncTimers[id]=setTimeout(async()=>{
+  const p=pet(id);if(!p)return;
+  if(!p.surePetId){toast('Sync this cat with Sure Petcare before enabling a live curfew');p.enabled=false;save();return;}
+  const post=async()=>{
+   try{
+    const r=await fetch('./sure/pet-curfews',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({petId:p.surePetId,enabled:!!p.enabled,days:ensureSchedule(p).days}),signal:AbortSignal.timeout(20000)});
+    const data=await r.json();if(!r.ok)throw Error(data.error||'Schedule not accepted');
+    toast('Live curfew schedule saved for '+p.name);
+   }catch(e){toast('Curfew not saved: '+e.message);await loadLivePetCurfews();}
+  };
+  const passed=individualCurfewPassedToday(p);
+  if(passed.length){
+   const d=passed[0];
+   const next=new Date();next.setDate(next.getDate()+7);
+   const nextDate=next.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+   modal('<h3>Today’s curfew has already passed</h3><p>'+esc(p.name)+'’s '+esc(d.name)+' curfew ('+esc(d.start)+'–'+esc(d.end)+') has already finished today. It will next run on '+esc(nextDate)+'.</p><div class="row"><button class="button" id="confirmIndividualPastCurfew">Save schedule</button><button class="button outline" id="editIndividualPastCurfew">Edit times</button></div>');
+   el('confirmIndividualPastCurfew').onclick=async()=>{closeModal();await post();};
+   el('editIndividualPastCurfew').onclick=()=>{closeModal();render();toast('Times ready to edit. The selected day remains checked; changes are not yet sent to the flap.');};
+   return;
+  }
+  await post();
+ },500);
+}
+function toggleAllWeek(id,active){const p=pet(id);if(!p)return;const c=ensureSchedule(p);c.allWeek=c.allWeek||{active:false,start:c.days[0].start,end:c.days[0].end};if(active&&!c.allWeek.active){c.allWeek.savedDays=JSON.parse(JSON.stringify(c.days));c.days=c.days.map(()=>({start:c.allWeek.start,end:c.allWeek.end,enabled:true}));}else if(!active&&c.allWeek.active){if(Array.isArray(c.allWeek.savedDays)&&c.allWeek.savedDays.length===7)c.days=JSON.parse(JSON.stringify(c.allWeek.savedDays));}c.allWeek.active=!!active;save();syncLivePetCurfew(id);toast(active?'Same curfew applied to all seven days':'Individual day settings restored')}
+function minuteAfter(time){const [h,m]=time.split(':').map(Number);const n=(h*60+m+1)%1440;return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
+function previewCurfewEnd(input){if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(input.value))return;const row=input.closest('.day-schedule')||input.closest('.row');const times=row?.querySelectorAll('input[type="time"]');if(times&&times.length>=2){times[1].value=minuteAfter(input.value);times[1].setAttribute('value',times[1].value)}}
+function setAllWeekTime(id,field,value,commit=true){if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))return;const p=pet(id);if(!p)return;const c=ensureSchedule(p);c.allWeek=c.allWeek||{active:false,start:c.days[0].start,end:c.days[0].end};c.allWeek[field]=value;if(field==='start')c.allWeek.end=minuteAfter(value);if(c.allWeek.active)c.days=c.days.map(()=>({start:c.allWeek.start,end:c.allWeek.end,enabled:true}));if(!commit)return;save();syncLivePetCurfew(id);render();toast('Whole-week times saved')}
+function setDayEnabled(id,day,enabled){const p=pet(id);if(!p)return;ensureSchedule(p).days[day].enabled=!!enabled;save();syncLivePetCurfew(id);toast(dayNames[day]+' curfew '+(enabled?'on':'off')+' — saving')}
+function setDaySchedule(id,day,field,value,commit=true){if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))return;let p=pet(id);if(!p)return;const item=ensureSchedule(p).days[day];item[field]=value;if(field==='start')item.end=minuteAfter(value);if(day===0){p.start=ensureSchedule(p).days[0].start;p.end=ensureSchedule(p).days[0].end}if(!commit)return;save();syncLivePetCurfew(id);render();toast(dayNames[day]+' schedule saved')}
+function petTargetChoices(sourceId,mode='day'){let pets=activePets();return `<label class="switchrow" style="font-weight:700"><input type="checkbox" id="copyAllPets" onchange="document.querySelectorAll('.copy-pet:not(:disabled)').forEach(x=>x.checked=this.checked);syncCopyTargets()"> All other pets</label><div class="stack" style="padding:5px 0 6px 15px">${pets.map(p=>`<label class="switchrow" style="${p.id===sourceId?'opacity:.4;cursor:not-allowed':''}"><input type="checkbox" class="copy-pet" value="${esc(p.id)}" ${p.id===sourceId?'disabled':''} onchange="syncCopyTargets()"> ${esc(p.name)}${p.id===sourceId?' (source — cannot select)':''}</label>`).join('')}</div>`}
+function syncCopyTargets(){let feedback=el('copyFeedback');if(feedback)feedback.style.display='none';let pets=[...document.querySelectorAll('.copy-pet:not(:disabled)')];let all=el('copyAllPets');if(all)all.checked=pets.length>0&&pets.every(x=>x.checked);}
+function copyError(message){let area=el('copyFeedback');if(area){area.textContent=message;area.style.display='block';area.scrollIntoView({block:'nearest',behavior:'smooth'});}else toast(message)}function selectedCopyPets(){return [...document.querySelectorAll('.copy-pet:checked')].map(x=>pet(x.value)).filter(Boolean)}
+function copyDayPrompt(id,day){let p=pet(id);modal(`<h3>Copy ${dayNames[day]} — ${esc(p.name)}</h3><p class="small"><strong>Source:</strong> ${esc(p.name)} · ${dayNames[day]}. Choose destination days and other pets below. The source pet is excluded, but the same weekday is available for other pets.</p><strong>1. Destination days</strong><div class="stack" style="margin-top:9px">${dayNames.map((name,i)=>`<label class="switchrow"><input type="checkbox" class="copy-day" value="${i}" ${i===day?`data-source-day="yes" data-source-pet="${esc(id)}"`:''}> ${name}${i===day?' (same day on destination pets)':''}</label>`).join('')}</div><strong>2. Destination pets</strong>${petTargetChoices(id)}<p class="small">The source pet is greyed out. Select one or more other pets, then choose their destination days. Overrides are unchanged.</p><div id="copyFeedback" role="alert" style="display:none;color:#9b2424;background:#fff0ef;padding:10px;border-radius:9px;margin:10px 0;font-weight:650"></div><div class="row"><button class="button wide" onclick="copyDay('${id}',${day})">Copy to selected</button><button class="button outline" onclick="closeModal()">Cancel</button></div>`);syncCopyTargets()}
+function copyDay(id,day){let days=[...document.querySelectorAll('.copy-day:checked')].map(x=>Number(x.value));let pets=selectedCopyPets();if(!days.length||!pets.length){copyError(!days.length&&!pets.length?'Select at least one destination day and one destination pet.':!days.length?'Select at least one destination day.':'Select at least one destination pet.');return;}let source={...ensureSchedule(pet(id)).days[day]};for(let p of pets){let schedule=ensureSchedule(p);for(let i of days)if(!(p.id===id&&i===day))schedule.days[i]={...source}}closeModal();save();pets.forEach(p=>syncLivePetCurfew(p.id));toast('Copied to '+pets.length+' pet(s), '+days.length+' day(s)')}
+function copyCurfewPrompt(id){let source=pet(id);modal(`<h3>Copy ${esc(source.name)}’s whole week</h3><p class="small">Copy all seven daily curfews to other pets, or select All other pets. The source pet is greyed out.</p><strong>Select destination pets</strong>${petTargetChoices(id)}<p class="small">This replaces the selected pets’ seven-day times and weekly curfew On/Off setting. Temporary overrides will not change.</p><div id="copyFeedback" role="alert" style="display:none;color:#9b2424;background:#fff0ef;padding:10px;border-radius:9px;margin:10px 0;font-weight:650"></div><div class="row" style="margin-top:16px"><button class="button wide" onclick="copyCurfew('${id}')">Copy whole week</button><button class="button outline" onclick="closeModal()">Cancel</button></div>`)}
+function copyCurfew(id){let source=pet(id),targets=selectedCopyPets();if(!targets.length){copyError('Select at least one destination pet.');return;}let schedule=JSON.parse(JSON.stringify(ensureSchedule(source))),enabled=source.enabled;for(let target of targets){target.curfewV3=JSON.parse(JSON.stringify(schedule));target.start=source.start;target.end=source.end;target.enabled=enabled}closeModal();save();targets.forEach(p=>syncLivePetCurfew(p.id));toast('Whole week copied to '+targets.length+' pet(s)')}
+function localDatetimeValue(date){let d=new Date(date);let z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`}
+function overridePrompt(id){let p=pet(id);modal(`<h3>Temporary override — ${esc(p.name)}</h3><p class="small">Choose when the override starts. This is a demonstration and does not control the cat flap.</p><div class="stack"><label class="field">Action<select id="overrideMode"><option value="allow">Allow exit temporarily</option><option value="restrict">Restrict exit temporarily</option></select></label><label class="field">Start<select id="overrideStartMode" onchange="document.getElementById('overrideStartTimeField').style.display=this.value==='later'?'block':'none'"><option value="now">Immediately (now)</option><option value="later">Schedule a start time</option></select></label><label class="field" id="overrideStartTimeField" style="display:none">Starts at<input type="datetime-local" id="overrideStartTime" value="${localDatetimeValue(Date.now()+60*60000)}"></label><label class="field">Duration<select id="overrideDuration"><option value="30">30 minutes</option><option value="60" selected>1 hour</option><option value="120">2 hours</option><option value="240">4 hours</option></select></label><p class="small">The exact start and end times will be displayed after you apply the override.</p></div><div class="row"><button class="button wide" onclick="setOverride('${id}')">Apply demo override</button><button class="button outline" onclick="closeModal()">Cancel</button></div>`)}
+function setOverride(id){let p=pet(id),mode=el('overrideMode').value,duration=Number(el('overrideDuration').value);let start=el('overrideStartMode').value==='later'?new Date(el('overrideStartTime').value).getTime():Date.now();if(!Number.isFinite(start)||start<Date.now()-60000){toast('Choose a valid future start time');return}p.override={mode,start,until:start+duration*60000};closeModal();save();toast('Demo override saved')}
+function clearOverride(id){delete pet(id).override;save();toast('Demo override cancelled')}
+function updateCurfew(id,k,v){let p=pet(id);p[k]=v;if(k==='start'||k==='end')ensureSchedule(p).days[0][k]=v;save();syncLivePetCurfew(id);toast('Saving live schedule…')}function addSampleEvent(){let pets=activePets();if(!pets.length)return toast('Add a pet first');let p=pets[Math.floor(Math.random()*pets.length)];let previous=lastEvent(p.id);state.events.push({id:'e'+Date.now(),petId:p.id,type:previous?.type==='In'?'Out':'In',at:new Date().toISOString()});save();toast('Sample movement added')}function closeModal(){el('modalWrap').style.display='none';el('modalWrap').setAttribute('aria-hidden','true');}
+function modal(html){
+ const wrap=el('modalWrap'),panel=el('modal');
+ panel.innerHTML=html;
+ panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('tabindex','-1');
+ wrap.style.display='flex';wrap.setAttribute('aria-hidden','false');
+ panel.focus({preventScroll:true});
+}
+function petHQConfirm(title,message,actionLabel,onConfirm,{danger=false}={}){
+ modal('<h3>'+esc(title)+'</h3><p>'+esc(message)+'</p><div class="row" style="margin-top:20px"><button type="button" class="button '+(danger?'danger':'')+'" id="petHQConfirmAction">'+esc(actionLabel)+'</button><button type="button" class="button outline" onclick="closeModal()">Cancel</button></div>');
+ el('petHQConfirmAction').onclick=()=>{closeModal();onConfirm();};
+}async function changePetPhoto(id,file){
+ if(!file||!file.type.startsWith('image/'))return toast('Choose an image');
+ if(file.size>12*1024*1024)return toast('Choose a photo smaller than 12 MB');
+ const p=pet(id);if(!p)return;
+ try{
+  const bitmap=await createImageBitmap(file);
+  const canvas=document.createElement('canvas'),scale=Math.min(1,320/Math.max(bitmap.width,bitmap.height));
+  canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+  canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+  const old=p.photo;p.photo=canvas.toDataURL('image/jpeg',0.75);
+  try{localStorage.setItem(key,JSON.stringify(state))}catch{p.photo=old;throw Error('Storage full')}
+  render();openPet(id);toast('Photo saved');
+ }catch(e){toast('Could not save photo: '+e.message)}
+}
+function removePetPhoto(id){const p=pet(id);if(!p)return;delete p.photo;save();openPet(id)}
+function openPet(id){let p=id?pet(id):null;modal(`<h3>${p?'Edit pet':'Add pet'}</h3><div class="stack">${p?`<div class="row">${petAvatar(p)}<label class="button secondary">Change photo<input type="file" accept="image/*" style="display:none" onchange="changePetPhoto(\'${p.id}\',this.files[0])"></label>${p.photo?`<button class="button outline" onclick="removePetPhoto(\'${p.id}\')">Remove</button>`:""}</div><div class="small">Photo saved on this device</div>`:""}<label class="field">Pet name<input id="petName" maxlength="40" value="${esc(p?.name||'')}" placeholder="Pet name"></label>${p?`<div class="card" style="background:#f4f8f5"><strong>Individual access</strong><p class="small" id="petAccessStatus">Checking Sure Petcare permission…</p><div class="row" id="petAccessActions"><span class="small">Checking available action…</span></div><p class="small">Indoor Only prevents this cat exiting but still allows entry. Useful for recovery after veterinary treatment.</p><strong>Curfews</strong><p class="small">Manage the weekly curfew separately.</p><button class="button secondary" onclick="closeModal();openPetCurfew(\'${p.id}\')">Open ${esc(p.name)}’s curfew settings →</button></div>`:""}</div><div class="row"><button class="button wide" onclick="savePet('${id||''}')">Save pet</button><button class="button outline" onclick="closeModal()">Cancel</button></div>`);if(p)refreshPetAccess(p.id);if(p&&houseReview){el('modal').insertAdjacentHTML('beforeend','<div class="row" style="margin-top:12px"><button class="button secondary" onclick="showHouseReviewCat()">Return to cat review</button></div>')}}function savePet(id){let name=el('petName').value.trim();if(!name)return toast('Enter a name');if(state.pets.some(p=>p.id!==id&&p.name.toLowerCase()===name.toLowerCase()))return toast('Pet name already exists');if(id){pet(id).name=name;}else state.pets.push({id:'p'+Date.now(),name,indoorMode:'normal',enabled:false,start:'21:00',end:'07:00',weekend:true,archived:false});closeModal();save();toast(name+' profile saved')}async function refreshPetAccess(id){
+ const p=pet(id),target=el('petAccessStatus'),actions=el('petAccessActions');
+ if(!p||!target)return;
+ try{
+  const r=await fetch('./sure/pet-permissions',{cache:'no-store',signal:AbortSignal.timeout(30000)}),data=await r.json();
+  if(!r.ok||data.status!=='read_only'){
+   target.textContent='Sure Petcare check unavailable'+(data.message?' — '+data.message:'')+'. Existing access has not been changed.';
+   if(actions)actions.textContent='Try closing and reopening this screen to check again.';
+   return;
+  }
+  const match=(data.cats||[]).find(c=>String(c.surePetId)===String(p.surePetId));
+  target.textContent=match?.matched?(match.profile==='indoor_only'?'Current access: Indoor Only':match.profile==='free_access'?'Current access: Free Access':'Current permission unknown'):'Tag could not be matched in the latest Sure Petcare response';
+  if(actions){
+   const mode=match?.matched&&match.profile==='indoor_only'?'free_access':match?.matched&&match.profile==='free_access'?'indoor_only':null;
+   if(mode){
+    const button=document.createElement('button');button.type='button';button.className='button secondary';
+    button.textContent=mode==='free_access'?'Restore Free Access':'Keep indoors';
+    button.onclick=()=>confirmPetAccess(id,mode);actions.replaceChildren(button);
+   }else actions.textContent='Permission unavailable — no change can be made until verified.';
+  }
+ }catch{target.textContent='Current permission unavailable';if(actions)actions.textContent='Unable to verify permission. Reopen the profile to retry.';}
+}
+function confirmPetAccess(id,mode){
+ const p=pet(id);if(!p||!p.surePetId){toast('Sync this cat with Sure Petcare first');return;}
+ const title=mode==='indoor_only'?'Keep indoors':'Restore Free Access';
+ modal('<h3>'+title+' for '+esc(p.name)+'?</h3><p>'+(mode==='indoor_only'?'This prevents '+esc(p.name)+' exiting, but entry remains permitted.':'This allows '+esc(p.name)+' to enter and exit normally.')+'</p><div class="row"><button class="button" id="petAccessConfirm">Confirm</button><button class="button outline" onclick="closeModal();openPet(\''+p.id+'\')">Cancel</button></div>');
+ el('petAccessConfirm').onclick=()=>setPetAccess(id,mode);
+}
+async function setPetAccess(id,mode){
+ const p=pet(id);if(!p)return;const button=el('petAccessConfirm');
+ if(button){button.disabled=true;button.textContent='Updating…';}
+ const expected=mode==='indoor_only'?'Indoor Only':'Free Access';
+ try{
+  const r=await fetch('./sure/pet-access',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({petId:p.surePetId,mode}),signal:AbortSignal.timeout(120000)});
+  const d=await r.json();if(!r.ok)throw Error(d.error||'Update failed');
+  if(typeof window.refreshPetPermissionDisplay==='function')await window.refreshPetPermissionDisplay(true);
+  toast(d.status==='confirmed'?'Permission confirmed by Sure Petcare':'Change sent; confirmation pending');
+  closeModal();openPet(id);
+ }catch(e){
+  if(button)button.textContent='Checking actual access…';
+  try{
+   if(typeof window.refreshPetPermissionDisplay==='function')await window.refreshPetPermissionDisplay(true);
+   const actual=String(window.getLivePetAccess?.(p.surePetId)||'');
+   if(actual.startsWith(expected)){
+    toast('Access changed successfully — confirmed by Sure Petcare');
+    closeModal();openPet(id);return;
+   }
+  }catch{}
+  toast('Could not confirm the change. Check the current access before trying again.');
+  if(button){button.disabled=false;button.textContent='Check access / try again';}
+ }
+}
+async function toggleArchive(id){
+ const p=pet(id);if(!p)return;
+ const apply=async()=>{
+  try{
+   if(!p.surePetId)throw Error('Link this pet to Sure Petcare before archiving, so future sync can identify it safely.');
+   await loadPetArchive();
+   await updatePetArchive(p.archived?'restore':'archive',p);
+   p.archived=!p.archived;save();toast(p.archived?'Pet archived — history retained':'Pet restored');
+  }catch(e){toast(e.message||'Archive failed. No changes made.');}
+ };
+ if(p.archived){await apply();return;}
+ petHQConfirm('Archive '+p.name+'?','This removes the cat from active Pet HQ views, retains its profile and history, and prevents Sync Pets adding it back. Sure Petcare is unchanged.','Archive pet',apply,{danger:true});
+}
+function openPrivatePetArchive(){
+ const hidden=state.pets.filter(p=>p.archived||p.remembered||p.name.toLowerCase()==='rosie');
+ const rows=hidden.map(p=>{
+  const remembered=!!p.remembered||p.name.toLowerCase()==='rosie';
+  return '<div class="listrow"><div><strong>'+esc(p.name)+'</strong><div class="small">'+(remembered?'Remembered pet':'Archived pet')+' · history retained</div></div><div class="actions"><button class="button secondary" onclick="viewPrivatePet(\''+esc(p.id)+'\')">View profile</button>'+(!remembered?'<button class="button secondary" onclick="rememberPet(\''+esc(p.id)+'\')">Remember</button>':'')+'<button class="button secondary" onclick="restorePrivatePet(\''+esc(p.id)+'\')">Restore</button></div></div>';
+ }).join('');
+ modal('<h3>Private pet archive</h3><p class="small">These pets are hidden from everyday views. Their profiles and history are kept. Nothing here is automatically restored by Sync Pets.</p>'+(rows||'<p class="small">No archived pets.</p>')+'<div class="row"><button class="button outline" onclick="closeModal()">Close</button></div>');
+}
+function viewPrivatePet(id){
+ const p=pet(id);
+ if(!p||!(p.archived||p.remembered||p.name.toLowerCase()==='rosie'))return;
+ const history=state.events.filter(e=>e.petId===p.id).sort((a,b)=>new Date(b.at)-new Date(a.at));
+ const photo=p.photo?'<img src="'+esc(p.photo)+'" alt="'+esc(p.name)+'" style="width:100%;max-height:280px;object-fit:cover;border-radius:16px;margin-bottom:12px">':'';
+ const rows=history.slice(0,20).map(e=>'<div class="listrow"><span>'+esc(e.type==='In'?'Came inside':e.type==='Out'?'Went outside':e.type||'Movement')+'</span><span class="small">'+esc(time(e.at))+'</span></div>').join('');
+ modal('<h3>'+esc(p.name)+'</h3>'+photo+'<p class="small">A private, read-only view of the saved profile. This does not restore the pet or change household access.</p><div class="card"><strong>Saved movement history</strong>'+(rows||'<p class="small">No saved movement history on this device.</p>')+'</div><div class="row" style="margin-top:16px"><button class="button secondary" onclick="openPrivatePetArchive()">Back to private archive</button><button class="button outline" onclick="closeModal()">Close</button></div>');
+}
+async function rememberPet(id){
+ const p=pet(id);if(!p)return;
+ petHQConfirm('Remember '+p.name+'?','Hide this pet from everyday Pet HQ. Their profile and history will be preserved in Settings.','Remember pet',async()=>{
+  try{
+   if(!p.archived){if(!p.surePetId)throw Error('Pet must be linked before archiving');await loadPetArchive();await updatePetArchive('archive',p);}
+   p.archived=true;p.remembered=true;save();openPrivatePetArchive();toast('Pet moved to private archive');
+  }catch(e){toast(e.message||'Could not save private archive');}
+ });
+}
+function restorePrivatePet(id){
+ const p=pet(id);if(!p)return;
+ petHQConfirm('Restore '+p.name+'?','This will make the pet visible in everyday Pet HQ again.','Restore pet',async()=>{
+  try{
+   if(p.archived&&p.surePetId){await loadPetArchive();await updatePetArchive('restore',p);}
+   p.archived=false;p.remembered=false;save();closeModal();toast('Pet restored');
+  }catch(e){toast(e.message||'Could not restore pet');}
+ });
+}
+let familyMembers=null;
+let cfSyncConfigured=false;
+async function loadFamily(){
+ try{
+  const r=await fetch('./pet-hq/family',{cache:'no-store'});
+  if(!r.ok)throw Error();
+  const data=await r.json();
+  familyMembers=data.members;
+  cfSyncConfigured=Boolean(data.cfSyncConfigured);
+ }catch{familyMembers=null;cfSyncConfigured=false;}
+ renderFamily();
+}
+function renderFamily(){
+ const target=el('userList');if(!target)return;
+ if(!familyMembers){target.innerHTML='<p class="small">Open standalone Pet HQ with Cloudflare email sign-in to manage family access.</p>';return;}
+ target.innerHTML=familyMembers.map(u=>'<div class="listrow"><div><strong>'+esc(u.name)+'</strong><div class="small">'+esc(u.email)+' · Full access'+(u.primary?' · Protected':'')+'</div></div><div class="actions"><button class="button secondary" data-edit-email="'+esc(u.email)+'">Edit</button>'+(!u.primary?'<button class="button danger" data-remove-email="'+esc(u.email)+'">Remove</button>':'')+'</div></div>').join('');
+ target.querySelectorAll('[data-edit-email]').forEach(btn=>btn.addEventListener('click',()=>openEditUser(btn.dataset.editEmail)));
+ target.querySelectorAll('[data-remove-email]').forEach(btn=>btn.addEventListener('click',()=>removeUser(btn.dataset.removeEmail)));
+}
+function openUser(){
+ if(!familyMembers)return toast('Open standalone Pet HQ to manage access');
+ const syncNote=cfSyncConfigured?'Cloudflare Access will be updated automatically when you save.':'All family members have full access. Configure Cloudflare API credentials in Home Assistant add-on options to sync automatically.';
+ modal('<h3>Add family member</h3><div class="stack"><label class="field">Name<input id="userName" maxlength="60"></label><label class="field">Email<input id="userEmail" type="email" maxlength="120"></label><p class="small">'+esc(syncNote)+'</p><div id="userFormError" class="small" role="alert" style="color:#b44942;font-weight:650"></div></div><div class="row"><button class="button wide" id="saveNewUserBtn" onclick="saveUser()">Add member</button><button class="button outline" onclick="closeModal()">Cancel</button></div>');
+}
+function openEditUser(originalEmail){
+ if(!familyMembers)return toast('Open standalone Pet HQ to manage access');
+ const member=familyMembers.find(m=>m.email===originalEmail);
+ if(!member)return toast('Member not found');
+ const syncNote=cfSyncConfigured?'Saving updates both Pet HQ and Cloudflare Access automatically.':'Saving updates Pet HQ. Configure Cloudflare API credentials in Home Assistant add-on options to sync automatically.';
+ modal('<h3>Edit '+esc(member.name)+'</h3><div class="stack"><label class="field">Name<input id="editUserName" maxlength="60" value="'+esc(member.name)+'"></label><label class="field">Email<input id="editUserEmail" type="email" maxlength="120" value="'+esc(member.email)+'"></label><p class="small">'+esc(syncNote)+'</p><div id="editUserFormError" class="small" role="alert" style="color:#b44942;font-weight:650"></div></div><div class="row"><button class="button wide" id="saveEditUserBtn">Save changes</button><button class="button outline" onclick="closeModal()">Cancel</button></div>');
+ el('saveEditUserBtn').onclick=()=>saveEditedUser(originalEmail);
+}
+async function saveEditedUser(originalEmail){
+ const name=el('editUserName').value.trim(),email=el('editUserEmail').value.trim().toLowerCase(),error=el('editUserFormError'),btn=el('saveEditUserBtn');
+ if(!name||!email.includes('@')||!email.includes('.')){error.textContent='Enter a name and valid email.';return;}
+ if(btn){btn.disabled=true;btn.textContent='Saving…';}
+ try{
+  const r=await fetch('./pet-hq/family',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'edit',originalEmail,name,email})});
+  const d=await r.json();if(!r.ok)throw Error(d.error||'Unable to update member');
+  familyMembers=d.members;closeModal();renderFamily();
+  toast(d.cfSynced?'Updated '+name+' and synced Cloudflare Access':'Updated '+name+' in Pet HQ');
+ }catch(e){
+  error.textContent=e.message;
+  if(btn){btn.disabled=false;btn.textContent='Save changes';}
+ }
+}
+async function saveUser(){
+ const name=el('userName').value.trim(),email=el('userEmail').value.trim().toLowerCase(),error=el('userFormError'),btn=el('saveNewUserBtn');
+ if(!name||!email.includes('@')||!email.includes('.')){error.textContent='Enter a name and valid email.';return;}
+ if(btn){btn.disabled=true;btn.textContent='Adding…';}
+ try{
+  const r=await fetch('./pet-hq/family',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'add',name,email})});
+  const d=await r.json();if(!r.ok)throw Error(d.error||'Unable to add member');
+  familyMembers=d.members;closeModal();renderFamily();
+  const subject=encodeURIComponent('Your Pet HQ invitation'),body=encodeURIComponent('Open https://hinchliffepethq.co.uk and sign in using '+email);
+  const cfStatusText=d.cfSynced?'Cloudflare Access has been updated automatically so they can sign in straight away.':'Make sure '+email+' is also allowed in your Cloudflare Access policy.';
+  modal('<h3>Member added</h3><p>'+esc(name)+' is on the Pet HQ access list. '+esc(cfStatusText)+'</p><p class="small">Email is not sent automatically. Open your email app to send the invitation.</p><div class="row"><a class="button wide" href="mailto:'+encodeURIComponent(email)+'?subject='+subject+'&body='+body+'">Open email invitation</a><button class="button outline" onclick="closeModal()">Close</button></div>');
+ }catch(e){
+  error.textContent=e.message;
+  if(btn){btn.disabled=false;btn.textContent='Add member';}
+ }
+}
+function removeUser(email){
+ petHQConfirm('Remove family member?','Revoke Pet HQ access for '+email+'?','Remove',async()=>{
+  try{
+   const r=await fetch('./pet-hq/family',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'remove',email})});
+   const d=await r.json();if(!r.ok)throw Error(d.error||'Unable to remove');
+   familyMembers=d.members;renderFamily();
+   toast(d.cfSynced?'Access revoked in Pet HQ and Cloudflare Access':'Pet HQ access revoked');
+  }catch(e){toast(e.message);}
+ },{danger:true});
+}
+render();loadFamily();loadLivePetCurfews();
+</script><script>
+/* Display the installed release information, not a hard-coded version. */
+async function petHQLoadReleaseInfo(){
+ const version=document.getElementById('petHQVersion'),notes=document.getElementById('petHQReleaseNotes');
+ if(!version||!notes)return;
+ try{
+  const response=await fetch('./pet-hq/release-info',{cache:'no-store'});
+  if(!response.ok)throw Error('Unavailable');
+  const release=await response.json();
+  if(!/^\d+\.\d+\.\d+$/.test(release.version))throw Error('Invalid version');
+  version.textContent=release.version;
+  notes.textContent=release.notes||'No release notes supplied.';
+ }catch{
+  version.textContent='Unavailable';
+  notes.textContent='Release information could not be loaded.';
+ }
+}
+petHQLoadReleaseInfo();
+</script><script>
+/* Standalone-app update UX; does not affect Home Assistant commands. */
+(function(){
+ if(!('serviceWorker' in navigator))return;
+ let refreshing=false,waiting=null;
+ function offerUpdate(worker){
+  if(!worker||document.getElementById('pet-hq-update-banner'))return;
+  waiting=worker;
+  const bar=document.createElement('div');
+  bar.id='pet-hq-update-banner';
+  bar.setAttribute('role','status');
+  bar.innerHTML='<span>🐾 A new Pet HQ version is ready</span><button type="button" id="pet-hq-update-now">Update now</button><button type="button" id="pet-hq-update-later" aria-label="Dismiss update">Later</button>';
+  document.body.appendChild(bar);
+  document.getElementById('pet-hq-update-now').addEventListener('click',()=>{if(waiting)waiting.postMessage({type:'SKIP_WAITING'});});
+  document.getElementById('pet-hq-update-later').addEventListener('click',()=>bar.remove());
+ }
+ navigator.serviceWorker.addEventListener('controllerchange',()=>{
+  if(refreshing)return;refreshing=true;location.reload();
+ });
+ window.addEventListener('load',async()=>{
+  try{
+   const reg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});
+   if(reg.waiting&&navigator.serviceWorker.controller)offerUpdate(reg.waiting);
+   reg.addEventListener('updatefound',()=>{
+    const worker=reg.installing;if(!worker)return;
+    worker.addEventListener('statechange',()=>{
+     if(worker.state==='installed'&&navigator.serviceWorker.controller)offerUpdate(worker);
+    });
+   });
+   const check=()=>{if(document.visibilityState==='visible'&&navigator.onLine)reg.update().catch(()=>{});};
+   document.addEventListener('visibilitychange',check);
+   window.addEventListener('focus',check);
+   check();
+  }catch(e){console.warn('Pet HQ update check unavailable',e);}
+ });
+})();
+</script><script src="./live.js"></script><script>
+async function checkSureTimeline(){
+ const out=document.getElementById('sure-diagnostic-result');out.textContent='Testing read-only connection…';
+ try{const response=await fetch('./sure/diagnostic',{cache:'no-store'});if(!response.ok)throw Error('HTTP '+response.status);const data=await response.json();out.textContent=data.status+': '+(typeof data.detail==='string'?data.detail:JSON.stringify(data.detail,null,2));out.style.whiteSpace='pre-wrap';out.style.overflowWrap='anywhere';}
+ catch(e){out.textContent='Connection test unavailable: '+e.message;}
+}
+</script><script>
+setInterval(()=>{if(document.getElementById('settings')?.classList.contains('active'))petHQCheckUsbArchive();},60000);
+async function petHQCheckUsbArchive(){
+ const out=document.getElementById('petUsbArchiveStatus');
+ if(!out)return;
+ out.textContent='Checking USB storage…';
+ try{
+  const response=await fetch('./pet-hq/usb-archive',{cache:'no-store',signal:AbortSignal.timeout(10000)});
+  if(!response.ok)throw Error('HTTP '+response.status);
+  const data=await response.json();
+  out.textContent=data.connected?'● USB connected · Last successful copy/check '+new Date(data.lastSync).toLocaleString('en-GB')+' · '+data.files.length+' archive files':'● USB unavailable — Pet HQ continues using internal storage. '+(data.lastError||'');
+  out.style.color=data.connected?'#18794e':'#b45309';
+ }catch(e){out.textContent='Unable to check USB archive: '+String(e.message||e).slice(0,100);}
+}
+async function petHQReliabilityCheck(){
+ const output=document.getElementById('petReliabilityResults');
+ const button=document.getElementById('petReliabilityButton');
+ if(!output)return;
+ if(!output.hidden){output.hidden=true;button.textContent='View diagnostics';button.setAttribute('aria-expanded','false');return;}
+ output.hidden=false;
+ button.textContent='Hide diagnostics';button.setAttribute('aria-expanded','true');
+ output.textContent='Checking reliability data…';
+ if(button)button.disabled=true;
+ try{
+  const response=await fetch('./pet-hq/reliability',{cache:'no-store',signal:AbortSignal.timeout(10000)});
+  if(!response.ok)throw Error('HTTP '+response.status);
+  const data=await response.json();
+  if(!Array.isArray(data.recent))throw Error('Invalid response');
+  const safe=value=>String(value??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const labels={cloud_request:'Sure Petcare network request',positions:'Cat positions',activity:'Movement history',pet_presence:'Cat In/Out status',flap_state:'Door lock status',house_lock_command:'Whole-house access command',individual_access_command:'Individual access command',movement_observed:'Movement event observed',pet_status_change:'Cat card status changed'};
+  const names={sure_cloud:'Sure Petcare',home_assistant:'Home Assistant',pet_hq:'Pet HQ'};
+  const time=ms=>ms==null?'Unknown':ms<1000?Math.round(ms)+' ms':(ms/1000).toFixed(1)+' sec';
+  const rows=data.recent;
+  const cloud=rows.filter(x=>x.operation==='cloud_request');
+  const errors=cloud.filter(x=>!x.ok);
+  const avg=key=>{const a=cloud.map(x=>x[key]).filter(x=>typeof x==='number');return a.length?time(a.reduce((x,y)=>x+y,0)/a.length):'Not measured';};
+  const summary='<p class="small">Showing '+rows.length+' recent readings from '+(data.sampleCount||rows.length)+' retained records. No new cloud requests are made by this check.</p>'+
+   '<p><strong>Sure Petcare queue wait:</strong> '+safe(avg('queueMs'))+' average<br><strong>Sure Petcare network time:</strong> '+safe(avg('networkMs'))+' average<br><strong>Cloud request failures:</strong> '+errors.length+' of '+cloud.length+'</p>'+
+   '<p class="small">“State last changed” does not mean the reading is stale. Movement event age is measured when the event is first seen during this session, not the exact time the screen updated.</p>'+
+   '<p class="small">Cat-specific records show when Pet HQ observed a status change or received a movement event. These are not guaranteed screen-render timestamps.</p>';
+  const details=rows.length?rows.map(x=>{
+   const age=x.sourceAgeMs==null?'':x.operation==='movement_observed'?' · Event age '+safe(time(x.sourceAgeMs)):x.source==='home_assistant'?' · State last changed '+safe(time(x.sourceAgeMs)):' · Latest event age '+safe(time(x.sourceAgeMs));
+   const split=x.operation==='cloud_request'?' · Queue '+safe(time(x.queueMs))+' · Network '+safe(time(x.networkMs)):'';
+   const cat=x.pet?' · '+safe(x.pet.charAt(0).toUpperCase()+x.pet.slice(1))+(x.movement?' '+safe(x.movement):'')+(x.eventAt?' · Movement '+safe(new Date(x.eventAt).toLocaleString('en-GB')):''):'';
+   const fail=x.error?' · '+safe(x.error.replaceAll('_',' ')):'';
+   return '<div class="listrow"><div><strong>'+safe(names[x.source]||x.source)+' · '+safe(labels[x.operation]||x.operation)+'</strong><div class="small">'+safe(new Date(x.at).toLocaleString('en-GB'))+' · '+safe(time(x.durationMs))+cat+split+age+fail+'</div></div><strong>'+safe(x.ok?'OK':'Failed')+'</strong></div>';
+  }).join(''):'<p class="small">No readings yet. Use Pet HQ normally and try again.</p>';
+  output.innerHTML=summary+details;
+ }catch(error){output.textContent='Reliability check unavailable: '+String(error.message||error).slice(0,120);}
+ finally{if(button)button.disabled=false;}
+}
+</script></body></html>

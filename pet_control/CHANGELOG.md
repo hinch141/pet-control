@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.18.148
+- Loading Fix
+
+## v2.18.147
+- Loading Fix
+
 ## v2.18.146
 - Fixed a JSON parsing crash (`Unexpected token '<'`) occurring when saving family profile changes with no modifications.
 - Added an immediate JSON success response pass-through for identical profile save requests to prevent unnecessary error fallbacks.

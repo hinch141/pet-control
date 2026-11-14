@@ -1,3 +1,8 @@
+## v2.18.153 — Family display-name save
+- Edit a family member's display name without changing their email or contacting Cloudflare Access.
+- Email changes, additions and removals still require the existing Cloudflare policy synchronisation and do not bypass security.
+- No changes to cat controls, curfews, stored access rules or Cloudflare configuration.
+
 # Changelog
 
 ## v2.18.152 — Household user save gateway handling

@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.18.152 — Household user save gateway handling
+- Bound Cloudflare Access policy synchronisation to a single eight-second deadline to avoid prolonged stalled user saves.
+- Report synchronisation failures as JSON without committing proposed Pet HQ family changes.
+- Display readable error messages when a gateway returns HTML instead of JSON.
+- No changes to pet access, curfews, Cloudflare policy settings, or stored family data.
+
 ## v2.18.151 — Complete server recovery
 - Restore the last intact server.js from 14 November before the accidental truncation.
 - Restore Sure Petcare permission reads, cat access and curfew endpoints, live status, movement history, diagnostics and family management handlers.

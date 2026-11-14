@@ -865,13 +865,24 @@ function openEditUser(originalEmail){
  modal('<h3>Edit '+esc(member.name)+'</h3><div class="stack"><label class="field">Name<input id="editUserName" maxlength="60" value="'+esc(member.name)+'"></label><label class="field">Email<input id="editUserEmail" type="email" maxlength="120" value="'+esc(member.email)+'"></label><p class="small">'+esc(syncNote)+'</p><div id="editUserFormError" class="small" role="alert" style="color:#b44942;font-weight:650"></div></div><div class="row"><button class="button wide" id="saveEditUserBtn">Save changes</button><button class="button outline" onclick="closeModal()">Cancel</button></div>');
  el('saveEditUserBtn').onclick=()=>saveEditedUser(originalEmail);
 }
+async function familyJsonResponse(response){
+ const type=response.headers.get('content-type')||'';
+ if(!type.toLowerCase().includes('application/json')){
+  throw Error(response.status===502||response.status===504
+   ?'Pet HQ could not complete the request through the secure connection (HTTP '+response.status+'). No successful save was confirmed.'
+   :'Unexpected server response (HTTP '+response.status+'). No successful save was confirmed.');
+ }
+ const data=await response.json();
+ if(!response.ok)throw Error(data.error||'User update failed (HTTP '+response.status+')');
+ return data;
+}
 async function saveEditedUser(originalEmail){
  const name=el('editUserName').value.trim(),email=el('editUserEmail').value.trim().toLowerCase(),error=el('editUserFormError'),btn=el('saveEditUserBtn');
  if(!name||!email.includes('@')||!email.includes('.')){error.textContent='Enter a name and valid email.';return;}
  if(btn){btn.disabled=true;btn.textContent='Saving…';}
  try{
   const r=await fetch('./pet-hq/family',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'edit',originalEmail,name,email})});
-  const d=await r.json();if(!r.ok)throw Error(d.error||'Unable to update member');
+  const d=await familyJsonResponse(r);
   familyMembers=d.members;closeModal();renderFamily();
   toast(d.cfSynced?'Updated '+name+' and synced Cloudflare Access':'Updated '+name+' in Pet HQ');
  }catch(e){
@@ -885,7 +896,7 @@ async function saveUser(){
  if(btn){btn.disabled=true;btn.textContent='Adding…';}
  try{
   const r=await fetch('./pet-hq/family',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'add',name,email})});
-  const d=await r.json();if(!r.ok)throw Error(d.error||'Unable to add member');
+  const d=await familyJsonResponse(r);
   familyMembers=d.members;closeModal();renderFamily();
   const subject=encodeURIComponent('Your Pet HQ invitation'),body=encodeURIComponent('Open https://hinchliffepethq.co.uk and sign in using '+email);
   const cfStatusText=d.cfSynced?'Cloudflare Access has been updated automatically so they can sign in straight away.':'Make sure '+email+' is also allowed in your Cloudflare Access policy.';
@@ -899,7 +910,7 @@ function removeUser(email){
  petHQConfirm('Remove family member?','Revoke Pet HQ access for '+email+'?','Remove',async()=>{
   try{
    const r=await fetch('./pet-hq/family',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'remove',email})});
-   const d=await r.json();if(!r.ok)throw Error(d.error||'Unable to remove');
+   const d=await familyJsonResponse(r);
    familyMembers=d.members;renderFamily();
    toast(d.cfSynced?'Access revoked in Pet HQ and Cloudflare Access':'Pet HQ access revoked');
   }catch(e){toast(e.message);}

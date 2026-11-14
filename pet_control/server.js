@@ -565,7 +565,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
    return res.end(JSON.stringify(snapshot));
   }
 
-  if(url.method!=='GET'){
+  if(req.method!=='GET'){
     res.writeHead(405,{'Content-Type':'application/json; charset=utf-8'});
     return res.end(JSON.stringify({error:'Method not allowed'}));
   }

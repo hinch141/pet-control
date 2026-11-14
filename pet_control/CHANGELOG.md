@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.18.151 — Complete server recovery
+- Restore the last intact server.js from 14 November before the accidental truncation.
+- Restore Sure Petcare permission reads, cat access and curfew endpoints, live status, movement history, diagnostics and family management handlers.
+- Preserve the existing web interface, Home Assistant persistent /data storage, and USB archive paths.
+- Retain the corrected Dockerfile and HTTP method handling.
+
 ## v2.18.150 — v146 recovery hotfix
 - Restore v2.18.146 application snapshot after repository damage.
 - Correct Dockerfile to copy existing web/live.js through web/ rather than nonexistent root live.js.

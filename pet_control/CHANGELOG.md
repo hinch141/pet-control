@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.18.145
+- Added self-healing session and connection checks in live.js to recover seamlessly from mobile cache clearing.
+- Enhanced server.js family/user update endpoints to guarantee clean JSON error responses instead of HTML page fallbacks.
+- Improved WebSocket and SSE automatic background reconnection listeners.
+
 ## v2.18.144 - Household User Editor & Cloudflare Access Sync
 - Added an **Edit** button to every household user card (including primary accounts) so display names and email addresses can be corrected directly in the Users tab.
 - Added automatic Cloudflare Access policy synchronization when adding, editing, or removing household users.

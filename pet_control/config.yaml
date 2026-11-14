@@ -1,6 +1,6 @@
 name: Pet Control
-version: "2.18.147"
-slug: pet_control_slug
+version: "2.18.146"
+slug: pet_control
 description: Pet Control interface with live Sure Petcare presence
 arch:
   - aarch64

@@ -70,7 +70,7 @@ async function syncCloudflareAccessEmails(members){
  const accountId=String(standaloneOptions.cf_account_id||'').trim();
  const policyId=String(standaloneOptions.cf_policy_id||'').trim();
  const apiToken=String(standaloneOptions.cf_api_token||'').trim();
- if(!accountId||!policyId||!apiToken)return {synced:false,reason:'not_configured'};
+ if(!accountId||!policyId||!apiToken)throw Error('Cloudflare API configuration incomplete');
  const endpoint='https://api.cloudflare.com/client/v4/accounts/'+encodeURIComponent(accountId)+'/access/policies/'+encodeURIComponent(policyId);
  const headers={'Authorization':'Bearer '+apiToken,'Content-Type':'application/json'};
  // Bound the entire Cloudflare transaction, not each request separately. A stalled
@@ -80,6 +80,12 @@ async function syncCloudflareAccessEmails(members){
  if(!getRes.ok)throw Error('Cloudflare policy read failed (HTTP '+getRes.status+')');
  const current=(await getRes.json()).result;
  if(!current||!Array.isArray(current.include))throw Error('Unexpected Cloudflare policy format');
+ // Refuse to rewrite a different or unexpectedly broadened policy.
+ const policyEmails=current.include.filter(rule=>rule&&rule.email&&typeof rule.email.email==='string').map(rule=>rule.email.email.trim().toLowerCase());
+ const currentEmails=family.members.map(m=>m.email);
+ const unique=xs=>[...new Set(xs)].sort().join('\n');
+ if(current.include.length!==policyEmails.length||unique(policyEmails)!==unique(currentEmails))
+  throw Error('Cloudflare policy does not exactly match the current Pet HQ household; verify the policy in Cloudflare before updating');
  const nonEmailRules=current.include.filter(rule=>!rule.email);
  const emailRules=members.map(m=>({email:{email:m.email}}));
  const payload={
@@ -96,6 +102,11 @@ async function syncCloudflareAccessEmails(members){
  if(Array.isArray(current.approval_groups))payload.approval_groups=current.approval_groups;
  const putRes=await fetch(endpoint,{method:'PUT',headers,body:JSON.stringify(payload),signal:deadline});
  if(!putRes.ok)throw Error('Cloudflare policy update failed (HTTP '+putRes.status+')');
+ const confirmed=(await putRes.json()).result;
+ if(!confirmed||!Array.isArray(confirmed.include))throw Error('Cloudflare did not confirm updated policy');
+ const confirmedEmails=confirmed.include.filter(rule=>rule&&rule.email&&typeof rule.email.email==='string').map(rule=>rule.email.email.trim().toLowerCase());
+ if(confirmed.include.length!==confirmedEmails.length||unique(confirmedEmails)!==unique(members.map(m=>m.email)))
+  throw Error('Cloudflare returned unexpected policy membership');
  return {synced:true};
 }
 const emailAllowed=email=>family.members.some(m=>m.email===email);
@@ -539,6 +550,8 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       saveFamily();
       return reply(200,{members:family.members,viewer:verifiedEmail,cfSynced:false});
      }
+     if(target.primary)return reply(409,{error:'Primary account email changes are paused until Cloudflare policy verification is complete'});
+     if(originalEmail===verifiedEmail)return reply(409,{error:'You cannot change the email of the account currently signed in'});
      target.name=name;
      target.email=email;
      target.updatedAt=new Date().toISOString();
@@ -558,9 +571,11 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
      console.error('Family Cloudflare sync failed:',String(cfErr.message||cfErr));
      return reply(502,{error:'Cloudflare Access did not confirm the update. No Pet HQ user changes were saved. Please retry; if it continues, check the add-on log.'});
     }
-    family.members=nextMembers;
-    saveFamily();
-    return reply(200,{members:family.members,viewer:verifiedEmail,cfSynced:cfSync.synced});
+    if(!cfSync.synced)return reply(503,{error:'Cloudflare Access did not confirm the change. Household access was not updated.'});
+    const previousFamily=family;
+    try{family={...family,members:nextMembers};saveFamily();}
+    catch(saveError){family=previousFamily;console.error('Family registry write failed after Cloudflare update:',String(saveError.message||saveError));return reply(500,{error:'Cloudflare accepted the update but Pet HQ could not save its family registry. Do not retry; check the add-on log.'});}
+    return reply(200,{members:family.members,viewer:verifiedEmail,cfSynced:true});
    }catch(e){return reply(500,{error:'Family update failed: '+e.message});}
   }
   if(url.pathname==='/pet-hq/archive'&&(req.method==='GET'||req.method==='POST')){

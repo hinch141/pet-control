@@ -456,10 +456,10 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
   const peer=(req.socket.remoteAddress||'').replace(/^::ffff:/,'');
   let verifiedEmail=null;
   if(standaloneRequest){
-    if(!verifyStandalone){res.writeHead(403);return res.end();}
+    if(!verifyStandalone){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({error:'Access not configured'}));}
     try{verifiedEmail=(await verifyStandalone(req.headers['cf-access-jwt-assertion'])).email;}
-    catch{res.writeHead(403,{'Content-Type':'text/plain','Cache-Control':'no-store'});return res.end('Access denied');}
-  }else if(peer!=='172.30.32.2'){res.writeHead(403);return res.end();}
+    catch{res.writeHead(403,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});return res.end(JSON.stringify({error:'Access denied'}));}
+  }else if(peer!=='172.30.32.2'){res.writeHead(403,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({error:'Forbidden'}));}
   const url=new URL(req.url,'http://localhost');
 
   if(url.pathname==='/live/stream'&&req.method==='GET'){
@@ -501,9 +501,9 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
   res.setHeader('Cache-Control','no-store');
 
   if(url.pathname==='/pet-hq/family'&&(req.method==='GET'||req.method==='POST')){
-   const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(body));};
+   const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(body));};
    if(!standaloneRequest)return reply(403,{error:'Manage family members through the signed-in Pet HQ app'});
-   if(!verifiedEmail||!emailAllowed(verifiedEmail))return reply(403,{error:'Not authorised'});
+   if(!verifiedEmail||!emailAllowed(verifiedEmail))return reply(403,{error:'User session unverified or not authorised'});
    if(req.method==='GET')return reply(200,{members:family.members,viewer:verifiedEmail,cfSyncConfigured:Boolean(standaloneOptions.cf_account_id&&standaloneOptions.cf_policy_id&&standaloneOptions.cf_api_token)});
    try{
     let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>4096)return reply(413,{error:'Request too large'});}
@@ -870,7 +870,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       }
       }catch(e){reliabilityDiagnostics.record('sure_cloud','positions',diagnosticStart,{ok:false,status:502,error:'request_failed'});return reply(502,{error:String(e.message||'Sure Petcare unavailable').slice(0,140)});}
   }
-  if(req.method!=='GET'){res.writeHead(405);return res.end();}
+  if(req.method!=='GET'){res.writeHead(405,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({error:'Method not allowed'}));}
   if(url.pathname==='/live/flap'){
     const diagnosticStart=Date.now();
     if(haWsConnected&&liveEntityCache.has('lock.my_flap_locked_out')){
@@ -1070,7 +1070,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       reliabilityDiagnostics.record('home_assistant','pet_presence',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:snap.pets.map(p=>p.changed).filter(Boolean).sort().at(-1)||null});
       res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(snap));
     }
-    if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Home Assistant access unavailable'}));}
+    if(!token){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({error:'Home Assistant access unavailable'}));}
     try{
       const result=await Promise.all(pets.map(async p=>{
         const response=await fetch('http://supervisor/core/api/states/binary_sensor.'+p,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(8000)});
@@ -1089,10 +1089,10 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       }
       reliabilityDiagnostics.record('home_assistant','pet_presence',diagnosticStart,{ok:true,status:200,sourceUpdatedAt:result.map(p=>p.changed).filter(Boolean).sort().at(-1)||null});
       res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({pets:result,updated:new Date().toISOString()}));
-    }catch(e){reliabilityDiagnostics.record('home_assistant','pet_presence',diagnosticStart,{ok:false,status:502,error:'read_failed'});res.writeHead(502,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Unable to read pet status'}));}
+    }catch(e){reliabilityDiagnostics.record('home_assistant','pet_presence',diagnosticStart,{ok:false,status:502,error:'read_failed'});res.writeHead(502,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({error:'Unable to read pet status'}));}
   }
   if(url.pathname==='/live/history'){
-    if(!token){res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Home Assistant access unavailable'}));}
+    if(!token){res.writeHead(503,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({error:'Home Assistant access unavailable'}));}
     try{
       const startDate=new Date(Date.now()-24*60*60*1000);
       const start=startDate.toISOString();
@@ -1126,12 +1126,12 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       events.sort((a,b)=>new Date(b.at)-new Date(a.at));
       res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});
       return res.end(JSON.stringify({events:events.slice(0,100),total:events.length,periodHours:24}));
-    }catch(e){res.writeHead(502,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:'Unable to read movement history'}));}
+    }catch(e){res.writeHead(502,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({error:'Unable to read movement history'}));}
   }
   const filename=url.pathname==='/'?'index.html':url.pathname.slice(1);
-  if(!['index.html','manifest.webmanifest','sw.js','live.js','icon.svg','icon-192.png','icon-512.png'].includes(filename)){res.writeHead(404);return res.end();}
+  if(!['index.html','manifest.webmanifest','sw.js','live.js','icon.svg','icon-192.png','icon-512.png'].includes(filename)){res.writeHead(404,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({error:'Not found'}));}
   const file=path.join(base,filename);
-  fs.readFile(file,(err,body)=>{if(err){res.writeHead(404);return res.end();}res.writeHead(200,{'Content-Type':types[path.extname(file)]||'text/plain'});res.end(body);});
+  fs.readFile(file,(err,body)=>{if(err){res.writeHead(404,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({error:'Not found'}));}res.writeHead(200,{'Content-Type':types[path.extname(file)]||'text/plain'});res.end(body);});
 };
 // Historical backfill is independent of live polling, capped to three pages per cycle.
 let archiveBusy=false;

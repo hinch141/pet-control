@@ -521,6 +521,12 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
      if(!name||name.length>60)return reply(400,{error:'Name required'});
      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>120)return reply(400,{error:'Valid email required'});
      if(email!==originalEmail&&nextMembers.some(m=>m.email===email))return reply(409,{error:'Email already registered'});
+     
+     // Safe pass-through if no changes were made to name or email
+     if(target.name===name&&target.email===originalEmail){
+      return reply(200,{members:family.members,viewer:verifiedEmail,cfSynced:false});
+     }
+
      target.name=name;
      target.email=email;
      target.updatedAt=new Date().toISOString();

@@ -47,3 +47,11 @@ test('editing a field or modal defers reload',async()=>{
 test('offline app does not reload',async()=>{
  const h=harness('2.18.171',{online:false});await h.fire('win:pageshow');assert.equal(h.reloads(),0);assert.equal(h.requests(),0);
 });
+
+test('update confirmation is persistent and dismissible',()=>{
+ assert.match(html,/sessionStorage\.setItem\(noticeKey,installed\)/);
+ assert.match(html,/id='pet-hq-updated-notice'/);
+ assert.match(html,/pet-hq-updated-dismiss/);
+ assert.match(html,/sessionStorage\.removeItem\(noticeKey\)/);
+ assert.doesNotMatch(html,/setTimeout\([^)]*bar\.remove/);
+});

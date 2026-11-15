@@ -1,4 +1,4 @@
-## v2.18.154 — Prepared family synchronisation safety corrections (not deployed)
+## v2.18.154 — Household email verification and activity improvements
 - Fail closed if Cloudflare API credentials are missing.
 - Refuse policy updates when existing email rules differ from Pet HQ family membership or non-email inclusion rules are present.
 - Verify Cloudflare's update response before committing Pet HQ membership changes.
@@ -6,11 +6,11 @@
 - Report local registry write failures explicitly and preserve in-memory state.
 - Verify the family registry from disk after a membership change, and require a fresh family read in the app before reporting an email edit successful.
 - Reject false-positive success messages if the requested email was not returned or the previous email remains present.
-- Email-change behaviour still requires a live Home Assistant/Cloudflare test before release.
+- Email-change behaviour requires a live Home Assistant/Cloudflare confirmation after installation; code checks cannot independently confirm the remote service.
 - Increase the existing pet-card In/Out label by 5% without altering the photo, card dimensions or shadow.
 - Brighten the connected Live Feed dot without changing stream/polling status detection.
 - Add Time inside to Cat activity using only complete confirmed entry-to-exit intervals; do not infer missing time from outside totals. Include indoor interval details when tapping a bar.
-- Pending confirmation of the correct Cloudflare policy and API permissions; no changes to Cloudflare configuration.
+- No changes to Cloudflare configuration or existing pet access and curfew logic.
 
 ## v2.18.153 — Family display-name save
 - Edit a family member's display name without changing their email or contacting Cloudflare Access.

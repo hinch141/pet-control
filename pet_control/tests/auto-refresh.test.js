@@ -14,7 +14,7 @@ test('version is injected from the installed add-on, not independently hard-code
  assert.ok(block,'update handler exists');
  assert.match(block[0],/__PET_HQ_LOADED_VERSION__/);
  assert.match(server,/replaceAll\('__PET_HQ_LOADED_VERSION__',version\)/);
- assert.match(config,/version: "2\.18\.170"/);
+ assert.match(config,/version: "2.18.171"/);
  assert.doesNotMatch(sw,/pet-control-v2-18-143/);
 });
 test('server disables caching of delivered HTML and JavaScript',()=>{

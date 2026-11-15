@@ -66,6 +66,19 @@ for(const member of family.members){
 function saveFamily(){
  const tmp=familyFile+'.tmp';fs.writeFileSync(tmp,JSON.stringify(family,null,2),{mode:0o600});fs.renameSync(tmp,familyFile);
 }
+// Log only Cloudflare's numeric error codes, never API credentials, policy
+// payloads, email addresses, raw response bodies or request headers.
+async function cloudflareFailureSummary(response){
+ let codes=[];
+ try{
+  const body=await response.json();
+  if(Array.isArray(body?.errors))codes=body.errors
+   .map(error=>error?.code)
+   .filter(code=>Number.isSafeInteger(code)&&code>=0&&code<=999999)
+   .slice(0,5);
+ }catch{}
+ return 'HTTP '+response.status+(codes.length?' | Cloudflare error code(s): '+codes.join(', '):' | no numeric Cloudflare error code returned');
+}
 async function syncCloudflareAccessEmails(members){
  const accountId=String(standaloneOptions.cf_account_id||'').trim();
  const policyId=String(standaloneOptions.cf_policy_id||'').trim();
@@ -77,7 +90,7 @@ async function syncCloudflareAccessEmails(members){
  // external API must not leave the household save hanging until the tunnel fails.
  const deadline=AbortSignal.timeout(8000);
  const getRes=await fetch(endpoint,{headers,signal:deadline});
- if(!getRes.ok)throw Error('Cloudflare policy read failed (HTTP '+getRes.status+')');
+ if(!getRes.ok)throw Error('Cloudflare policy read failed ('+await cloudflareFailureSummary(getRes)+')');
  const current=(await getRes.json()).result;
  if(!current||!Array.isArray(current.include))throw Error('Unexpected Cloudflare policy format');
  // Refuse to rewrite a different or unexpectedly broadened policy.
@@ -101,7 +114,7 @@ async function syncCloudflareAccessEmails(members){
  if(typeof current.approval_required==='boolean')payload.approval_required=current.approval_required;
  if(Array.isArray(current.approval_groups))payload.approval_groups=current.approval_groups;
  const putRes=await fetch(endpoint,{method:'PUT',headers,body:JSON.stringify(payload),signal:deadline});
- if(!putRes.ok)throw Error('Cloudflare policy update failed (HTTP '+putRes.status+')');
+ if(!putRes.ok)throw Error('Cloudflare policy update failed ('+await cloudflareFailureSummary(putRes)+')');
  const confirmed=(await putRes.json()).result;
  if(!confirmed||!Array.isArray(confirmed.include))throw Error('Cloudflare did not confirm updated policy');
  const confirmedEmails=confirmed.include.filter(rule=>rule&&rule.email&&typeof rule.email.email==='string').map(rule=>rule.email.email.trim().toLowerCase());

@@ -1,3 +1,9 @@
+## v2.18.156 — Read-only Cloudflare connection check
+- Settings now includes a Check Cloudflare Connection button for signed-in household users.
+- Read-only request verifies Cloudflare policy access and shows HTTP status and numeric error codes, without exposing API tokens, email addresses, policy contents or raw API responses.
+- Shows whether the existing Cloudflare email list matches Pet HQ's saved family register, with counts only.
+- Does not modify household members, Cloudflare policies, pet access, curfews, activity or archive data.
+
 ## v2.18.155 — Cloudflare safe API diagnostics
 - Record Cloudflare HTTP status and numeric error codes when policy read or update fails, without logging tokens, email addresses, policy contents, or raw API responses.
 - No changes to Cloudflare policy, family membership, pet access, curfews, or activity calculations.

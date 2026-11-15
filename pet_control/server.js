@@ -122,6 +122,11 @@ async function syncCloudflareAccessEmails(members){
   throw Error('Cloudflare returned unexpected policy membership');
  return {synced:true};
 }
+// Bounded, non-sensitive record of the most recent household update attempt.
+let lastFamilyUpdate={stage:'not_attempted',status:'idle'};
+function recordFamilyUpdate(stage,status,extra={}){
+ lastFamilyUpdate={stage,status,...extra,at:new Date().toISOString()};
+}
 const emailAllowed=email=>family.members.some(m=>m.email===email);
 try{if(family.members.some(m=>(m.email==='hinchi1@gmail.com'&&m.name==='John')||(m.email==='nicky.hinchliffe@gmail.com'&&m.name==='Nicky')))saveFamily();}catch(e){console.error('Family name update failed:',e.message);}
 let verifyStandalone=null;
@@ -557,6 +562,14 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
    }
   }
 
+  if(url.pathname==='/pet-hq/family-save-status'&&req.method==='GET'){
+   res.setHeader('Cache-Control','no-store');
+   res.setHeader('Content-Type','application/json; charset=utf-8');
+   if(!standaloneRequest||!verifiedEmail||!emailAllowed(verifiedEmail)){
+    res.statusCode=403;return res.end(JSON.stringify({error:'Access denied'}));
+   }
+   return res.end(JSON.stringify(lastFamilyUpdate));
+  }
   if(url.pathname==='/pet-hq/family'&&(req.method==='GET'||req.method==='POST')){
    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(body));};
    if(!standaloneRequest)return reply(403,{error:'Manage family members through the signed-in Pet HQ app'});
@@ -566,6 +579,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>4096)return reply(413,{error:'Request too large'});}
     const body=JSON.parse(raw),email=String(body.email||'').trim().toLowerCase(),name=String(body.name||'').trim();
     const nextMembers=family.members.map(m=>({...m}));
+    recordFamilyUpdate('request_received','pending',{action:['edit','add','remove'].includes(body.action)?body.action:'invalid'});
     if(body.action==='add'){
      if(!name||name.length>60)return reply(400,{error:'Name required'});
      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>120)return reply(400,{error:'Valid email required'});
@@ -581,7 +595,8 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
      
      // Safe pass-through if no changes were made to name or email
      if(target.name===name&&target.email===originalEmail){
-      return reply(200,{members:family.members,viewer:verifiedEmail,cfSynced:false});
+      recordFamilyUpdate('no_changes','unchanged',{action:'edit'});
+      return reply(409,{error:'No change was requested. The existing email is still registered.'});
      }
 
      // A display-name change does not alter access. Save it locally without
@@ -591,6 +606,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       target.updatedAt=new Date().toISOString();
       family.members=nextMembers;
       saveFamily();
+      recordFamilyUpdate('family_saved','success',{action:'edit',change:'name_only'});
       return reply(200,{members:family.members,viewer:verifiedEmail,cfSynced:false});
      }
      if(target.primary)return reply(409,{error:'Primary account email changes are paused until Cloudflare policy verification is complete'});
@@ -609,21 +625,27 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     }else return reply(400,{error:'Invalid action'});
     let cfSync={synced:false,reason:'not_configured'};
     try{
+     recordFamilyUpdate('cloudflare_update','pending',{action:body.action});
      cfSync=await syncCloudflareAccessEmails(nextMembers);
     }catch(cfErr){
+     recordFamilyUpdate('cloudflare_update','failed',{action:body.action,detail:String(cfErr.message||cfErr).replace(/[^a-zA-Z0-9 |():,.-]/g,'').slice(0,180)});
      console.error('Family Cloudflare sync failed:',String(cfErr.message||cfErr));
      return reply(502,{error:'Cloudflare Access did not confirm the update. No Pet HQ user changes were saved. Please retry; if it continues, check the add-on log.'});
     }
-    if(!cfSync.synced)return reply(503,{error:'Cloudflare Access did not confirm the change. Household access was not updated.'});
+    if(!cfSync.synced){recordFamilyUpdate('cloudflare_update','unconfirmed',{action:body.action});return reply(503,{error:'Cloudflare Access did not confirm the change. Household access was not updated.'});}
+    recordFamilyUpdate('cloudflare_update','success',{action:body.action});
     const previousFamily=family;
     try{family={...family,members:nextMembers};saveFamily();}
-    catch(saveError){family=previousFamily;console.error('Family registry write failed after Cloudflare update:',String(saveError.message||saveError));return reply(500,{error:'Cloudflare accepted the update but Pet HQ could not save its family registry. Do not retry; check the add-on log.'});}
+    catch(saveError){recordFamilyUpdate('family_save','failed',{action:body.action});family=previousFamily;console.error('Family registry write failed after Cloudflare update:',String(saveError.message||saveError));return reply(500,{error:'Cloudflare accepted the update but Pet HQ could not save its family registry. Do not retry; check the add-on log.'});}
     let saved;
     try{saved=JSON.parse(fs.readFileSync(familyFile,'utf8'));}
     catch(readError){return reply(500,{error:'Pet HQ could not verify the saved family registry. Check the add-on log.'});}
     if(!saved||!Array.isArray(saved.members)||saved.members.length!==nextMembers.length||
-       !nextMembers.every(m=>saved.members.some(x=>x.email===m.email&&x.name===m.name)))
+       !nextMembers.every(m=>saved.members.some(x=>x.email===m.email&&x.name===m.name))){
+     recordFamilyUpdate('family_verification','failed',{action:body.action});
      return reply(500,{error:'The saved family registry did not match the requested change.'});
+    }
+    recordFamilyUpdate('family_verification','success',{action:body.action});
     return reply(200,{members:saved.members,viewer:verifiedEmail,cfSynced:true});
    }catch(e){return reply(500,{error:'Family update failed: '+e.message});}
   }

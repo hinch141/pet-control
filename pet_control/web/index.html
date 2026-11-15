@@ -757,7 +757,7 @@ async function loadSharedPetPhotos(){
   const response=await fetch('./pet-hq/photos',{cache:'no-store',signal:AbortSignal.timeout(10000)});
   if(!response.ok)throw Error('Personal photos unavailable');
   const data=await response.json();
-  Object.assign(sharedPetPhotos,data.photos||{});
+  for(const cat of ['jessie','henry','violet']){if(data.photos?.[cat])sharedPetPhotos[cat]=data.photos[cat];else delete sharedPetPhotos[cat];}
   Object.assign(defaultPetPhotos,data.defaults||{});
   personalPhotosLoaded=true;render();
   // Import only the legacy photos owned by this account on this device.
@@ -772,7 +772,7 @@ async function loadSharedPetPhotos(){
     if(latest.ok){const result=await latest.json();Object.assign(sharedPetPhotos,result.photos||{});render();}
    }catch{toast('Could not back up '+p.name+' photo. It is still on this device.');}
   }
- }catch{ /* Keep the original local photos untouched on connection failure. */ }
+ }catch(e){console.warn('Personal photo sync unavailable:',e.message); /* Keep original local photos untouched. */ }
 }
 async function changePetPhoto(id,file){
  if(!file||!file.type.startsWith('image/'))return toast('Choose an image');
@@ -997,7 +997,7 @@ function removeUser(email){
   }catch(e){toast(e.message);}
  },{danger:true});
 }
-render();loadFamily();loadLivePetCurfews();loadSharedPetPhotos();
+render();loadFamily();loadLivePetCurfews();loadSharedPetPhotos();document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadSharedPetPhotos();});window.addEventListener('pageshow',()=>loadSharedPetPhotos());
 </script><script>
 /* Display the installed release information, not a hard-coded version. */
 async function petHQLoadReleaseInfo(){

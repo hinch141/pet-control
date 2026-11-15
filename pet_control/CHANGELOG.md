@@ -1,3 +1,10 @@
+## v2.18.169 — Pet curfew profile navigation
+- Fix Back to pet profile from individual curfews returning to a blank Choose a pet from Home screen.
+- Preserve the selected pet when opening curfews from a pet card or profile, and return to that pet's profile.
+- Fall back to the main curfews screen for an invalid or archived pet selection.
+- No changes to Sure Petcare controls, curfew schedules, Home Assistant integration, photos or account handling.
+- v2.18.168 preserved in GitHub branch backup/pet-hq-v2.18.168-working.
+
 ## v2.18.168 — Show signed-in Cloudflare account
 - Add a collapsed-by-default Settings panel showing the actual Cloudflare-verified account email for the current session, distinct from the household member list.
 - Refresh account identity from the existing authenticated family endpoint on opening the panel or tapping Refresh; no stored credentials, account changes, photo changes or cat-control changes.

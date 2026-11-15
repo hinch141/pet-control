@@ -1139,18 +1139,26 @@ petHQLoadReleaseInfo();
  let checking=false,refreshing=false,waiting=null;
  const attemptKey='pet-hq-auto-refresh-target';
  const noticeKey='pet-hq-updated-notice';
+ const seenKey='pet-hq-last-opened-version';
+ const dismissedKey='pet-hq-dismissed-version';
  function showInstalledNotice(){
-  const updated=sessionStorage.getItem(noticeKey);
-  if(updated!==loadedVersion||document.getElementById('pet-hq-updated-notice'))return;
+  if(document.getElementById('pet-hq-updated-notice'))return;
+  const previous=localStorage.getItem(seenKey);
+  const pending=sessionStorage.getItem(noticeKey)===loadedVersion;
+  const changed=previous!==null&&previous!==loadedVersion;
+  // Persist across restarts, tabs and app closures; do not depend on the old version setting a marker.
+  localStorage.setItem(seenKey,loadedVersion);
+  if(localStorage.getItem(dismissedKey)===loadedVersion)return;
   const bar=document.createElement('div');
   bar.id='pet-hq-updated-notice';
   bar.setAttribute('role','status');
-  bar.innerHTML='<span>🐾 Pet HQ updated to v'+loadedVersion+'. Your latest version is ready.</span><button type="button" id="pet-hq-updated-dismiss" aria-label="Dismiss update notice">Close</button>';
+  bar.innerHTML='<span>🐾 Pet HQ v'+loadedVersion+' is ready'+(changed||pending?' — updated successfully.':'.')+'</span><button type="button" id="pet-hq-updated-dismiss" aria-label="Dismiss update notice">Close</button>';
   document.body.appendChild(bar);
   bar.style.cssText='position:fixed;bottom:calc(72px + env(safe-area-inset-bottom, 0px));left:12px;right:12px;z-index:9999;padding:14px 16px;background:#173a34;color:white;border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 4px 20px #0004;font-size:14px;';
-  document.getElementById('pet-hq-updated-dismiss').addEventListener('click',()=>{sessionStorage.removeItem(noticeKey);bar.remove();});
+  document.getElementById('pet-hq-updated-dismiss').addEventListener('click',()=>{localStorage.setItem(dismissedKey,loadedVersion);sessionStorage.removeItem(noticeKey);bar.remove();});
  }
  window.addEventListener('load',showInstalledNotice);
+ window.addEventListener('pageshow',showInstalledNotice);
  function editing(){
   const active=document.activeElement;
   const modal=document.getElementById('modalWrap');

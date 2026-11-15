@@ -1,3 +1,9 @@
+## v2.18.172 — Reliable update notice on each phone
+- Show a persistent, dismissible update confirmation on each device, even when the previous version did not save an update marker.
+- Remember the last loaded and dismissed versions locally on each device; keep the notice until Close is tapped.
+- Keep automatic add-on version detection, curfews, pet photos and controls unchanged.
+- Preserve v2.18.171 as backup/pet-hq-v2.18.171-working.
+
 ## v2.18.171 — Keep update confirmation visible
 - After an automatic version refresh, show a readable update confirmation that stays visible until dismissed.
 - Retain the existing automatic refresh and editing safeguards.

@@ -1,3 +1,9 @@
+## v2.18.157 — Cloudflare check toggle and clearer email-save feedback
+- Cloudflare connection results now expand and collapse using the same button, with readable line breaks.
+- Clarifies that successful policy read access does not prove permission to write changes.
+- Improves the message when an email-save response fails to confirm the requested update.
+- No changes to family membership, Cloudflare policy, server routes, cat access, curfews, or archives.
+
 ## v2.18.156 — Read-only Cloudflare connection check
 - Settings now includes a Check Cloudflare Connection button for signed-in household users.
 - Read-only request verifies Cloudflare policy access and shows HTTP status and numeric error codes, without exposing API tokens, email addresses, policy contents or raw API responses.

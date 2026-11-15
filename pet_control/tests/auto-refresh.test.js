@@ -28,7 +28,7 @@ function harness(installed,{editing=false,modal=false,online=true}={}){
  const win={addEventListener(name,fn){(listeners['win:'+name]??=[]).push(fn);}};
  const context={document:doc,window:win,navigator:{onLine:online},getComputedStyle:()=>({display:modal?'flex':'none'}),
   fetch:async(url,opts)=>{requests++;assert.equal(url,'./pet-hq/release-info');assert.equal(opts.cache,'no-store');return {ok:true,json:async()=>({version:installed})};},
-  location:{reload(){reloads++;}},sessionStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},
+  location:{reload(){reloads++;}},localStorage:{getItem:k=>storage.get('local:'+k)||null,setItem:(k,v)=>storage.set('local:'+k,v)},sessionStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},
   console,setTimeout:()=>0};
  const script='/* Standalone-app update UX; does not affect Home Assistant commands. */'+block[1].replace('__PET_HQ_LOADED_VERSION__','2.18.170');
  vm.runInNewContext(script,context);

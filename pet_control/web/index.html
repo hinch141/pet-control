@@ -883,8 +883,16 @@ async function saveEditedUser(originalEmail){
  try{
   const r=await fetch('./pet-hq/family',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'edit',originalEmail,name,email})});
   const d=await familyJsonResponse(r);
-  familyMembers=d.members;closeModal();renderFamily();
-  toast(d.cfSynced?'Updated '+name+' and synced Cloudflare Access':'Updated '+name+' in Pet HQ');
+  if(!Array.isArray(d.members)||!d.members.some(m=>m.email===email&&m.name===name))
+   throw Error('The requested email was not saved. No update was confirmed.');
+  if(email!==originalEmail&&d.cfSynced!==true)
+   throw Error('Cloudflare did not confirm the email change.');
+  const check=await familyJsonResponse(await fetch('./pet-hq/family',{cache:'no-store'}));
+  if(!Array.isArray(check.members)||!check.members.some(m=>m.email===email&&m.name===name)||
+     (email!==originalEmail&&check.members.some(m=>m.email===originalEmail)))
+   throw Error('The saved email could not be verified. Check the family list before retrying.');
+  familyMembers=check.members;closeModal();renderFamily();
+  toast(email!==originalEmail?'Email updated and verified in Pet HQ and Cloudflare Access':'Name updated and verified');
  }catch(e){
   error.textContent=e.message;
   if(btn){btn.disabled=false;btn.textContent='Save changes';}

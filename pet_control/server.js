@@ -525,15 +525,13 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     const legacy='/data/pet-hq-photos';
     const file=cat&&path.join(directory,cat+'.jpg'),removed=cat&&path.join(directory,cat+'.removed');
     if(cat===null&&req.method==='GET'){
-      const photos={},defaults={};
+      const photos={};
       for(const name of ['jessie','henry','violet']){
         const personal=path.join(directory,name+'.jpg'),tombstone=path.join(directory,name+'.removed');
-        const fallback=path.join(legacy,name+'.jpg');
         if(fs.existsSync(personal))photos[name]={present:true,version:String(fs.statSync(personal).mtimeMs)};
         else if(fs.existsSync(tombstone))photos[name]={present:false,removed:true};
-        if(fs.existsSync(fallback))defaults[name]={present:true,version:String(fs.statSync(fallback).mtimeMs)};
       }
-      return reply(200,{photos,defaults});
+      return reply(200,{photos});
     }
     if(cat!==null&&req.method==='GET'){
       try{
@@ -570,17 +568,6 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     }
     return reply(405,{error:'Method not allowed'});
   }
-  // Legacy shared v161 images can only be read as household defaults.
-  if(url.pathname.startsWith('/pet-hq/photo-defaults/')&&req.method==='GET'){
-    if(!standaloneRequest||!verifiedEmail||!emailAllowed(verifiedEmail)){
-      res.writeHead(403,{'Cache-Control':'no-store'});return res.end();
-    }
-    const cat=url.pathname.slice('/pet-hq/photo-defaults/'.length);
-    if(!['jessie','henry','violet'].includes(cat)){res.writeHead(404);return res.end();}
-    try{const data=fs.readFileSync(path.join('/data/pet-hq-photos',cat+'.jpg'));res.writeHead(200,{'Content-Type':'image/jpeg','Cache-Control':'no-store'});return res.end(data);}
-    catch{res.writeHead(404);return res.end();}
-  }
-
   if(url.pathname==='/pet-hq/release-info'&&req.method==='GET'){
     try{
       const configuration=fs.readFileSync('/app/config.yaml','utf8');

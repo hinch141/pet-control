@@ -450,7 +450,7 @@ function stockPetPhoto(p){
  };
  return demo[String(p?.name||'').toLowerCase()]||'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=900&q=85&fit=crop';
 }
-function petAvatar(p){return '<div class="avatar"><img alt="'+esc(p?.name||'Cat')+'" src="'+petPhoto(p)+'" loading="lazy" onerror="if(!this.dataset.fallback){this.dataset.fallback=\'1\';this.src=\'${stockPetPhoto(p)}\'}else this.style.display=\'none\'"></div>'}
+function petAvatar(p){return '<div class="avatar"><img alt="'+esc(p?.name||'Cat')+'" src="'+petPhoto(p)+'" loading="lazy" onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.src=this.dataset.stock}else this.style.display=\'none\'" data-stock="'+stockPetPhoto(p)+'"></div>'}
 
 let petArchiveRegistry=null;
 async function loadPetArchive(){

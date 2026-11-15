@@ -1,3 +1,8 @@
+## v2.18.159 — Fix family email edit being mistaken for no change
+- Correct the edit no-op comparison to use the requested email, not the already-saved email.
+- A changed email with an unchanged name now reaches the existing Cloudflare update and save verification process.
+- No changes to primary household safeguards, Cloudflare settings, pet controls, curfews or archives.
+
 ## v2.18.158 — Family email save transaction diagnosis
 - Trace the last family update through request receipt, Cloudflare write and local family save/verification using a read-only authenticated status endpoint.
 - When the email-save response does not contain the requested change, display the last transaction stage directly in the app instead of asking for add-on logs.

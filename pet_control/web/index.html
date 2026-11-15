@@ -1015,9 +1015,9 @@ async function petHQCheckCloudflare(){
   const data=await response.json();
   if(!response.ok){output.textContent=data.detail||'Open the signed-in Pet HQ website to run this check.';return;}
   if(data.status==='connected'){
-   output.textContent='Cloudflare policy read: successful (HTTP 200).\\n'+(data.policyMatchesFamily?'Household email lists match.':'Household email lists do not match.')+'\\nCloudflare policy emails: '+data.policyEmailCount+' · Pet HQ family members: '+data.familyMemberCount+'\\nNote: A successful read does not confirm permission to update the policy.';
+   output.textContent='Cloudflare policy read: successful (HTTP 200).\n'+(data.policyMatchesFamily?'Household email lists match.':'Household email lists do not match.')+'\nCloudflare policy emails: '+data.policyEmailCount+' · Pet HQ family members: '+data.familyMemberCount+'\nNote: A successful read does not confirm permission to update the policy.';
   }else{
-   output.textContent='Cloudflare policy check: '+String(data.status||'unavailable')+'\\n'+String(data.detail||'No further details available.');
+   output.textContent='Cloudflare policy check: '+String(data.status||'unavailable')+'\n'+String(data.detail||'No further details available.');
   }
  }catch(e){output.textContent='Unable to complete connection check. Please try again.';}
  finally{button.disabled=false;}

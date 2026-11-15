@@ -244,6 +244,17 @@ async function refreshPetPermissionDisplay(force=false){
     const value=cat.profile==='indoor_only'?'Indoor Only':cat.profile==='free_access'?'Free Access':null;
     if(value){next[String(cat.surePetId)]=value;confirmed++;}
    }
+   // Browser profiles may not yet have Sure Petcare IDs. Match uniquely by
+   // official Sure Petcare name for display only; never use this for writes.
+   for(const profile of (typeof activePets==='function'?activePets():[])){
+    const name=String(profile.name||'').trim().toLowerCase();
+    const matches=(data.cats||[]).filter(cat=>cat.matched&&cat.surePetId&&
+      String(cat.name||'').trim().toLowerCase()===name&&
+      ['free_access','indoor_only'].includes(cat.profile));
+    if(matches.length===1){
+     next['display:'+name]=matches[0].profile==='indoor_only'?'Indoor Only':'Free Access';
+    }
+   }
    if(confirmed){
     petPermissionCache=next;petPermissionCheckedAt=Date.now();
     try{sessionStorage.setItem('pet-control-permissions',JSON.stringify({cache:next,at:petPermissionCheckedAt}));}catch{}

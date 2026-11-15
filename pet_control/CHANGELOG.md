@@ -1,3 +1,9 @@
+## v2.18.165 — Read-only web photo diagnostic
+- Add a Photo diagnostic in Settings with Run and Copy results buttons.
+- Report photo index and image HTTP status, selected source, visible image source, browser load status and local cache state for Jessie, Henry and Violet.
+- No photo uploads, deletions, permission changes or flap commands. Diagnostic excludes account emails and tokens.
+- Keep existing cat controls, curfews and personal photo storage unchanged.
+
 ## v2.18.164 — Stable personal photos in web browser
 - Preload the signed-in member's JPEG photos from Home Assistant into stable browser image URLs before refreshing cat cards.
 - Reuse the loaded images during live status redraws to avoid repeated network requests and stock-photo flicker.

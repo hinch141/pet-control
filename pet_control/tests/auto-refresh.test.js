@@ -14,7 +14,7 @@ test('version is injected from the installed add-on, not independently hard-code
  assert.ok(block,'update handler exists');
  assert.match(block[0],/__PET_HQ_LOADED_VERSION__/);
  assert.match(server,/replaceAll\('__PET_HQ_LOADED_VERSION__',version\)/);
- assert.match(config,/version: "2.18.171"/);
+ assert.match(config,/version: "2.18.172"/);
  assert.doesNotMatch(sw,/pet-control-v2-18-143/);
 });
 test('server disables caching of delivered HTML and JavaScript',()=>{
@@ -39,13 +39,13 @@ test('current release does not reload',async()=>{
  const h=harness('2.18.170');await h.fire('win:pageshow');assert.equal(h.reloads(),0);
 });
 test('new release reloads once, never loops',async()=>{
- const h=harness('2.18.171');await h.fire('win:pageshow');await h.fire('win:pageshow');assert.equal(h.reloads(),1);
+ const h=harness('2.18.172');await h.fire('win:pageshow');await h.fire('win:pageshow');assert.equal(h.reloads(),1);
 });
 test('editing a field or modal defers reload',async()=>{
- for(const opts of [{editing:true},{modal:true}]){const h=harness('2.18.171',opts);await h.fire('win:pageshow');assert.equal(h.reloads(),0);}
+ for(const opts of [{editing:true},{modal:true}]){const h=harness('2.18.172',opts);await h.fire('win:pageshow');assert.equal(h.reloads(),0);}
 });
 test('offline app does not reload',async()=>{
- const h=harness('2.18.171',{online:false});await h.fire('win:pageshow');assert.equal(h.reloads(),0);assert.equal(h.requests(),0);
+ const h=harness('2.18.172',{online:false});await h.fire('win:pageshow');assert.equal(h.reloads(),0);assert.equal(h.requests(),0);
 });
 
 test('update confirmation is persistent and dismissible',()=>{
@@ -54,4 +54,12 @@ test('update confirmation is persistent and dismissible',()=>{
  assert.match(html,/pet-hq-updated-dismiss/);
  assert.match(html,/sessionStorage\.removeItem\(noticeKey\)/);
  assert.doesNotMatch(html,/setTimeout\([^)]*bar\.remove/);
+});
+
+test('each device gets a persistent version notice independent of prior marker',()=>{
+ assert.match(html,/localStorage\.getItem\(seenKey\)/);
+ assert.match(html,/localStorage\.setItem\(seenKey,loadedVersion\)/);
+ assert.match(html,/localStorage\.setItem\(dismissedKey,loadedVersion\)/);
+ assert.match(html,/window\.addEventListener\('pageshow',showInstalledNotice\)/);
+ assert.match(html,/pet-hq-updated-dismiss/);
 });

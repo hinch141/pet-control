@@ -21,7 +21,7 @@ test('server disables caching of delivered HTML and JavaScript',()=>{
  assert.match(server,/filename==='index\.html'\|\|filename==='sw\.js'\|\|filename==='live\.js'\?'no-store, max-age=0'/);
 });
 function harness(installed,{editing=false,modal=false,online=true}={}){
- const listeners={};let reloads=0,requests=0;const storage=new Map();
+ const listeners={};let reloads=0,requests=0;const storage=new Map([['local:pet-hq-dismissed-version','2.18.172']]);
  const doc={visibilityState:'visible',activeElement:{tagName:editing?'INPUT':'BODY',isContentEditable:false},
   getElementById(id){if(id==='modalWrap')return {};return null;},
   addEventListener(name,fn){(listeners['doc:'+name]??=[]).push(fn);}};

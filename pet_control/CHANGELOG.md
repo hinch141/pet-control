@@ -1,3 +1,8 @@
+## v2.18.171 — Keep update confirmation visible
+- After an automatic version refresh, show a readable update confirmation that stays visible until dismissed.
+- Retain the existing automatic refresh and editing safeguards.
+- Preserve v2.18.170 in backup/pet-hq-v2.18.170-working.
+
 ## v2.18.170 — Restore automatic refresh after Home Assistant updates
 - Check the Home Assistant add-on's installed release on app launch, foreground return and reopening.
 - Automatically reload the app once if the installed release differs from the version stamped into the page by the server.

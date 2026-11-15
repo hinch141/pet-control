@@ -1,3 +1,9 @@
+## v2.18.161 — Shared household cat photographs
+- Store selected Jessie, Henry and Violet photographs in protected Home Assistant /data so household devices display the same photos.
+- Automatically import existing device photos only if no shared photo has been saved or removed; do not overwrite an existing shared photo during migration.
+- Save and remove photos across devices; preserve existing device copies if a network save fails.
+- No changes to Cloudflare Access, household users, cat access, curfews or movement history.
+
 ## v2.18.160 — Cloudflare connection result formatting
 - Display Cloudflare check results on separate lines instead of literal backslash-n characters.
 - No changes to user management, Cloudflare API calls, family records, cat controls or curfews.

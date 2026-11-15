@@ -1,3 +1,7 @@
+## v2.18.168 — Show signed-in Cloudflare account
+- Add a collapsed-by-default Settings panel showing the actual Cloudflare-verified account email for the current session, distinct from the household member list.
+- Refresh account identity from the existing authenticated family endpoint on opening the panel or tapping Refresh; no stored credentials, account changes, photo changes or cat-control changes.
+
 ## v2.18.167 — Photo account comparison and hideable tools
 - Add an anonymous, truncated SHA-256 account identifier to the read-only photo diagnostic so the installed app and Chrome can be compared without displaying account emails.
 - Place Photo Recovery and Photo Diagnostic inside collapsible Show / Hide panels, closed by default.

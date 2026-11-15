@@ -1,3 +1,11 @@
+## v2.18.170 — Restore automatic refresh after Home Assistant updates
+- Check the Home Assistant add-on's installed release on app launch, foreground return and reopening.
+- Automatically reload the app once if the installed release differs from the version stamped into the page by the server.
+- Defer automatic reload during input editing or an open dialog, and prevent repeated reload attempts against a stale upstream page.
+- Prevent stale HTML/JavaScript caching; remove the outdated service-worker v2.18.143 cache identifier.
+- Preserve pet photos, cat permissions, curfew schedules and Home Assistant controls unchanged.
+- Preserve v2.18.168 and v2.18.169 in separate GitHub backup branches.
+
 ## v2.18.169 — Pet curfew profile navigation
 - Fix Back to pet profile from individual curfews returning to a blank Choose a pet from Home screen.
 - Preserve the selected pet when opening curfews from a pet card or profile, and return to that pet's profile.

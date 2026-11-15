@@ -6,8 +6,8 @@ const path=require('node:path');
 const root=path.join(__dirname,'..');
 test('Android manifest provides same-origin standalone launch and icon',()=>{
  const m=JSON.parse(fs.readFileSync(path.join(root,'web/manifest.webmanifest'),'utf8'));
- assert.equal(m.display,'standalone');assert.equal(m.start_url,'./');assert.equal(m.scope,'./');
- assert.ok(m.icons.some(x=>x.src==='./icon.svg'&&x.type==='image/svg+xml'));
+ assert.equal(m.display,'standalone');assert.equal(m.start_url,'/');assert.equal(m.scope,'/');
+ assert.ok(m.icons.some(x=>x.src==='/icon-192.png'&&x.type==='image/png'));
  assert.ok(fs.existsSync(path.join(root,'web/icon.svg')));
 });
 test('service worker does not cache protected household pages or responses',()=>{
@@ -18,6 +18,6 @@ test('service worker does not cache protected household pages or responses',()=>
 });
 test('app server explicitly permits icon resource',()=>{
  const s=fs.readFileSync(path.join(root,'server.js'),'utf8');
- assert.match(s,/'icon\.svg'\]\.includes\(filename\)/);
+ assert.match(s,/'icon\.svg','icon-192\.png','icon-512\.png'\]\.includes\(filename\)/);
  assert.match(s,/\.svg':\s*'image\/svg\+xml'/);
 });

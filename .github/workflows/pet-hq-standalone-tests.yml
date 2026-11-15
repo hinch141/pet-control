@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - development/pet-hq-standalone
+      - development/pet-hq-auto-refresh-v170
       - main
   workflow_dispatch:
 jobs:

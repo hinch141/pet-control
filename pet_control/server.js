@@ -1292,7 +1292,16 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
   const filename=url.pathname==='/'?'index.html':url.pathname.slice(1);
   if(!['index.html','manifest.webmanifest','sw.js','live.js','icon.svg','icon-192.png','icon-512.png'].includes(filename)){res.writeHead(404,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({error:'Not found'}));}
   const file=path.join(base,filename);
-  fs.readFile(file,(err,body)=>{if(err){res.writeHead(404,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({error:'Not found'}));}res.writeHead(200,{'Content-Type':types[path.extname(file)]||'text/plain'});res.end(body);});
+  fs.readFile(file,(err,body)=>{if(err){res.writeHead(404,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify({error:'Not found'}));}
+    if(filename==='index.html'){
+      // Stamp the actual add-on version into each delivered page; never maintain a separate hard-coded app version.
+      const config=fs.readFileSync('/app/config.yaml','utf8');
+      const version=config.match(/^version:\s*["']?([0-9]+\.[0-9]+\.[0-9]+)["']?\s*$/m)?.[1];
+      if(!version){res.writeHead(503,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'});return res.end('Pet HQ version unavailable');}
+      body=Buffer.from(body.toString('utf8').replaceAll('__PET_HQ_LOADED_VERSION__',version));
+    }
+    res.writeHead(200,{'Content-Type':types[path.extname(file)]||'text/plain','Cache-Control':filename==='index.html'||filename==='sw.js'||filename==='live.js'?'no-store, max-age=0':'no-cache'});res.end(body);
+  });
 };
 // Historical backfill is independent of live polling, capped to three pages per cycle.
 let archiveBusy=false;

@@ -527,6 +527,36 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
   res.setHeader('X-Content-Type-Options','nosniff');
   res.setHeader('Cache-Control','no-store');
 
+  // Read-only Cloudflare check, restricted to authenticated household members.
+  // Never return token, headers, raw Cloudflare response, policy details or emails.
+  if(url.pathname==='/pet-hq/cloudflare-check'&&req.method==='GET'){
+   const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});return res.end(JSON.stringify(body));};
+   if(!standaloneRequest||!verifiedEmail||!emailAllowed(verifiedEmail))
+    return reply(403,{status:'denied',detail:'Sign in to Pet HQ to run this check.'});
+   const accountId=String(standaloneOptions.cf_account_id||'').trim();
+   const policyId=String(standaloneOptions.cf_policy_id||'').trim();
+   const apiToken=String(standaloneOptions.cf_api_token||'').trim();
+   if(!accountId||!policyId||!apiToken)
+    return reply(200,{status:'not_configured',detail:'Cloudflare API configuration is incomplete.'});
+   try{
+    const endpoint='https://api.cloudflare.com/client/v4/accounts/'+encodeURIComponent(accountId)+'/access/policies/'+encodeURIComponent(policyId);
+    const response=await fetch(endpoint,{method:'GET',headers:{Authorization:'Bearer '+apiToken,Accept:'application/json'},signal:AbortSignal.timeout(8000)});
+    if(!response.ok)
+     return reply(200,{status:'failed',step:'policy_read',httpStatus:response.status,detail:await cloudflareFailureSummary(response)});
+    const data=await response.json();
+    if(data?.success!==true||!data.result||!Array.isArray(data.result.include))
+     return reply(200,{status:'unexpected_response',detail:'Cloudflare did not return a recognised policy response.'});
+    const rules=data.result.include;
+    const policyEmails=rules.filter(rule=>rule&&rule.email&&typeof rule.email.email==='string').map(rule=>rule.email.email.trim().toLowerCase());
+    const memberEmails=family.members.map(member=>member.email.trim().toLowerCase());
+    const same=(a,b)=>a.length===b.length&&new Set(a).size===a.length&&[...a].sort().every((v,i)=>v===[...b].sort()[i]);
+    return reply(200,{status:'connected',step:'policy_read',httpStatus:200,policyMatchesFamily:rules.length===policyEmails.length&&same(policyEmails,memberEmails),policyEmailCount:policyEmails.length,familyMemberCount:memberEmails.length});
+   }catch(e){
+    const timeout=e?.name==='TimeoutError'||e?.name==='AbortError';
+    return reply(200,{status:'failed',step:'connection',detail:timeout?'Cloudflare request timed out.':'Cloudflare request could not be completed.'});
+   }
+  }
+
   if(url.pathname==='/pet-hq/family'&&(req.method==='GET'||req.method==='POST')){
    const reply=(code,body)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});return res.end(JSON.stringify(body));};
    if(!standaloneRequest)return reply(403,{error:'Manage family members through the signed-in Pet HQ app'});

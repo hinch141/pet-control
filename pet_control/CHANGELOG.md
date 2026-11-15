@@ -1,3 +1,8 @@
+## v2.18.155 — Cloudflare safe API diagnostics
+- Record Cloudflare HTTP status and numeric error codes when policy read or update fails, without logging tokens, email addresses, policy contents, or raw API responses.
+- No changes to Cloudflare policy, family membership, pet access, curfews, or activity calculations.
+- After installation, reproduce the Test User email edit once and check the Home Assistant add-on log for the numeric Cloudflare code.
+
 ## v2.18.154 — Household email verification and activity improvements
 - Fail closed if Cloudflare API credentials are missing.
 - Refuse policy updates when existing email rules differ from Pet HQ family membership or non-email inclusion rules are present.

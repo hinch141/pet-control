@@ -628,7 +628,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
      recordFamilyUpdate('cloudflare_update','pending',{action:body.action});
      cfSync=await syncCloudflareAccessEmails(nextMembers);
     }catch(cfErr){
-     recordFamilyUpdate('cloudflare_update','failed',{action:body.action,detail:String(cfErr.message||cfErr).replace(/[^a-zA-Z0-9 |():,.-]/g,'').slice(0,180)});
+     recordFamilyUpdate('cloudflare_update','failed',{action:body.action,detail:/Cloudflare policy (read|update) failed \(HTTP \d{3}/.test(String(cfErr.message||cfErr))?'Cloudflare policy request rejected':'Cloudflare update not confirmed'});
      console.error('Family Cloudflare sync failed:',String(cfErr.message||cfErr));
      return reply(502,{error:'Cloudflare Access did not confirm the update. No Pet HQ user changes were saved. Please retry; if it continues, check the add-on log.'});
     }

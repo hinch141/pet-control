@@ -1,3 +1,10 @@
+## v2.18.162 — Personal cat photos for each household member
+- Keep Jessie, Henry and Violet photos separate for each verified Cloudflare household account, persisted in Home Assistant /data.
+- Each member's chosen pictures follow their sign-in across their devices; one member's changes do not affect others.
+- Import existing local mobile photos only for the first account using that browser, without overwriting existing personal photos.
+- Do not expose the previous v161 shared photo files to other members. Preserve those files on disk without deleting them.
+- No changes to cat access, curfews, movement data, Cloudflare policy or family management.
+
 ## v2.18.161 — Shared household cat photographs
 - Store selected Jessie, Henry and Violet photographs in protected Home Assistant /data so household devices display the same photos.
 - Automatically import existing device photos only if no shared photo has been saved or removed; do not overwrite an existing shared photo during migration.

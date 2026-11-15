@@ -513,55 +513,61 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
   }
 
 
-  // Household photographs are kept in Home Assistant /data, never in GitHub.
-  // Both ingress and standalone requests pass the existing authentication gate.
-  if(url.pathname==='/pet-hq/photos'&&req.method==='GET'){
-    const photos={};
-    for(const cat of ['jessie','henry','violet']){
-      const file=path.join('/data/pet-hq-photos',cat+'.jpg');
-      const removed=path.join('/data/pet-hq-photos',cat+'.removed');
-      if(fs.existsSync(file))photos[cat]={present:true,version:String(fs.statSync(file).mtimeMs)};
-      else if(fs.existsSync(removed))photos[cat]={present:false,removed:true};
-    }
-    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
-    return res.end(JSON.stringify({photos}));
-  }
-  if(url.pathname.startsWith('/pet-hq/photos/')){
-    const cat=url.pathname.slice('/pet-hq/photos/'.length);
+
+  // Personal photos are keyed by the verified Cloudflare identity, not client input.
+  // The legacy v161 shared images remain read-only household defaults.
+  if(url.pathname==='/pet-hq/photos'||url.pathname.startsWith('/pet-hq/photos/')){
     const reply=(status,body)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});return res.end(JSON.stringify(body));};
-    if(!['jessie','henry','violet'].includes(cat))return reply(404,{error:'Unknown cat'});
-    const folder='/data/pet-hq-photos',file=path.join(folder,cat+'.jpg'),removed=path.join(folder,cat+'.removed');
-    if(req.method==='GET'){
-      try{const data=fs.readFileSync(file);res.writeHead(200,{'Content-Type':'image/jpeg','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});return res.end(data);}
-      catch{return reply(404,{error:'No shared photo'});}
+    if(!standaloneRequest||!verifiedEmail||!emailAllowed(verifiedEmail))return reply(403,{error:'Sign in to Pet HQ to manage personal photos'});
+    const cat=url.pathname.startsWith('/pet-hq/photos/')?url.pathname.slice('/pet-hq/photos/'.length):null;
+    if(cat!==null&&!['jessie','henry','violet'].includes(cat))return reply(404,{error:'Unknown cat'});
+    const directory=path.join('/data/pet-hq-personal-photos',createHash('sha256').update(verifiedEmail).digest('hex'));
+    const legacy='/data/pet-hq-photos';
+    const file=cat&&path.join(directory,cat+'.jpg'),removed=cat&&path.join(directory,cat+'.removed');
+    if(cat===null&&req.method==='GET'){
+      const photos={};
+      for(const name of ['jessie','henry','violet']){
+        const personal=path.join(directory,name+'.jpg'),tombstone=path.join(directory,name+'.removed');
+        if(fs.existsSync(personal))photos[name]={present:true,version:String(fs.statSync(personal).mtimeMs)};
+        else if(fs.existsSync(tombstone))photos[name]={present:false,removed:true};
+      }
+      return reply(200,{photos});
     }
-    if(req.method==='POST'){
+    if(cat!==null&&req.method==='GET'){
+      try{
+        const data=fs.readFileSync(file);
+        res.writeHead(200,{'Content-Type':'image/jpeg','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
+        return res.end(data);
+      }catch{return reply(404,{error:'No personal photo'});}
+    }
+    if(cat!==null&&req.method==='POST'){
       if(!String(req.headers['content-type']||'').startsWith('application/json'))return reply(415,{error:'JSON required'});
       let raw='';
       try{
         for await(const chunk of req){raw+=chunk;if(raw.length>650000)return reply(413,{error:'Photo too large'});}
-        const body=JSON.parse(raw);
-        const prefix='data:image/jpeg;base64,';
+        const body=JSON.parse(raw),prefix='data:image/jpeg;base64,';
         if(typeof body.photo!=='string'||!body.photo.startsWith(prefix))return reply(400,{error:'JPEG photo required'});
         const encoded=body.photo.slice(prefix.length);
         if(!encoded||encoded.length>600000||!Array.from(encoded).every(ch=>'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='.includes(ch)))return reply(400,{error:'Invalid JPEG'});
         const data=Buffer.from(encoded,'base64');
         if(data.length<100||data.length>450000||data[0]!==255||data[1]!==216||data[data.length-2]!==255||data[data.length-1]!==217)return reply(400,{error:'Invalid JPEG'});
-        fs.mkdirSync(folder,{recursive:true});
-        if(body.migrate===true&&(fs.existsSync(file)||fs.existsSync(removed)))return reply(409,{error:'Shared photo already set'});
+        fs.mkdirSync(directory,{recursive:true});
+        if(body.migrate===true&&(fs.existsSync(file)||fs.existsSync(removed)))return reply(409,{error:'Personal photo already set'});
         const temp=file+'.'+randomUUID()+'.tmp';
         fs.writeFileSync(temp,data,{mode:0o600});fs.renameSync(temp,file);
         try{fs.unlinkSync(removed);}catch(e){if(e.code!=='ENOENT')throw e;}
         return reply(200,{saved:true,version:String(fs.statSync(file).mtimeMs)});
-      }catch{return reply(500,{error:'Could not save shared photo'});}
+      }catch{return reply(500,{error:'Could not save personal photo'});}
     }
-    if(req.method==='DELETE'){
-      try{fs.mkdirSync(folder,{recursive:true});fs.writeFileSync(removed,'removed',{mode:0o600});try{fs.unlinkSync(file);}catch(e){if(e.code!=='ENOENT')throw e;}return reply(200,{removed:true});}
-      catch{return reply(500,{error:'Could not remove shared photo'});}
+    if(cat!==null&&req.method==='DELETE'){
+      try{
+        fs.mkdirSync(directory,{recursive:true});fs.writeFileSync(removed,'removed',{mode:0o600});
+        try{fs.unlinkSync(file);}catch(e){if(e.code!=='ENOENT')throw e;}
+        return reply(200,{removed:true});
+      }catch{return reply(500,{error:'Could not remove personal photo'});}
     }
     return reply(405,{error:'Method not allowed'});
   }
-
   if(url.pathname==='/pet-hq/release-info'&&req.method==='GET'){
     try{
       const configuration=fs.readFileSync('/app/config.yaml','utf8');

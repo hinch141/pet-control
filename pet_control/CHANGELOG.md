@@ -1,3 +1,7 @@
+## v2.18.160 — Cloudflare connection result formatting
+- Display Cloudflare check results on separate lines instead of literal backslash-n characters.
+- No changes to user management, Cloudflare API calls, family records, cat controls or curfews.
+
 ## v2.18.159 — Fix family email edit being mistaken for no change
 - Correct the edit no-op comparison to use the requested email, not the already-saved email.
 - A changed email with an unchanged name now reaches the existing Cloudflare update and save verification process.

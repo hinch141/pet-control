@@ -597,7 +597,7 @@ async function applyHouseReview(){const flow=houseReview;if(!flow)return;houseRe
 function toggleHouseIndoor(enabled){requestHouseSetting('mode',enabled);}
 function confirmHouseUnlock(){requestHouseSetting('mode',false);}
 function petCardAccessIndicator(p){
- const raw=String(window.getLivePetAccess?.(p.surePetId)||'');
+ const raw=String(window.getLivePetAccess?.(p.surePetId)||window.getLivePetAccess?.('display:'+photoCat(p))||'');
  const curfewOn=p.enabled===true;
  let label='Checking access',tone='pending',detail=curfewOn?'Individual curfew enabled':'Curfew off';
  if(raw.startsWith('Indoor Only')){label='Keep indoors';tone='restricted';detail=curfewOn?'Individual curfew also scheduled':'No individual curfew';}

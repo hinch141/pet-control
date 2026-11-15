@@ -1133,8 +1133,43 @@ petHQLoadReleaseInfo();
 </script><script>
 /* Standalone-app update UX; does not affect Home Assistant commands. */
 (function(){
+ // The server stamps this token from config.yaml when serving the HTML.
+ const loadedVersion='__PET_HQ_LOADED_VERSION__';
+ if(!/^\d+\.\d+\.\d+$/.test(loadedVersion))return;
+ let checking=false,refreshing=false,waiting=null;
+ const attemptKey='pet-hq-auto-refresh-target';
+ function editing(){
+  const active=document.activeElement;
+  const modal=document.getElementById('modalWrap');
+  return (modal&&getComputedStyle(modal).display!=='none')||
+    (active&&(/^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)||active.isContentEditable));
+ }
+ async function checkInstalledVersion(){
+  if(checking||refreshing||document.visibilityState==='hidden'||!navigator.onLine||editing())return;
+  checking=true;
+  try{
+   const response=await fetch('./pet-hq/release-info',{cache:'no-store'});
+   if(!response.ok)return;
+   const data=await response.json();
+   const installed=String(data.version||'');
+   if(!/^\d+\.\d+\.\d+$/.test(installed)||installed===loadedVersion)return;
+   // One attempt per target version per tab prevents loops if an upstream cache serves stale HTML.
+   if(sessionStorage.getItem(attemptKey)===installed)return;
+   sessionStorage.setItem(attemptKey,installed);
+   refreshing=true;
+   location.reload();
+  }catch(e){console.warn('Pet HQ release check unavailable',e);}
+  finally{checking=false;}
+ }
+ // Check when the app launches, reopens, or returns to the foreground.
+ window.addEventListener('load',checkInstalledVersion);
+ window.addEventListener('pageshow',checkInstalledVersion);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkInstalledVersion();});
+ window.addEventListener('focus',checkInstalledVersion);
+ // If an edit was in progress, check again after the user leaves the field or closes a dialog.
+ document.addEventListener('focusout',()=>setTimeout(checkInstalledVersion,250));
+ document.addEventListener('click',()=>setTimeout(checkInstalledVersion,350));
  if(!('serviceWorker' in navigator))return;
- let refreshing=false,waiting=null;
  function offerUpdate(worker){
   if(!worker||document.getElementById('pet-hq-update-banner'))return;
   waiting=worker;
@@ -1147,7 +1182,8 @@ petHQLoadReleaseInfo();
   document.getElementById('pet-hq-update-later').addEventListener('click',()=>bar.remove());
  }
  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-  if(refreshing)return;refreshing=true;location.reload();
+  // The release check is authoritative; do not reload solely because a worker took control.
+  checkInstalledVersion();
  });
  window.addEventListener('load',async()=>{
   try{

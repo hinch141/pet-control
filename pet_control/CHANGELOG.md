@@ -1,3 +1,8 @@
+## v2.18.167 — Photo account comparison and hideable tools
+- Add an anonymous, truncated SHA-256 account identifier to the read-only photo diagnostic so the installed app and Chrome can be compared without displaying account emails.
+- Place Photo Recovery and Photo Diagnostic inside collapsible Show / Hide panels, closed by default.
+- Preserve existing photo files, Home Assistant /data storage, cat controls, curfews, permissions and Sure Petcare operations.
+
 ## v2.18.166 — Safe mobile photo recovery
 - Add an opt-in Recover photos from this device action in Settings, for the mobile app where the chosen JPEG photos still appear.
 - Verify the signed-in account and copy only missing personal photos from device storage using the server's migration-only, no-overwrite protection.

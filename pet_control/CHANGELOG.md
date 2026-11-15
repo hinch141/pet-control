@@ -4,6 +4,9 @@
 - Verify Cloudflare's update response before committing Pet HQ membership changes.
 - Protect primary-account email changes pending verification and block changes to the currently signed-in account.
 - Report local registry write failures explicitly and preserve in-memory state.
+- Verify the family registry from disk after a membership change, and require a fresh family read in the app before reporting an email edit successful.
+- Reject false-positive success messages if the requested email was not returned or the previous email remains present.
+- Email-change behaviour still requires a live Home Assistant/Cloudflare test before release.
 - Pending confirmation of the correct Cloudflare policy and API permissions; no changes to Cloudflare configuration.
 
 ## v2.18.153 — Family display-name save

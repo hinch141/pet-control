@@ -1,3 +1,9 @@
+## v2.18.163 — Web photo and read-only access display repair
+- Use the authenticated personal-photo endpoint directly when browser metadata loading fails; retain a stock fallback only when no personal photo exists.
+- Refresh personal photo metadata when returning to the browser.
+- Show confirmed Sure Petcare access status in fresh web profiles by unique official cat name when the local pet ID is absent. This is display-only; no access commands or flap settings are changed.
+- Preserve all personal photo files, curfews, family accounts and existing access controls.
+
 ## v2.18.162 — Personal cat photos for each household member
 - Keep Jessie, Henry and Violet photos separate for each verified Cloudflare household account, persisted in Home Assistant /data.
 - Each member's chosen pictures follow their sign-in across their devices; one member's changes do not affect others.

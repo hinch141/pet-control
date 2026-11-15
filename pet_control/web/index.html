@@ -436,7 +436,7 @@ function petPhoto(p){
 }
 function defaultPetPhoto(p){
  const cat=photoCat(p),fallback=defaultPetPhotos[cat];
- if(fallback?.present)return './pet-hq/photo-defaults/'+cat+'?v='+encodeURIComponent(fallback.version);
+ // Do not expose a legacy household photo belonging to another member.
  return stockPetPhoto(p);
 }
 function stockPetPhoto(p){
@@ -788,14 +788,14 @@ async function changePetPhoto(id,file){
   const response=await fetch('./pet-hq/photos/'+cat,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({photo}),signal:AbortSignal.timeout(15000)});
   if(!response.ok)throw Error('Personal photo could not be saved (HTTP '+response.status+')');
   const result=await response.json();sharedPetPhotos[cat]={present:true,version:result.version};
-  p.photo=photo;try{localStorage.setItem(key,JSON.stringify(state))}catch{}
+  if(localStorage.getItem(legacyPhotoOwnerKey)===personalPhotoViewer){p.photo=photo;try{localStorage.setItem(key,JSON.stringify(state))}catch{}}
   render();openPet(id);toast('Your personal photo has been saved');
  }catch(e){toast('Could not save photo: '+e.message)}
 }
 async function removePetPhoto(id){const p=pet(id);if(!p)return;const cat=photoCat(p);try{
  const response=await fetch('./pet-hq/photos/'+cat,{method:'DELETE',signal:AbortSignal.timeout(12000)});
  if(!response.ok)throw Error('Unable to remove personal photo');
- sharedPetPhotos[cat]={present:false,removed:true};delete p.photo;save();openPet(id);toast('Your personal photo was removed');
+ sharedPetPhotos[cat]={present:false,removed:true};if(localStorage.getItem(legacyPhotoOwnerKey)===personalPhotoViewer){delete p.photo;save();}else render();openPet(id);toast('Your personal photo was removed');
  }catch(e){toast(e.message||'Photo could not be removed');}}
 function openPet(id){let p=id?pet(id):null;modal(`<h3>${p?'Edit pet':'Add pet'}</h3><div class="stack">${p?`<div class="row">${petAvatar(p)}<label class="button secondary">Change photo<input type="file" accept="image/*" style="display:none" onchange="changePetPhoto(\'${p.id}\',this.files[0])"></label>${(sharedPetPhotos[photoCat(p)]?.present||(p.photo&&(!personalPhotosLoaded||localStorage.getItem(legacyPhotoOwnerKey)===personalPhotoViewer)))?`<button class="button outline" onclick="removePetPhoto(\'${p.id}\')">Remove</button>`:""}</div><div class="small">Your photo follows your sign-in on other devices</div>`:""}<label class="field">Pet name<input id="petName" maxlength="40" value="${esc(p?.name||'')}" placeholder="Pet name"></label>${p?`<div class="card" style="background:#f4f8f5"><strong>Individual access</strong><p class="small" id="petAccessStatus">Checking Sure Petcare permission…</p><div class="row" id="petAccessActions"><span class="small">Checking available action…</span></div><p class="small">Indoor Only prevents this cat exiting but still allows entry. Useful for recovery after veterinary treatment.</p><strong>Curfews</strong><p class="small">Manage the weekly curfew separately.</p><button class="button secondary" onclick="closeModal();openPetCurfew(\'${p.id}\')">Open ${esc(p.name)}’s curfew settings →</button></div>`:""}</div><div class="row"><button class="button wide" onclick="savePet('${id||''}')">Save pet</button><button class="button outline" onclick="closeModal()">Cancel</button></div>`);if(p)refreshPetAccess(p.id);if(p&&houseReview){el('modal').insertAdjacentHTML('beforeend','<div class="row" style="margin-top:12px"><button class="button secondary" onclick="showHouseReviewCat()">Return to cat review</button></div>')}}function savePet(id){let name=el('petName').value.trim();if(!name)return toast('Enter a name');if(state.pets.some(p=>p.id!==id&&p.name.toLowerCase()===name.toLowerCase()))return toast('Pet name already exists');if(id){pet(id).name=name;}else state.pets.push({id:'p'+Date.now(),name,indoorMode:'normal',enabled:false,start:'21:00',end:'07:00',weekend:true,archived:false});closeModal();save();toast(name+' profile saved')}async function refreshPetAccess(id){
  const p=pet(id),target=el('petAccessStatus'),actions=el('petAccessActions');

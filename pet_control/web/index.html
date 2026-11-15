@@ -887,8 +887,18 @@ async function saveEditedUser(originalEmail){
  try{
   const r=await fetch('./pet-hq/family',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'edit',originalEmail,name,email})});
   const d=await familyJsonResponse(r);
-  if(!Array.isArray(d.members)||!d.members.some(m=>m.email===email&&m.name===name))
-   throw Error('The server returned success but did not confirm the requested email. No update was verified. Please do not retry repeatedly; report this message.');
+  if(!Array.isArray(d.members)||!d.members.some(m=>m.email===email&&m.name===name)){
+   let stage='unavailable';
+   try{
+    const checkResponse=await fetch('./pet-hq/family-save-status',{cache:'no-store'});
+    if(checkResponse.ok){
+     const check=await checkResponse.json();
+     stage=String(check.stage||'unknown')+' / '+String(check.status||'unknown');
+     if(check.detail)stage+=' ('+String(check.detail)+')';
+    }
+   }catch{}
+   throw Error('Email update not confirmed. Server transaction: '+stage+'. No further retries until this is resolved.');
+  }
   if(email!==originalEmail&&d.cfSynced!==true)
    throw Error('Cloudflare did not confirm the email change.');
   const check=await familyJsonResponse(await fetch('./pet-hq/family',{cache:'no-store'}));

@@ -14,7 +14,7 @@ test('version is injected from the installed add-on, not independently hard-code
  assert.ok(block,'update handler exists');
  assert.match(block[0],/__PET_HQ_LOADED_VERSION__/);
  assert.match(server,/replaceAll\('__PET_HQ_LOADED_VERSION__',version\)/);
- assert.match(config,/version: "2\.18\.170"/);
+ assert.match(config,/version: "2.18.171"/);
  assert.doesNotMatch(sw,/pet-control-v2-18-143/);
 });
 test('server disables caching of delivered HTML and JavaScript',()=>{
@@ -46,4 +46,12 @@ test('editing a field or modal defers reload',async()=>{
 });
 test('offline app does not reload',async()=>{
  const h=harness('2.18.171',{online:false});await h.fire('win:pageshow');assert.equal(h.reloads(),0);assert.equal(h.requests(),0);
+});
+
+test('update confirmation is persistent and dismissible',()=>{
+ assert.match(html,/sessionStorage\.setItem\(noticeKey,installed\)/);
+ assert.match(html,/id='pet-hq-updated-notice'/);
+ assert.match(html,/pet-hq-updated-dismiss/);
+ assert.match(html,/sessionStorage\.removeItem\(noticeKey\)/);
+ assert.doesNotMatch(html,/setTimeout\([^)]*bar\.remove/);
 });

@@ -4,6 +4,7 @@ on:
     branches:
       - development/pet-hq-standalone
       - development/pet-hq-auto-refresh-v170
+      - development/pet-hq-update-notice-v171
       - main
   workflow_dispatch:
 jobs:

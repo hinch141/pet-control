@@ -457,6 +457,23 @@ function graphTrips(){
  else {const start=open.get(e.pet);if(start!==undefined&&e.at>start){trips.push({pet:e.pet,start,end:e.at});open.delete(e.pet);}}}
  return trips;
 }
+// Count only complete, confirmed indoor intervals (entry followed by exit).
+// Never infer missing time as 24 hours minus recorded outside time.
+function graphInsideSessions(){
+ const sorted=graphRecords().slice().sort((a,b)=>a.at-b.at),open=new Map(),sessions=[];
+ for(const e of sorted){
+  if(e.direction==='In'){open.set(e.pet,e.at);}
+  else {const start=open.get(e.pet);if(start!==undefined&&e.at>start){
+   sessions.push({pet:e.pet,start,end:e.at});open.delete(e.pet);
+  }}
+ }
+ return sessions;
+}
+function graphDayInside(day,pet){
+ const [a,b]=graphDayBounds(day);
+ return graphInsideSessions().filter(t=>(pet==='all'||t.pet===pet)&&t.start<b&&t.end>a)
+  .map(t=>({...t,minutes:Math.max(0,Math.min(t.end,b)-Math.max(t.start,a))/60000}));
+}
 function graphDayBounds(day){
  const start=new Date(day+'T00:00:00Z').getTime();
  let lo=start-86400000,hi=start+86400000;
@@ -471,7 +488,7 @@ function graphDayTrips(day,pet){
 }
 function graphDuration(ms){const mins=Math.round(ms/60000);return Math.floor(mins/60)+'h '+String(mins%60).padStart(2,'0')+'m';}
 let graphRange=7,graphPet='all',graphSelected='',graphMetric='move';
-window.petGraphMetric=function(v){graphMetric=v==='time'?'time':'move';renderGraphs();};
+window.petGraphMetric=function(v){graphMetric=v==='inside'?'inside':v==='time'?'time':'move';renderGraphs();};
 window.petGraphRange=function(n){pendingGraphFrom=null;pendingGraphTo=null;graphRange=n===28?28:7;graphEnd=graphToday();graphStart=shiftDay(graphEnd,1-graphRange);loadGraphRange();};
 window.petGraphPet=function(v){graphPet=v;renderGraphs();};
 let graphSelectedDirection='all';
@@ -488,16 +505,16 @@ function showGraphPopup(day){
  for(const e of events){if(!byCat.has(e.pet))byCat.set(e.pet,{ins:0,outs:0});byCat.get(e.pet)[e.direction==='In'?'ins':'outs']++;}
  const cats=[...byCat].map(([p,v])=>'<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0"><strong>'+escapeHtml(name(p))+'</strong><span>'+v.ins+' in · '+v.outs+' out</span></div>').join('');
  const rows=events.map(e=>'<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #e3e8e6"><span>'+escapeHtml(name(e.pet))+' · '+(e.direction==='In'?'Entered':'Left')+'</span><strong>'+clock(e.at)+'</strong></div>').join('');
- const sessions=graphDayTrips(day,graphPet).sort((a,b)=>graphPopupSort==='oldest'?a.start-b.start:b.start-a.start);
+ const sessions=(graphMetric==='inside'?graphDayInside(day,graphPet):graphDayTrips(day,graphPet)).sort((a,b)=>graphPopupSort==='oldest'?a.start-b.start:b.start-a.start);
  const duration=graphDuration;
- const trips=sessions.map(x=>'<div style="padding:8px 0;border-bottom:1px solid #e3e8e6"><strong>'+escapeHtml(name(x.pet))+'</strong><div class="small">Out '+clock(x.start)+' · In '+clock(x.end)+' · '+duration(x.end-x.start)+(x.minutes*60000<x.end-x.start?' · '+duration(x.minutes*60000)+' on this day':'')+'</div></div>').join('');
+ const trips=sessions.map(x=>'<div style="padding:8px 0;border-bottom:1px solid #e3e8e6"><strong>'+escapeHtml(name(x.pet))+'</strong><div class="small">'+(graphMetric==='inside'?'In ':'Out ')+clock(x.start)+' · '+(graphMetric==='inside'?'Out ':'In ')+clock(x.end)+' · '+duration(x.end-x.start)+(x.minutes*60000<x.end-x.start?' · '+duration(x.minutes*60000)+' on this day':'')+'</div></div>').join('');
  const dailyMinutes=sessions.reduce((n,t)=>n+t.minutes,0),longest=sessions.reduce((n,t)=>Math.max(n,t.end-t.start),0);
- const daySummary='<p><strong>Total outside: '+duration(dailyMinutes*60000)+'</strong> · '+sessions.length+' completed trips · Longest trip: '+duration(longest)+'</p>';
- const popupContent=graphMetric==='time'?daySummary+'<div style="max-height:40vh;overflow:auto">'+(trips||'<p class="small">No completed trips in the available records.</p>')+'</div>' :'<p><strong>'+(graphSelectedDirection==='In'?entries+' entries':graphSelectedDirection==='Out'?exits+' exits':entries+' entries · '+exits+' exits')+'</strong></p>'+(cats||'<p>No confirmed movements recorded.</p>')+'<div style="max-height:40vh;overflow:auto">'+(rows||'<p class="small">No recorded movements for this day.</p>')+'</div>';
+ const daySummary='<p><strong>Total '+(graphMetric==='inside'?'confirmed inside':'outside')+': '+duration(dailyMinutes*60000)+'</strong> · '+sessions.length+(graphMetric==='inside'?' completed indoor intervals':' completed trips')+' · Longest interval: '+duration(longest)+'</p>';
+ const popupContent=(graphMetric==='time'||graphMetric==='inside')?daySummary+'<div style="max-height:40vh;overflow:auto">'+(trips||'<p class="small">No completed trips in the available records.</p>')+'</div>' :'<p><strong>'+(graphSelectedDirection==='In'?entries+' entries':graphSelectedDirection==='Out'?exits+' exits':entries+' entries · '+exits+' exits')+'</strong></p>'+(cats||'<p>No confirmed movements recorded.</p>')+'<div style="max-height:40vh;overflow:auto">'+(rows||'<p class="small">No recorded movements for this day.</p>')+'</div>';
   let overlay=document.getElementById('pet-graph-popup');
  if(!overlay){overlay=document.createElement('div');overlay.id='pet-graph-popup';overlay.setAttribute('role','presentation');overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px';overlay.addEventListener('click',e=>{if(e.target===overlay)window.closePetGraphPopup();});document.body.appendChild(overlay);}
  const title=new Date(day+'T12:00:00Z').toLocaleDateString('en-GB',{timeZone:'Europe/London',weekday:'long',day:'numeric',month:'long',year:'numeric'});
- overlay.innerHTML='<div role="dialog" aria-modal="true" aria-label="Activity details for '+escapeHtml(title)+'" style="background:#fff;color:#19312d;border-radius:14px;padding:18px;width:min(100%,460px);max-height:85vh;overflow:auto;box-shadow:0 10px 40px #0004"><div style="display:flex;justify-content:space-between;gap:12px;align-items:start"><h3 style="margin:0">'+escapeHtml(title)+'</h3><button type="button" class="button secondary" onclick="closePetGraphPopup()" aria-label="Close activity details">Close ✕</button></div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h4>'+(graphMetric==='time'?'Outside trips':graphSelectedDirection==='In'?'Entries':graphSelectedDirection==='Out'?'Exits':'Movement times')+'</h4><label>Order <select aria-label="Sort activity" onchange="petGraphPopupSort(this.value)"><option value="newest"'+(graphPopupSort==='newest'?' selected':'')+'>Newest first</option><option value="oldest"'+(graphPopupSort==='oldest'?' selected':'')+'>Oldest first</option></select></label></div>'+popupContent+'<p class="small">Based on retrieved confirmed events. Missing or unfinished trips are excluded.</p></div>';
+ overlay.innerHTML='<div role="dialog" aria-modal="true" aria-label="Activity details for '+escapeHtml(title)+'" style="background:#fff;color:#19312d;border-radius:14px;padding:18px;width:min(100%,460px);max-height:85vh;overflow:auto;box-shadow:0 10px 40px #0004"><div style="display:flex;justify-content:space-between;gap:12px;align-items:start"><h3 style="margin:0">'+escapeHtml(title)+'</h3><button type="button" class="button secondary" onclick="closePetGraphPopup()" aria-label="Close activity details">Close ✕</button></div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h4>'+(graphMetric==='inside'?'Confirmed time inside':graphMetric==='time'?'Outside trips':graphSelectedDirection==='In'?'Entries':graphSelectedDirection==='Out'?'Exits':'Movement times')+'</h4><label>Order <select aria-label="Sort activity" onchange="petGraphPopupSort(this.value)"><option value="newest"'+(graphPopupSort==='newest'?' selected':'')+'>Newest first</option><option value="oldest"'+(graphPopupSort==='oldest'?' selected':'')+'>Oldest first</option></select></label></div>'+popupContent+'<p class="small">Based on retrieved confirmed events. Missing or unfinished trips are excluded.</p></div>';
  overlay.style.display='flex';overlay.querySelector('button')?.focus();
 }
 window.closePetGraphPopup=function(){const el=document.getElementById('pet-graph-popup');if(el)el.style.display='none';};
@@ -514,7 +531,7 @@ function renderGraphs(){
  for(const day of rangeDays())days.push({day,ins:0,outs:0,minutes:0});
  const byDay=new Map(days.map(d=>[d.day,d]));
  for(const e of events){const b=byDay.get(e.day);if(b){if(e.direction==='In')b.ins++;else b.outs++;}}
- const trips=graphTrips().filter(t=>graphPet==='all'||t.pet===graphPet);
+ const trips=(graphMetric==='inside'?graphInsideSessions():graphTrips()).filter(t=>graphPet==='all'||t.pet===graphPet);
  const bounds=days.map(d=>graphDayBounds(d.day));
  for(let i=0;i<days.length;i++){const d=days[i],[a,b]=bounds[i];for(const t of trips){if(t.start<b&&t.end>a)d.minutes+=Math.max(0,Math.min(t.end,b)-Math.max(t.start,a))/60000;}}
  const avgMinutes=days.reduce((n,d)=>n+d.minutes,0)/days.length;
@@ -528,11 +545,11 @@ function renderGraphs(){
  const monthHeading=day=>new Date(day+'T12:00:00Z').toLocaleDateString('en-GB',{timeZone:'Europe/London',month:'long',year:'numeric'});
  const rangeHeading=monthHeading(days[0].day)===monthHeading(days[days.length-1].day)?monthHeading(days[days.length-1].day):monthHeading(days[0].day)+' – '+monthHeading(days[days.length-1].day);
  const bar=(value,max,color,day,title,direction)=>'<button type="button" onclick="petGraphDay(&#39;'+day+'&#39;,&#39;'+direction+'&#39;)" title="'+escapeHtml(title)+'" style="display:block;width:100%;height:'+Math.max(3,Math.round(value/max*94))+'px;background:'+color+';border:0;border-radius:3px 3px 0 0;padding:0;cursor:pointer" aria-label="'+escapeHtml(title)+'"></button>';
- const bars=kind=>'<div style="overflow-x:auto;touch-action:pan-x;padding-bottom:6px"><div style="display:flex;gap:5px;align-items:flex-end;min-width:max-content;border-bottom:1px solid #cbd9d4">'+days.map(d=>'<div style="width:'+(days.length>14?'47':'55')+'px;flex:none;text-align:center"><div style="display:flex;align-items:flex-end;gap:2px;height:112px">'+(kind==='move'?'<div style="flex:1">'+bar(d.ins,maxMove,'#178f99',d.day,ukLong(d.day)+': '+d.ins+' entries','In')+'</div><div style="flex:1">'+bar(d.outs,maxMove,'#e49a46',d.day,ukLong(d.day)+': '+d.outs+' exits','Out')+'</div>':bar(d.minutes,maxTime,'#5d7ec3',d.day,ukLong(d.day)+': '+Math.round(d.minutes)+' minutes outside','all'))+'</div><div style="font-size:11px;white-space:nowrap;padding:5px 0;font-weight:'+(d.day===today?'700':'400')+'">'+escapeHtml(ukLabel(d.day))+'</div></div>').join('')+'</div></div>';
+ const bars=kind=>'<div style="overflow-x:auto;touch-action:pan-x;padding-bottom:6px"><div style="display:flex;gap:5px;align-items:flex-end;min-width:max-content;border-bottom:1px solid #cbd9d4">'+days.map(d=>'<div style="width:'+(days.length>14?'47':'55')+'px;flex:none;text-align:center"><div style="display:flex;align-items:flex-end;gap:2px;height:112px">'+(kind==='move'?'<div style="flex:1">'+bar(d.ins,maxMove,'#178f99',d.day,ukLong(d.day)+': '+d.ins+' entries','In')+'</div><div style="flex:1">'+bar(d.outs,maxMove,'#e49a46',d.day,ukLong(d.day)+': '+d.outs+' exits','Out')+'</div>':bar(d.minutes,maxTime,'#5d7ec3',d.day,ukLong(d.day)+': '+Math.round(d.minutes)+(kind==='inside'?' confirmed minutes inside':' minutes outside'),'all'))+'</div><div style="font-size:11px;white-space:nowrap;padding:5px 0;font-weight:'+(d.day===today?'700':'400')+'">'+escapeHtml(ukLabel(d.day))+'</div></div>').join('')+'</div></div>';
 
  const selected=byDay.get(graphSelected)||days[days.length-1];
  const opts=['all',...names.map(n=>n.toLowerCase())].map(n=>'<option value="'+escapeHtml(n)+'"'+(graphPet===n?' selected':'')+'>'+(n==='all'?'All cats':escapeHtml(n.charAt(0).toUpperCase()+n.slice(1)))+'</option>').join('');
- root.innerHTML='<h3 style="margin-top:0">Cat activity</h3><div class="row" style="gap:8px;flex-wrap:wrap"><label>View <select aria-label="Graph metric" onchange="petGraphMetric(this.value)"><option value="move"'+(graphMetric==='move'?' selected':'')+'>Entries and exits</option><option value="time"'+(graphMetric==='time'?' selected':'')+'>Time outside</option></select></label><label>Cat <select onchange="petGraphPet(this.value)">'+opts+'</select></label><button class="button secondary" onclick="petGraphRange(7)" '+(graphRange===7?'aria-pressed="true"':'')+'>7 days</button><button class="button secondary" onclick="petGraphRange(28)" '+(graphRange===28?'aria-pressed="true"':'')+'>28 days</button></div><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px"><label>From <input id="graph-from" type="hidden" value="'+(pendingGraphFrom||graphStart)+'"><button type="button" class="button secondary" id="graph-from-button" onclick="petGraphCalendarOpen(&quot;from&quot;)">'+(pendingGraphFrom||graphStart).slice(8,10)+'/'+(pendingGraphFrom||graphStart).slice(5,7)+'/'+(pendingGraphFrom||graphStart).slice(0,4)+'</button></label><label>To <input id="graph-to" type="hidden" value="'+(pendingGraphTo||graphEnd)+'"><button type="button" class="button secondary" id="graph-to-button" onclick="petGraphCalendarOpen(&quot;to&quot;)">'+(pendingGraphTo||graphEnd).slice(8,10)+'/'+(pendingGraphTo||graphEnd).slice(5,7)+'/'+(pendingGraphTo||graphEnd).slice(0,4)+'</button></label><button class="button secondary" onclick="petGraphDates()">Show dates</button></div><p class="small">Select dates using the calendar (day/month/year). Showing '+days.length+' days.</p>'+(graphMetric==='move'?'Entries and exits':'Time spent outside')+'</h4><p class="small" style="font-weight:700">'+escapeHtml(rangeHeading)+'</p>'+bars(graphMetric)+'<p class="small">'+(graphMetric==='move'?'Blue: entries · Orange: exits':'Blue: minutes outside between confirmed exit and return')+'</p><p class="small">Daily average outside: '+graphDuration(avgMinutes*60000)+' · Average completed trips/day: '+avgTrips.toFixed(1)+' · Longest trip: '+graphDuration(longestTrip)+'</p><div class="small">'+escapeHtml(ukLong(days[0].day))+' to '+escapeHtml(ukLong(graphEnd))+'</div><p class="small">Tap a bar for '+(graphMetric==='move'?'movement times':'individual trip durations')+'. '+(rangeLoading?'Loading older records in the background — graph updates as they arrive…':rangeError?escapeHtml(rangeError):'Showing retrieved confirmed movements for the selected dates.')+'</p>';
+ root.innerHTML='<h3 style="margin-top:0">Cat activity</h3><div class="row" style="gap:8px;flex-wrap:wrap"><label>View <select aria-label="Graph metric" onchange="petGraphMetric(this.value)"><option value="move"'+(graphMetric==='move'?' selected':'')+'>Entries and exits</option><option value="time"'+(graphMetric==='time'?' selected':'')+'>Time outside</option><option value="inside"'+(graphMetric==='inside'?' selected':'')+'>Time inside</option></select></label><label>Cat <select onchange="petGraphPet(this.value)">'+opts+'</select></label><button class="button secondary" onclick="petGraphRange(7)" '+(graphRange===7?'aria-pressed="true"':'')+'>7 days</button><button class="button secondary" onclick="petGraphRange(28)" '+(graphRange===28?'aria-pressed="true"':'')+'>28 days</button></div><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px"><label>From <input id="graph-from" type="hidden" value="'+(pendingGraphFrom||graphStart)+'"><button type="button" class="button secondary" id="graph-from-button" onclick="petGraphCalendarOpen(&quot;from&quot;)">'+(pendingGraphFrom||graphStart).slice(8,10)+'/'+(pendingGraphFrom||graphStart).slice(5,7)+'/'+(pendingGraphFrom||graphStart).slice(0,4)+'</button></label><label>To <input id="graph-to" type="hidden" value="'+(pendingGraphTo||graphEnd)+'"><button type="button" class="button secondary" id="graph-to-button" onclick="petGraphCalendarOpen(&quot;to&quot;)">'+(pendingGraphTo||graphEnd).slice(8,10)+'/'+(pendingGraphTo||graphEnd).slice(5,7)+'/'+(pendingGraphTo||graphEnd).slice(0,4)+'</button></label><button class="button secondary" onclick="petGraphDates()">Show dates</button></div><p class="small">Select dates using the calendar (day/month/year). Showing '+days.length+' days.</p>'+(graphMetric==='move'?'Entries and exits':graphMetric==='inside'?'Confirmed time inside':'Time spent outside')+'</h4><p class="small" style="font-weight:700">'+escapeHtml(rangeHeading)+'</p>'+bars(graphMetric)+'<p class="small">'+(graphMetric==='move'?'Blue: entries · Orange: exits':graphMetric==='inside'?'Blue: confirmed minutes inside between entry and next exit; incomplete intervals excluded':'Blue: minutes outside between confirmed exit and return')+'</p><p class="small">Daily average '+(graphMetric==='inside'?'confirmed inside':'outside')+': '+graphDuration(avgMinutes*60000)+' · Average completed trips/day: '+avgTrips.toFixed(1)+' · Longest trip: '+graphDuration(longestTrip)+'</p><div class="small">'+escapeHtml(ukLong(days[0].day))+' to '+escapeHtml(ukLong(graphEnd))+'</div><p class="small">Tap a bar for '+(graphMetric==='move'?'movement times':graphMetric==='inside'?'confirmed indoor intervals':'individual trip durations')+'. '+(rangeLoading?'Loading older records in the background — graph updates as they arrive…':rangeError?escapeHtml(rangeError):'Showing retrieved confirmed movements for the selected dates.')+'</p>';
 }
 
 async function refreshCloud(force=false){
@@ -653,9 +670,10 @@ function updateStreamBadge(connected){
  streamConnected=connected;
  const badge=document.getElementById('petHqStreamBadge');
  if(!badge)return;
- badge.textContent=connected?'● Live':'● Polling';
- badge.style.background=connected?'#dcfce7':'#fef3c7';
- badge.style.color=connected?'#166534':'#92400e';
+ badge.innerHTML='<span class="live-status-dot" aria-hidden="true">●</span> '+(connected?'Live':'Polling');
+ badge.dataset.liveConnected=connected?'true':'false';
+ badge.style.background=connected?'#d8ffe6':'#fef3c7';
+ badge.style.color=connected?'#087b35':'#92400e';
 }
 function connectLiveStream(){
  if(typeof EventSource==='undefined'||document.hidden)return;

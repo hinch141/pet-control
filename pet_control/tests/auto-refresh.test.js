@@ -30,22 +30,22 @@ function harness(installed,{editing=false,modal=false,online=true}={}){
   fetch:async(url,opts)=>{requests++;assert.equal(url,'./pet-hq/release-info');assert.equal(opts.cache,'no-store');return {ok:true,json:async()=>({version:installed})};},
   location:{reload(){reloads++;}},localStorage:{getItem:k=>storage.get('local:'+k)||null,setItem:(k,v)=>storage.set('local:'+k,v)},sessionStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},
   console,setTimeout:()=>0};
- const script='/* Standalone-app update UX; does not affect Home Assistant commands. */'+block[1].replace('__PET_HQ_LOADED_VERSION__','2.18.170');
+ const script='/* Standalone-app update UX; does not affect Home Assistant commands. */'+block[1].replace('__PET_HQ_LOADED_VERSION__','2.18.172');
  vm.runInNewContext(script,context);
  const fire=async name=>{for(const fn of listeners[name]||[])await fn();};
  return {fire,requests:()=>requests,reloads:()=>reloads,storage};
 }
 test('current release does not reload',async()=>{
- const h=harness('2.18.170');await h.fire('win:pageshow');assert.equal(h.reloads(),0);
+ const h=harness('2.18.172');await h.fire('win:pageshow');assert.equal(h.reloads(),0);
 });
 test('new release reloads once, never loops',async()=>{
- const h=harness('2.18.172');await h.fire('win:pageshow');await h.fire('win:pageshow');assert.equal(h.reloads(),1);
+ const h=harness('2.18.173');await h.fire('win:pageshow');await h.fire('win:pageshow');assert.equal(h.reloads(),1);
 });
 test('editing a field or modal defers reload',async()=>{
- for(const opts of [{editing:true},{modal:true}]){const h=harness('2.18.172',opts);await h.fire('win:pageshow');assert.equal(h.reloads(),0);}
+ for(const opts of [{editing:true},{modal:true}]){const h=harness('2.18.173',opts);await h.fire('win:pageshow');assert.equal(h.reloads(),0);}
 });
 test('offline app does not reload',async()=>{
- const h=harness('2.18.172',{online:false});await h.fire('win:pageshow');assert.equal(h.reloads(),0);assert.equal(h.requests(),0);
+ const h=harness('2.18.173',{online:false});await h.fire('win:pageshow');assert.equal(h.reloads(),0);assert.equal(h.requests(),0);
 });
 
 test('update confirmation is persistent and dismissible',()=>{

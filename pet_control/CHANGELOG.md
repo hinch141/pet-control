@@ -1,3 +1,9 @@
+## v2.18.158 — Family email save transaction diagnosis
+- Trace the last family update through request receipt, Cloudflare write and local family save/verification using a read-only authenticated status endpoint.
+- When the email-save response does not contain the requested change, display the last transaction stage directly in the app instead of asking for add-on logs.
+- Reject unchanged edit requests rather than returning a misleading successful save.
+- No changes to pet controls, curfews, Cloudflare policy rules, account credentials or existing family membership.
+
 ## v2.18.157 — Cloudflare check toggle and clearer email-save feedback
 - Cloudflare connection results now expand and collapse using the same button, with readable line breaks.
 - Clarifies that successful policy read access does not prove permission to write changes.

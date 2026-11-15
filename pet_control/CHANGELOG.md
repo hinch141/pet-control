@@ -1,3 +1,10 @@
+## v2.18.166 — Safe mobile photo recovery
+- Add an opt-in Recover photos from this device action in Settings, for the mobile app where the chosen JPEG photos still appear.
+- Verify the signed-in account and copy only missing personal photos from device storage using the server's migration-only, no-overwrite protection.
+- Ask for confirmation, preserve device originals, protect existing photos and intentional removals, and show individual recovery results.
+- If no locally stored JPEGs are found, report this without changing anything.
+- No changes to cat controls, curfews, household permissions or Sure Petcare operations.
+
 ## v2.18.165 — Read-only web photo diagnostic
 - Add a Photo diagnostic in Settings with Run and Copy results buttons.
 - Report photo index and image HTTP status, selected source, visible image source, browser load status and local cache state for Jessie, Henry and Violet.

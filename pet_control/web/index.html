@@ -420,12 +420,23 @@ input,select,textarea{border-color:#c7d6ef;accent-color:#215de0}
 <script>
 const key='petcontrol-v1-demo';const iso=(d)=>new Date(d).toISOString();const now=Date.now();const initial={pets:['Jessie','Henry','Rosie','Violet'].map((name,i)=>({id:'p'+(i+1),name,enabled:true,start:'21:00',end:'07:00',weekend:false,archived:false})),users:[{id:'u1',name:'John',email:'',role:'full',primary:true},{id:'u2',name:'Nicky',email:'',role:'full',primary:true}],events:[{id:'e1',petId:'p1',type:'In',at:iso(now-45*60000)},{id:'e2',petId:'p2',type:'Out',at:iso(now-90*60000)},{id:'e3',petId:'p3',type:'In',at:iso(now-150*60000)},{id:'e4',petId:'p4',type:'Out',at:iso(now-260*60000)},{id:'e5',petId:'p1',type:'Out',at:iso(now-360*60000)},{id:'e6',petId:'p2',type:'In',at:iso(now-900*60000)}]};for(let days=1;days<=30;days++){for(let j=0;j<4;j++){const d=new Date();d.setHours(7+j*3,15+(days*7+j*11)%40,0,0);d.setDate(d.getDate()-days);initial.events.push({id:'hist-'+days+'-'+j,petId:'p'+(1+(days+j)%4),type:j%2?'In':'Out',at:d.toISOString()})}}let selectedPetId=null;let curfewPetId=null;let curfewFromProfile=false;let state;try{state=JSON.parse(localStorage.getItem(key))||initial;if(!Array.isArray(state.pets)||!Array.isArray(state.users))state=initial}catch{state=initial}if(!state.userManagementV23){state.users=state.users.map(u=>u.id==='u1'?{...u,name:'John',role:'full',primary:true}:u.id==='u2'?{...u,name:'Nicky',role:'full',primary:true}:{...u,role:u.role||'full',primary:false});state.userManagementV23=true;try{localStorage.setItem(key,JSON.stringify(state))}catch{}}if(!state.userInviteV24){state.users.forEach(u=>{u.status=u.primary?'Active':(u.email?'Pending invitation':'Email needed');u.invitedAt=u.invitedAt||null});state.userInviteV24=true;try{localStorage.setItem(key,JSON.stringify(state))}catch{}}if(!state.timelineHistoryAdded){const ids=new Set(state.events.map(e=>e.id));for(const e of initial.events.filter(e=>e.id.startsWith('hist-')))if(!ids.has(e.id))state.events.push(e);state.timelineHistoryAdded=true;try{localStorage.setItem(key,JSON.stringify(state))}catch{}}const el=id=>document.getElementById(id);const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const pet=id=>state.pets.find(p=>p.id===id);function save(){try{localStorage.setItem(key,JSON.stringify(state))}catch{}render()}let toastTimer;function toast(s){const box=el('toast');box.textContent=s;box.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>box.style.display='none',3000)}function openMainCurfews(){curfewFromProfile=false;showPage('curfews')}
 function showPage(page){if(page!=='curfews')curfewFromProfile=false;if(page==='curfews'&&!activePets().some(p=>p.id===curfewPetId))curfewPetId=activePets()[0]?.id||null;document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.id===page));document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x.dataset.page===page));window.scrollTo({top:0,behavior:'smooth'});render();if(page==='settings'&&typeof petHQCheckUsbArchive==='function')petHQCheckUsbArchive();if(page==='home'){if(typeof window.refreshPetPresence==='function')window.refreshPetPresence();if(typeof window.refreshPetPermissionDisplay==='function')window.refreshPetPermissionDisplay()}}function time(s){return new Date(s).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}function activePets(){return state.pets.filter(p=>!p.archived&&p.name.toLowerCase()!=='rosie')}function lastEvent(id){return [...state.events].filter(e=>e.petId===id).sort((a,b)=>new Date(b.at)-new Date(a.at))[0]}function eventRow(e){let p=pet(e.petId);return `<div class="listrow"><div class="row"><div class="eventicon">${e.type==='In'?'↙':'↗'}</div><div><strong>${esc(p?.name||'Archived pet')}</strong><div class="small">${e.type==='In'?'Came inside':'Went outside'} · sample</div></div></div><span class="small">${time(e.at)}</span></div>`}function indoorMode(p){return p.indoorMode||'normal'}const sharedPetPhotos={};
+const defaultPetPhotos={};
+let personalPhotoViewer=null;
+let personalPhotosLoaded=false;
+const legacyPhotoOwnerKey='pet-hq-legacy-photo-owner';
 const photoCat=p=>String(p?.name||'').trim().toLowerCase();
 function petPhoto(p){
- const cat=photoCat(p),shared=sharedPetPhotos[cat];
- if(shared?.present)return './pet-hq/photos/'+cat+'?v='+encodeURIComponent(shared.version);
- if(shared?.removed)return stockPetPhoto(p);
- if(p&&p.photo)return p.photo;
+ const cat=photoCat(p),personal=sharedPetPhotos[cat];
+ if(personal?.present)return './pet-hq/photos/'+cat+'?v='+encodeURIComponent(personal.version);
+ if(personal?.removed)return defaultPetPhoto(p);
+ // Only the account that owns this browser's legacy photos may use them.
+ const owner=localStorage.getItem(legacyPhotoOwnerKey);
+ if(p&&p.photo&&(!personalPhotosLoaded||(owner&&owner===personalPhotoViewer)))return p.photo;
+ return defaultPetPhoto(p);
+}
+function defaultPetPhoto(p){
+ const cat=photoCat(p),fallback=defaultPetPhotos[cat];
+ if(fallback?.present)return './pet-hq/photo-defaults/'+cat+'?v='+encodeURIComponent(fallback.version);
  return stockPetPhoto(p);
 }
 function stockPetPhoto(p){
@@ -735,10 +746,22 @@ function petHQConfirm(title,message,actionLabel,onConfirm,{danger=false}={}){
 
 async function loadSharedPetPhotos(){
  try{
+  // Obtain the viewer identity from the authenticated server, never from user input.
+  const identity=await fetch('./pet-hq/family',{cache:'no-store',signal:AbortSignal.timeout(10000)});
+  if(!identity.ok)throw Error('Signed-in account unavailable');
+  const viewer=String((await identity.json()).viewer||'').trim().toLowerCase();
+  if(!viewer)throw Error('Signed-in account unavailable');
+  personalPhotoViewer=viewer;
+  const owner=localStorage.getItem(legacyPhotoOwnerKey);
+  if(!owner)localStorage.setItem(legacyPhotoOwnerKey,viewer);
   const response=await fetch('./pet-hq/photos',{cache:'no-store',signal:AbortSignal.timeout(10000)});
-  if(!response.ok)throw Error('Shared photos unavailable');
-  const data=await response.json();Object.assign(sharedPetPhotos,data.photos||{});render();
-  // Import device photos only when no shared photo or explicit removal exists.
+  if(!response.ok)throw Error('Personal photos unavailable');
+  const data=await response.json();
+  Object.assign(sharedPetPhotos,data.photos||{});
+  Object.assign(defaultPetPhotos,data.defaults||{});
+  personalPhotosLoaded=true;render();
+  // Import only the legacy photos owned by this account on this device.
+  if(localStorage.getItem(legacyPhotoOwnerKey)!==viewer)return;
   for(const p of activePets()){
    const cat=photoCat(p);
    if(!['jessie','henry','violet'].includes(cat)||!p.photo||sharedPetPhotos[cat])continue;
@@ -747,9 +770,9 @@ async function loadSharedPetPhotos(){
     if(!saved.ok&&saved.status!==409)throw Error('Photo migration failed');
     const latest=await fetch('./pet-hq/photos',{cache:'no-store'});
     if(latest.ok){const result=await latest.json();Object.assign(sharedPetPhotos,result.photos||{});render();}
-   }catch{toast('Could not share '+p.name+' photo. It is still saved on this device.');}
+   }catch{toast('Could not back up '+p.name+' photo. It is still on this device.');}
   }
- }catch{ /* Preserve device photos when server unavailable. */ }
+ }catch{ /* Keep the original local photos untouched on connection failure. */ }
 }
 async function changePetPhoto(id,file){
  if(!file||!file.type.startsWith('image/'))return toast('Choose an image');
@@ -761,20 +784,20 @@ async function changePetPhoto(id,file){
   canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
   canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
   const photo=canvas.toDataURL('image/jpeg',0.75),cat=photoCat(p);
-  if(!['jessie','henry','violet'].includes(cat))throw Error('Shared photos are available for Jessie, Henry and Violet');
+  if(!['jessie','henry','violet'].includes(cat))throw Error('Personal photos are available for Jessie, Henry and Violet');
   const response=await fetch('./pet-hq/photos/'+cat,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({photo}),signal:AbortSignal.timeout(15000)});
-  if(!response.ok)throw Error('Shared photo could not be saved (HTTP '+response.status+')');
+  if(!response.ok)throw Error('Personal photo could not be saved (HTTP '+response.status+')');
   const result=await response.json();sharedPetPhotos[cat]={present:true,version:result.version};
   p.photo=photo;try{localStorage.setItem(key,JSON.stringify(state))}catch{}
-  render();openPet(id);toast('Photo saved for the household');
+  render();openPet(id);toast('Your personal photo has been saved');
  }catch(e){toast('Could not save photo: '+e.message)}
 }
 async function removePetPhoto(id){const p=pet(id);if(!p)return;const cat=photoCat(p);try{
  const response=await fetch('./pet-hq/photos/'+cat,{method:'DELETE',signal:AbortSignal.timeout(12000)});
- if(!response.ok)throw Error('Unable to remove shared photo');
- sharedPetPhotos[cat]={present:false,removed:true};delete p.photo;save();openPet(id);toast('Shared photo removed');
+ if(!response.ok)throw Error('Unable to remove personal photo');
+ sharedPetPhotos[cat]={present:false,removed:true};delete p.photo;save();openPet(id);toast('Your personal photo was removed');
  }catch(e){toast(e.message||'Photo could not be removed');}}
-function openPet(id){let p=id?pet(id):null;modal(`<h3>${p?'Edit pet':'Add pet'}</h3><div class="stack">${p?`<div class="row">${petAvatar(p)}<label class="button secondary">Change photo<input type="file" accept="image/*" style="display:none" onchange="changePetPhoto(\'${p.id}\',this.files[0])"></label>${(p.photo||sharedPetPhotos[photoCat(p)]?.present)?`<button class="button outline" onclick="removePetPhoto(\'${p.id}\')">Remove</button>`:""}</div><div class="small">Photo shared across household devices</div>`:""}<label class="field">Pet name<input id="petName" maxlength="40" value="${esc(p?.name||'')}" placeholder="Pet name"></label>${p?`<div class="card" style="background:#f4f8f5"><strong>Individual access</strong><p class="small" id="petAccessStatus">Checking Sure Petcare permission…</p><div class="row" id="petAccessActions"><span class="small">Checking available action…</span></div><p class="small">Indoor Only prevents this cat exiting but still allows entry. Useful for recovery after veterinary treatment.</p><strong>Curfews</strong><p class="small">Manage the weekly curfew separately.</p><button class="button secondary" onclick="closeModal();openPetCurfew(\'${p.id}\')">Open ${esc(p.name)}’s curfew settings →</button></div>`:""}</div><div class="row"><button class="button wide" onclick="savePet('${id||''}')">Save pet</button><button class="button outline" onclick="closeModal()">Cancel</button></div>`);if(p)refreshPetAccess(p.id);if(p&&houseReview){el('modal').insertAdjacentHTML('beforeend','<div class="row" style="margin-top:12px"><button class="button secondary" onclick="showHouseReviewCat()">Return to cat review</button></div>')}}function savePet(id){let name=el('petName').value.trim();if(!name)return toast('Enter a name');if(state.pets.some(p=>p.id!==id&&p.name.toLowerCase()===name.toLowerCase()))return toast('Pet name already exists');if(id){pet(id).name=name;}else state.pets.push({id:'p'+Date.now(),name,indoorMode:'normal',enabled:false,start:'21:00',end:'07:00',weekend:true,archived:false});closeModal();save();toast(name+' profile saved')}async function refreshPetAccess(id){
+function openPet(id){let p=id?pet(id):null;modal(`<h3>${p?'Edit pet':'Add pet'}</h3><div class="stack">${p?`<div class="row">${petAvatar(p)}<label class="button secondary">Change photo<input type="file" accept="image/*" style="display:none" onchange="changePetPhoto(\'${p.id}\',this.files[0])"></label>${(sharedPetPhotos[photoCat(p)]?.present||(p.photo&&(!personalPhotosLoaded||localStorage.getItem(legacyPhotoOwnerKey)===personalPhotoViewer)))?`<button class="button outline" onclick="removePetPhoto(\'${p.id}\')">Remove</button>`:""}</div><div class="small">Your photo follows your sign-in on other devices</div>`:""}<label class="field">Pet name<input id="petName" maxlength="40" value="${esc(p?.name||'')}" placeholder="Pet name"></label>${p?`<div class="card" style="background:#f4f8f5"><strong>Individual access</strong><p class="small" id="petAccessStatus">Checking Sure Petcare permission…</p><div class="row" id="petAccessActions"><span class="small">Checking available action…</span></div><p class="small">Indoor Only prevents this cat exiting but still allows entry. Useful for recovery after veterinary treatment.</p><strong>Curfews</strong><p class="small">Manage the weekly curfew separately.</p><button class="button secondary" onclick="closeModal();openPetCurfew(\'${p.id}\')">Open ${esc(p.name)}’s curfew settings →</button></div>`:""}</div><div class="row"><button class="button wide" onclick="savePet('${id||''}')">Save pet</button><button class="button outline" onclick="closeModal()">Cancel</button></div>`);if(p)refreshPetAccess(p.id);if(p&&houseReview){el('modal').insertAdjacentHTML('beforeend','<div class="row" style="margin-top:12px"><button class="button secondary" onclick="showHouseReviewCat()">Return to cat review</button></div>')}}function savePet(id){let name=el('petName').value.trim();if(!name)return toast('Enter a name');if(state.pets.some(p=>p.id!==id&&p.name.toLowerCase()===name.toLowerCase()))return toast('Pet name already exists');if(id){pet(id).name=name;}else state.pets.push({id:'p'+Date.now(),name,indoorMode:'normal',enabled:false,start:'21:00',end:'07:00',weekend:true,archived:false});closeModal();save();toast(name+' profile saved')}async function refreshPetAccess(id){
  const p=pet(id),target=el('petAccessStatus'),actions=el('petAccessActions');
  if(!p||!target)return;
  try{

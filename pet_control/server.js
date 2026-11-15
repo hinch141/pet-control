@@ -594,7 +594,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
      if(email!==originalEmail&&nextMembers.some(m=>m.email===email))return reply(409,{error:'Email already registered'});
      
      // Safe pass-through if no changes were made to name or email
-     if(target.name===name&&target.email===originalEmail){
+     if(target.name===name&&email===originalEmail){
       recordFamilyUpdate('no_changes','unchanged',{action:'edit'});
       return reply(409,{error:'No change was requested. The existing email is still registered.'});
      }

@@ -575,7 +575,13 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     const previousFamily=family;
     try{family={...family,members:nextMembers};saveFamily();}
     catch(saveError){family=previousFamily;console.error('Family registry write failed after Cloudflare update:',String(saveError.message||saveError));return reply(500,{error:'Cloudflare accepted the update but Pet HQ could not save its family registry. Do not retry; check the add-on log.'});}
-    return reply(200,{members:family.members,viewer:verifiedEmail,cfSynced:true});
+    let saved;
+    try{saved=JSON.parse(fs.readFileSync(familyFile,'utf8'));}
+    catch(readError){return reply(500,{error:'Pet HQ could not verify the saved family registry. Check the add-on log.'});}
+    if(!saved||!Array.isArray(saved.members)||saved.members.length!==nextMembers.length||
+       !nextMembers.every(m=>saved.members.some(x=>x.email===m.email&&x.name===m.name)))
+     return reply(500,{error:'The saved family registry did not match the requested change.'});
+    return reply(200,{members:saved.members,viewer:verifiedEmail,cfSynced:true});
    }catch(e){return reply(500,{error:'Family update failed: '+e.message});}
   }
   if(url.pathname==='/pet-hq/archive'&&(req.method==='GET'||req.method==='POST')){

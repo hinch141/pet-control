@@ -1138,6 +1138,19 @@ petHQLoadReleaseInfo();
  if(!/^\d+\.\d+\.\d+$/.test(loadedVersion))return;
  let checking=false,refreshing=false,waiting=null;
  const attemptKey='pet-hq-auto-refresh-target';
+ const noticeKey='pet-hq-updated-notice';
+ function showInstalledNotice(){
+  const updated=sessionStorage.getItem(noticeKey);
+  if(updated!==loadedVersion||document.getElementById('pet-hq-updated-notice'))return;
+  const bar=document.createElement('div');
+  bar.id='pet-hq-updated-notice';
+  bar.setAttribute('role','status');
+  bar.innerHTML='<span>🐾 Pet HQ updated to v'+loadedVersion+'. Your latest version is ready.</span><button type="button" id="pet-hq-updated-dismiss" aria-label="Dismiss update notice">Close</button>';
+  document.body.appendChild(bar);
+  bar.style.cssText='position:fixed;bottom:calc(72px + env(safe-area-inset-bottom, 0px));left:12px;right:12px;z-index:9999;padding:14px 16px;background:#173a34;color:white;border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 4px 20px #0004;font-size:14px;';
+  document.getElementById('pet-hq-updated-dismiss').addEventListener('click',()=>{sessionStorage.removeItem(noticeKey);bar.remove();});
+ }
+ window.addEventListener('load',showInstalledNotice);
  function editing(){
   const active=document.activeElement;
   const modal=document.getElementById('modalWrap');
@@ -1156,6 +1169,7 @@ petHQLoadReleaseInfo();
    // One attempt per target version per tab prevents loops if an upstream cache serves stale HTML.
    if(sessionStorage.getItem(attemptKey)===installed)return;
    sessionStorage.setItem(attemptKey,installed);
+   sessionStorage.setItem(noticeKey,installed);
    refreshing=true;
    location.reload();
   }catch(e){console.warn('Pet HQ release check unavailable',e);}
@@ -1172,6 +1186,8 @@ petHQLoadReleaseInfo();
  if(!('serviceWorker' in navigator))return;
  function offerUpdate(worker){
   if(!worker||document.getElementById('pet-hq-update-banner'))return;
+  // Version-based auto-refresh handles normal add-on updates. Avoid a competing transient banner.
+  if(sessionStorage.getItem(noticeKey)===loadedVersion)return;
   waiting=worker;
   const bar=document.createElement('div');
   bar.id='pet-hq-update-banner';

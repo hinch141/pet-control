@@ -1,3 +1,9 @@
+## v2.18.164 — Stable personal photos in web browser
+- Preload the signed-in member's JPEG photos from Home Assistant into stable browser image URLs before refreshing cat cards.
+- Reuse the loaded images during live status redraws to avoid repeated network requests and stock-photo flicker.
+- Refresh the cached images when a personal photo changes or is removed, without modifying saved originals.
+- No changes to Sure Petcare commands, cat access, curfews, family accounts or photo storage.
+
 ## v2.18.163 — Web photo and read-only access display repair
 - Use the authenticated personal-photo endpoint directly when browser metadata loading fails; retain a stock fallback only when no personal photo exists.
 - Refresh personal photo metadata when returning to the browser.

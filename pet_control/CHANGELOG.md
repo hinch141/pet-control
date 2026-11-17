@@ -1,3 +1,9 @@
+## v2.18.174 — Timeline refresh responsiveness
+- Refresh read-only Sure Petcare activity every 10 seconds instead of 20 seconds, without increasing concurrent requests.
+- Bound browser activity requests to 12 seconds; keep the last confirmed history visible on failure.
+- Correct the v2.18.173 fallback status polling line break so the intended 2.5-second fallback actually runs when the live stream disconnects.
+- No changes to flap commands, access permissions, curfews, stored history or personal photos. Sure Petcare cloud delays may still affect event arrival.
+
 ## v2.18.173 — Faster cat-card status fallback
 - Preserve immediate Home Assistant WebSocket-to-SSE cat status updates.
 - When the live event stream is disconnected, reduce the read-only Home Assistant status fallback interval from 5 to 2.5 seconds and reconnect delay from 5 to 3 seconds.

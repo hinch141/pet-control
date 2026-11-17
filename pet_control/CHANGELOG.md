@@ -1,3 +1,9 @@
+## v2.18.173 — Faster cat-card status fallback
+- Preserve immediate Home Assistant WebSocket-to-SSE cat status updates.
+- When the live event stream is disconnected, reduce the read-only Home Assistant status fallback interval from 5 to 2.5 seconds and reconnect delay from 5 to 3 seconds.
+- Keep the existing in-flight request guard, hidden-page guard and read-only status reconciliation; no changes to access, locking, curfews, photo storage or Sure Petcare commands.
+- Improvement applies to stream interruptions; upstream Sure Petcare reporting delays remain outside Pet HQ control.
+
 ## v2.18.172 — Reliable update notice on each phone
 - Show a persistent, dismissible update confirmation on each device, even when the previous version did not save an update marker.
 - Remember the last loaded and dismissed versions locally on each device; keep the notice until Close is tapped.

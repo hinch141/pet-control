@@ -709,14 +709,14 @@ function connectLiveStream(){
    try{es.close();}catch{}
    liveEventSource=null;
    clearTimeout(streamReconnectTimer);
-   streamReconnectTimer=setTimeout(connectLiveStream,5000);
+   streamReconnectTimer=setTimeout(connectLiveStream,3000);
   };
  }catch{updateStreamBadge(false);}
 }
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();connectLiveStream();});else{mount();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();connectLiveStream();}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();syncCurfewPermissionStatus();connectLiveStream();}else if(liveEventSource){try{liveEventSource.close();}catch{}liveEventSource=null;updateStreamBadge(false);}});
-setInterval(()=>{if(!streamConnected)refresh();},5000);
+// When the live stream is interrupted, read the cached HA presence more promptly.\nsetInterval(()=>{if(!streamConnected)refresh();},2500);
 setInterval(()=>{if(!streamConnected)refreshFlap();},15000);
 setInterval(()=>{if(!streamConnected)refreshWholeCurfew();},10000);
 setInterval(()=>{if(!streamConnected)syncCurfewPermissionStatus();},3000);

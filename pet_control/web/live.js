@@ -565,10 +565,10 @@ function renderGraphs(){
 
 async function refreshCloud(force=false){
  if(pending)return pending;
- if(document.hidden)return;if(!force&&Date.now()-lastFetched<20000){paint();return;}
+ if(document.hidden)return;if(!force&&Date.now()-lastFetched<10000){paint();return;}
  pending=(async()=>{
   try{
-   const r=await fetch('./sure/activity',{cache:'no-store'});if(!r.ok)throw Error('unavailable');
+   const r=await fetch('./sure/activity',{cache:'no-store',signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('unavailable');
    const data=await r.json();if(!String(data.status).startsWith('connected'))throw Error(data.status);
    activity=data.events||[];historyInfo={total:data.total,pagesFetched:data.pagesFetched,oldestEvent:data.oldestEvent,stopReason:data.stopReason,paginationMethod:data.paginationMethod,paginationTests:data.paginationTests};loaded=true;lastFetched=Date.now();
    try{sessionStorage.setItem('pet-sure-activity-v211',JSON.stringify({events:activity}));}catch{}
@@ -716,9 +716,10 @@ function connectLiveStream(){
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{mount();paint();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();connectLiveStream();});else{mount();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();connectLiveStream();}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){paint();refresh();refreshFlap();refreshCloud();refreshPetPermissionDisplay();syncCurfewPermissionStatus();connectLiveStream();}else if(liveEventSource){try{liveEventSource.close();}catch{}liveEventSource=null;updateStreamBadge(false);}});
-// When the live stream is interrupted, read the cached HA presence more promptly.\nsetInterval(()=>{if(!streamConnected)refresh();},2500);
+// When the live stream is interrupted, read the cached HA presence more promptly.
+setInterval(()=>{if(!streamConnected)refresh();},2500);
 setInterval(()=>{if(!streamConnected)refreshFlap();},15000);
 setInterval(()=>{if(!streamConnected)refreshWholeCurfew();},10000);
 setInterval(()=>{if(!streamConnected)syncCurfewPermissionStatus();},3000);
-syncCurfewPermissionStatus();refreshWholeCurfew();setInterval(refreshCloud,20000);
+syncCurfewPermissionStatus();refreshWholeCurfew();setInterval(refreshCloud,10000);
 })();

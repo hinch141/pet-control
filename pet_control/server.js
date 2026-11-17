@@ -1177,7 +1177,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       if(activityHouseholdCache&&Date.now()<activityHouseholdCache.expires){
         ({houseId,home}=activityHouseholdCache);
       }else{
-        const homeRes=await sureFetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});
+        const homeRes=await sureFetch('https://app.api.surehub.io/api/me/start',{headers,timeoutMs:12000});
         if(!homeRes.ok)return finish('household_error',{events:[],total:0});
         home=await homeRes.json();
         const hs=home.data?.households||home.data?.household||home.households||[];
@@ -1187,7 +1187,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
       }
       if(!houseId)return finish('household_error',{events:[],total:0});
       // Fast live path: fetch only the newest page. Archive retrieval is separate.
-      const response=await sureFetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page=0',{headers,signal:AbortSignal.timeout(12000)});
+      const response=await sureFetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page=0',{headers,timeoutMs:12000});
       if(!response.ok)return finish('timeline_error',{events:[],total:0});
       const body=await response.json();
       const items=Array.isArray(body)?body:Array.isArray(body.data)?body.data:Array.isArray(body.data?.entries)?body.data.entries:null;

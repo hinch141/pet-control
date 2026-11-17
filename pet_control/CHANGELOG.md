@@ -1,3 +1,10 @@
+## v2.18.178 — Finish dark and light theme consistency
+- Replace the hard-coded white Live Sure Petcare status panel with a theme-aware surface, without changing its data source or refresh logic.
+- Style Archive and Edit buttons for both light and dark themes.
+- Use Holiday Companion aqua/teal for In, Not locked in and live connection badges, keeping Out and restricted states visually distinct.
+- Match home pet-card actions to the dark theme and retain existing photographs, status meanings, controls and layout.
+- Presentation-only CSS plus one live-panel class/style change; Home Assistant device validation pending.
+
 ## v2.18.177 — Consistent light and dark styling
 - Match Holiday Companion-inspired teal and navy palettes across pet profile, profile text, activity counters, live connection indicators and household status cards.
 - Harmonise buttons, input fields, cat card action buttons, shadows and readable status labels in both themes.

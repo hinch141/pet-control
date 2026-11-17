@@ -1160,7 +1160,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     const finish=(status,detail)=>{
       finishActivity({status,detail});
       activityPending=null;
-      return finish(status,detail);
+      return send(status,detail);
     };
     let opts={};try{opts=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
     const email=String(opts.sure_email||'').trim(),password=String(opts.sure_password||'');

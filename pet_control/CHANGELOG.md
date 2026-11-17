@@ -1,3 +1,10 @@
+## v2.18.176 — Holiday Companion colours and automatic theme
+- Add System / Light / Dark appearance choice in Pet HQ Settings; System follows the phone's colour-scheme changes automatically.
+- Apply Holiday Companion-inspired teal and warm-white light colours, midnight navy/aqua dark colours, raised cards and coral accents.
+- Hide archived and remembered cats, including Rosie, from the read-only individual flap permission check without changing Sure Petcare records or permissions.
+- Leave all Sure Petcare, Home Assistant, pet controls, curfews, photos, authentication and historical data untouched.
+- Source checks completed; live mobile and Home Assistant visual verification pending.
+
 ## v2.18.175 — Coordinated cloud refresh and manual-location follow-up
 - Share a single in-flight Sure Petcare activity fetch across simultaneous Pet HQ clients, rather than queueing duplicate cloud calls.
 - Shorten the successful server activity cache from 30 to 20 seconds while retaining the existing cloud rate limiter and login cache.

@@ -1,3 +1,9 @@
+## v2.18.177 — Consistent light and dark styling
+- Match Holiday Companion-inspired teal and navy palettes across pet profile, profile text, activity counters, live connection indicators and household status cards.
+- Harmonise buttons, input fields, cat card action buttons, shadows and readable status labels in both themes.
+- Preserve cat photo prominence, control wording, access status semantics and all operational JavaScript/server behaviour.
+- CSS-only appearance changes plus version/changelog. Home Assistant/mobile visual validation pending.
+
 ## v2.18.176 — Holiday Companion colours and automatic theme
 - Add System / Light / Dark appearance choice in Pet HQ Settings; System follows the phone's colour-scheme changes automatically.
 - Apply Holiday Companion-inspired teal and warm-white light colours, midnight navy/aqua dark colours, raised cards and coral accents.

@@ -1,3 +1,11 @@
+## v2.18.175 — Coordinated cloud refresh and manual-location follow-up
+- Share a single in-flight Sure Petcare activity fetch across simultaneous Pet HQ clients, rather than queueing duplicate cloud calls.
+- Shorten the successful server activity cache from 30 to 20 seconds while retaining the existing cloud rate limiter and login cache.
+- Start activity cloud-request timeouts only when each queued network request begins; allow the browser up to 30 seconds for a queued refresh.
+- Invalidate the server activity snapshot after Sure Petcare accepts a manual cat location change, and request a new activity read without delaying the existing Home Assistant status refresh.
+- Preserve confirmed In/Out reconciliation, manual override expiry, all flap/curfew commands, photos, access and stored history. This cannot accelerate an event not yet available from Sure Petcare.
+- Source-level checks only until installed and observed in Home Assistant.
+
 ## v2.18.174 — Timeline refresh responsiveness
 - Refresh read-only Sure Petcare activity every 10 seconds instead of 20 seconds, without increasing concurrent requests.
 - Bound browser activity requests to 12 seconds; keep the last confirmed history visible on failure.

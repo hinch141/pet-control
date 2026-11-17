@@ -1027,6 +1027,7 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
         const where=body.location==='inside'?1:2;
         const result=await sureFetch('https://app.api.surehub.io/api/pet/'+encodeURIComponent(body.petId)+'/position',{method:'POST',headers,body:JSON.stringify({where,since:new Date().toISOString()}),signal:AbortSignal.timeout(12000)});
         if(!result.ok)return reply(502,{error:'Sure Petcare rejected the location change (HTTP '+result.status+')'});
+        activitySnapshot=null; // A manual position change must not reuse pre-change timeline data.
         return reply(200,{status:'accepted',petId:String(body.petId),location:body.location,message:'Sure Petcare accepted the change; waiting for a fresh read.'});
       }
       }catch(e){reliabilityDiagnostics.record('sure_cloud','positions',diagnosticStart,{ok:false,status:502,error:'request_failed'});return reply(502,{error:String(e.message||'Sure Petcare unavailable').slice(0,140)});}
@@ -1148,37 +1149,49 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
     sureTraffic.lastInteractive=Date.now();
     const diagnosticStart=Date.now();
     const send=(status,detail)=>{reliabilityDiagnostics.record('sure_cloud','activity',diagnosticStart,{ok:status==='connected'||status==='connected_no_cache',status:200,sourceUpdatedAt:detail.events?.[0]?.at||null,error:status.startsWith('connected')?null:status});res.writeHead(200,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify({status,...detail}));};
-    if(activitySnapshot&&Date.now()-activitySnapshot.at<30000)return send(activitySnapshot.status,activitySnapshot.detail);
+    if(activitySnapshot&&Date.now()-activitySnapshot.at<20000)return send(activitySnapshot.status,activitySnapshot.detail);
+    // One cloud fetch per refresh window: simultaneous browsers share the same result.
+    if(activityPending){
+      const result=await activityPending;
+      return send(result.status,result.detail);
+    }
+    let finishActivity;
+    activityPending=new Promise(resolve=>{finishActivity=resolve;});
+    const finish=(status,detail)=>{
+      finishActivity({status,detail});
+      activityPending=null;
+      return send(status,detail);
+    };
     let opts={};try{opts=JSON.parse(fs.readFileSync('/data/options.json','utf8'));}catch{}
     const email=String(opts.sure_email||'').trim(),password=String(opts.sure_password||'');
-    if(!email||!password)return send('not_configured',{events:[],total:0});
+    if(!email||!password)return finish('not_configured',{events:[],total:0});
     try{
       const deviceId=sureDeviceId;
       const headers={'Accept':'application/json','Content-Type':'application/json','Origin':'https://surepetcare.io','Referer':'https://surepetcare.io','X-Requested-With':'com.sureflap.surepetcare','X-Device-Id':deviceId};
-      const authRes=await sureFetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:email,password,device_id:deviceId}),signal:AbortSignal.timeout(12000)});
-      if(!authRes.ok)return send('authentication_error',{events:[],total:0});
+      const authRes=await sureFetch('https://app.api.surehub.io/api/auth/login',{method:'POST',headers,body:JSON.stringify({email_address:email,password,device_id:deviceId}),timeoutMs:12000});
+      if(!authRes.ok)return finish('authentication_error',{events:[],total:0});
       const auth=await authRes.json();const access=auth.data?.token||auth.token;
-      if(!access)return send('authentication_error',{events:[],total:0});
+      if(!access)return finish('authentication_error',{events:[],total:0});
       headers.Authorization='Bearer '+access;
       let houseId,home;
       if(activityHouseholdCache&&Date.now()<activityHouseholdCache.expires){
         ({houseId,home}=activityHouseholdCache);
       }else{
-        const homeRes=await sureFetch('https://app.api.surehub.io/api/me/start',{headers,signal:AbortSignal.timeout(12000)});
-        if(!homeRes.ok)return send('household_error',{events:[],total:0});
+        const homeRes=await sureFetch('https://app.api.surehub.io/api/me/start',{headers,timeoutMs:12000});
+        if(!homeRes.ok)return finish('household_error',{events:[],total:0});
         home=await homeRes.json();
         const hs=home.data?.households||home.data?.household||home.households||[];
         const house=Array.isArray(hs)?hs[0]:hs;
         houseId=house?.id||home.data?.household_id||home.data?.household?.id;
         if(houseId)activityHouseholdCache={houseId,home,expires:Date.now()+5*60*1000};
       }
-      if(!houseId)return send('household_error',{events:[],total:0});
+      if(!houseId)return finish('household_error',{events:[],total:0});
       // Fast live path: fetch only the newest page. Archive retrieval is separate.
-      const response=await sureFetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page=0',{headers,signal:AbortSignal.timeout(12000)});
-      if(!response.ok)return send('timeline_error',{events:[],total:0});
+      const response=await sureFetch('https://app.api.surehub.io/api/timeline/household/'+encodeURIComponent(houseId)+'?page=0',{headers,timeoutMs:12000});
+      if(!response.ok)return finish('timeline_error',{events:[],total:0});
       const body=await response.json();
       const items=Array.isArray(body)?body:Array.isArray(body.data)?body.data:Array.isArray(body.data?.entries)?body.data.entries:null;
-      if(!items)return send('timeline_error',{events:[],total:0});
+      if(!items)return finish('timeline_error',{events:[],total:0});
       const historyComplete=false,historyError=false,pagesFetched=1,stopReason='live_only',paginationMethod='page_2',paginationTests=[];
       const firstPageOldest=items.at(-1)?.created_at||null,lastPageOldest=firstPageOldest;
       const petLookup=new Map();
@@ -1220,9 +1233,9 @@ const handleRequest=async(req,res,standaloneRequest=false)=>{
         fs.writeFileSync(file,JSON.stringify(merged),{mode:0o600});
         const detail={events:merged.filter(e=>Date.parse(e.at)>Date.now()-2*86400000).slice(0,250),total:merged.length,historyComplete,historyError,pagesFetched,stopReason,paginationMethod,paginationTests,firstPageOldest,lastPageOldest,oldestEvent:merged.at(-1)?.at||null,source:'Sure Petcare timeline; six-month backfill with long-term local retention'};
         activitySnapshot={at:Date.now(),status:'connected',detail};
-        return send('connected',detail);
-      }catch{return send('connected_no_cache',{events,total:events.length,historyComplete,historyError,pagesFetched,stopReason,paginationMethod,paginationTests});}
-    }catch{return send('connection_error',{events:[],total:0});}
+        return finish('connected',detail);
+      }catch{return finish('connected_no_cache',{events,total:events.length,historyComplete,historyError,pagesFetched,stopReason,paginationMethod,paginationTests});}
+    }catch{return finish('connection_error',{events:[],total:0});}
   }
   if(url.pathname==='/live/status'){
     const diagnosticStart=Date.now();

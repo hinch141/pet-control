@@ -568,7 +568,7 @@ async function refreshCloud(force=false){
  if(document.hidden)return;if(!force&&Date.now()-lastFetched<10000){paint();return;}
  pending=(async()=>{
   try{
-   const r=await fetch('./sure/activity',{cache:'no-store',signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error('unavailable');
+   const r=await fetch('./sure/activity',{cache:'no-store',signal:AbortSignal.timeout(30000)});if(!r.ok)throw Error('unavailable');
    const data=await r.json();if(!String(data.status).startsWith('connected'))throw Error(data.status);
    activity=data.events||[];historyInfo={total:data.total,pagesFetched:data.pagesFetched,oldestEvent:data.oldestEvent,stopReason:data.stopReason,paginationMethod:data.paginationMethod,paginationTests:data.paginationTests};loaded=true;lastFetched=Date.now();
    try{sessionStorage.setItem('pet-sure-activity-v211',JSON.stringify({events:activity}));}catch{}
@@ -644,6 +644,7 @@ window.confirmManualSureLocation=async function(id,where){
   manualOverrides.set(p.name.toLowerCase(),{status:where==='inside'?'Home':'Away',at:Date.now()});
   manualLocationNotice='Synchronising with Home Assistant…';window.renderSurePetDetail();
   await refresh();
+  refreshCloud(true);
  }catch(e){manualLocationNotice='Unable to update location: '+(e.message||'Please try again.');}
  finally{sureLocationBusy=false;window.renderSurePetDetail();}
 };

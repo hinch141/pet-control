@@ -1,3 +1,10 @@
+## v2.18.179 — Theme-matched profile status and update notices
+- Change individual pet profile In badge from green to the light/dark aqua-teal palette; Out remains visually distinct.
+- Match the installed-update confirmation and new-update prompt to Holiday Companion-inspired light and dark palettes, including their dismiss/update buttons.
+- Remove the update confirmation's hardcoded inline green background so it responds to System / Light / Dark changes.
+- No changes to update timing, service worker behaviour, cat status, Sure Petcare, Home Assistant or flap controls.
+- Static source/syntax checks passed; mobile visual verification pending.
+
 ## v2.18.178 — Finish dark and light theme consistency
 - Replace the hard-coded white Live Sure Petcare status panel with a theme-aware surface, without changing its data source or refresh logic.
 - Style Archive and Edit buttons for both light and dark themes.

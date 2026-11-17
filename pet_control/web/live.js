@@ -1,7 +1,7 @@
 (function(){
 const names=['Jessie','Henry','Violet'];
 const section=document.createElement('section');
-section.className='card';section.style.cssText='margin-top:14px;background:#fff;color:#19312d;width:100%;';
+section.className='card pet-hq-live-status';section.style.cssText='margin-top:14px;width:100%;';
 section.innerHTML='<strong>Live Sure Petcare status</strong><div id="pet-live-list" style="margin-top:8px">Connecting to Home Assistant…</div><small id="pet-live-time"></small>';
 
 let wholeCurfew=null,curfewActionBusy=false;
